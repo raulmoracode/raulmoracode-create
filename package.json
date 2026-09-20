@@ -1,0 +1,58 @@
+{
+  "name": "@raulmoracode/create",
+  "version": "0.1.0",
+  "description": "Scaffold RaulMoraCode projects. pnpm is the official and only supported package manager.",
+  "keywords": [
+    "create",
+    "scaffold",
+    "scaffolder",
+    "cli",
+    "vite",
+    "nextjs",
+    "react",
+    "tailwindcss",
+    "pnpm",
+    "raulmoracode"
+  ],
+  "homepage": "https://github.com/raulmoracode/raulmoracode-create#readme",
+  "bugs": {
+    "url": "https://github.com/raulmoracode/raulmoracode-create/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raulmoracode/raulmoracode-create.git"
+  },
+  "license": "MIT",
+  "author": "raulmoracode",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "create-raulmoracode": "./bin.js"
+  },
+  "files": [
+    "bin.js",
+    "index.js",
+    "lib/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check bin.js && node --check index.js && node --check lib/pnpm.js && node --check lib/base.js && node --check lib/scaffold.js",
+    "prepublishOnly": "pnpm run check"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.8.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@12.5.1",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  }
+}
