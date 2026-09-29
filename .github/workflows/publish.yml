@@ -62,7 +62,53 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify the build output
+        run: |
+          entry="$(node -p "require('./package.json').bin['raulmoracode-create']")"
+          entry="${entry#./}"
+          if [[ ! -f "$entry" ]]; then
+            echo "::error::$entry is missing: pnpm build did not emit the bin entry point."
+            exit 1
+          fi
+          if [[ "$(head -n1 "$entry")" != "#!/usr/bin/env node" ]]; then
+            echo "::error::$entry lost its shebang, so the raulmoracode-create bin would not be executable."
+            exit 1
+          fi
+          version="$(node -p "require('./package.json').version")"
+          if ! grep -rq "VERSION = \"$version\"" dist/; then
+            echo "::error::No compiled module in dist/ carries VERSION = \\"$version\\". The published --version output would not match package.json."
+            exit 1
+          fi
+
+      - name: Verify the tarball contents
+        run: |
+          entry="$(node -p "require('./package.json').bin['raulmoracode-create']")"
+          listing="$(npm publish --dry-run --json)"
+          for expected in "$entry" "package.json" "README.md" "LICENSE"; do
+            if ! grep -q "\"path\": \"${expected#./}\"" <<< "$listing"; then
+              echo "::error::$expected would not ship in the tarball."
+              exit 1
+            fi
+          done
+          echo "Tarball contents verified."
+
       - name: Publish to npm
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify the published version was built from this commit
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          published=""
+          for attempt in {1..10}; do
+            published="$(npm view "${{ steps.pkg.outputs.name }}@$version" gitHead 2>/dev/null || true)"
+            [[ -n "$published" ]] && break
+            sleep 6
+          done
+          if [[ "$published" != "$GITHUB_SHA" ]]; then
+            echo "::error::npm recorded gitHead '$published' for $version, but this run published commit '$GITHUB_SHA'. The registry and the git tag are out of sync."
+            exit 1
+          fi
+          echo "npm and $GITHUB_REF_NAME agree: $version was built from $published."
+
