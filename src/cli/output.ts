@@ -16,12 +16,18 @@ export function showSummary(params: {
   projectName: string;
   githubUrl: string;
   frameworkLabel: string;
+  shadcn?: boolean;
 }): void {
-  const { projectName, githubUrl, frameworkLabel } = params;
+  const { projectName, githubUrl, frameworkLabel, shadcn } = params;
   log.success("Project created successfully!");
   log.message(`Framework: ${frameworkLabel}`);
   log.message(`Local:     ./${projectName}`);
   log.message(`GitHub:    ${githubUrl}`);
+  if (shadcn) {
+    log.message(
+      "shadcn registry ready: pnpm dlx shadcn@latest add @raulmoracode/<component>",
+    );
+  }
 }
 
 export function showFarewell(): void {

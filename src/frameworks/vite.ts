@@ -54,7 +54,13 @@ async function ensurePathAlias(projectDir: string): Promise<void> {
     }>(raw);
     const compilerOptions = tsconfig.compilerOptions ?? {};
     compilerOptions.baseUrl = ".";
-    compilerOptions.paths = { "@/*": ["./src/*"] };
+    // Merge instead of replacing: configureShadcn may have already written
+    // the @raulmoracode registry aliases and they must be preserved.
+    const existingPaths = (compilerOptions.paths ?? {}) as Record<
+      string,
+      string[]
+    >;
+    compilerOptions.paths = { ...existingPaths, "@/*": ["./src/*"] };
     tsconfig.compilerOptions = compilerOptions;
     await writeTextFile(tsconfigPath, `${JSON.stringify(tsconfig, null, 2)}\n`);
   }

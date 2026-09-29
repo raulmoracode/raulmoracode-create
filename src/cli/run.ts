@@ -326,7 +326,12 @@ export async function run(options: RunOptions = {}): Promise<void> {
       },
     ]);
 
-    showSummary({ projectName, githubUrl, frameworkLabel: framework.label });
+    showSummary({
+      projectName,
+      githubUrl,
+      frameworkLabel: framework.label,
+      shadcn: selection.shadcn,
+    });
 
     const openInVscode = await promptOpenInVscode();
     if (openInVscode) {

@@ -153,7 +153,7 @@ Internal functions:
    - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); branding (always); shadcn (only if `selection.shadcn`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `augmentGitignore` (always). Returns `"Project created"`.
    - **"Installing dependencies"** → `installDependencies(..., selection)` (`pnpm install`, `pnpm add` runtime unless empty, `pnpm add -D` dev unless empty — a bare `add` with no packages would fail, hence they are skipped); `normalizePackageJson`; `formatProject` only with Biome (it would fail without the binary); `refreshPnpmWorkspaceExcludes(..., selection)`. Returns `"Dependencies installed"`.
    - **"Initializing Git"** → `initRepository` + `pnpm exec husky` only with Husky. **"Configuring remote"** → `addRemote`. **"Creating initial commit"** → `createCommit`. **"Pushing to GitHub"** → `remoteHasDivergentCommits` (if `true`, error with `REMOTE_CONFLICT_MESSAGE`) otherwise `push` (`push -u origin main`, never `--force`).
-6. `showSummary({ projectName, githubUrl, frameworkLabel })`.
+6. `showSummary({ projectName, githubUrl, frameworkLabel, shadcn: selection.shadcn })` (registry hint only with shadcn).
 7. `promptOpenInVscode()`; if yes, `exec("code", ["."], { cwd: projectDir })`. If `code` is missing → warning (not fatal); on any other failure → generic warning (not fatal).
 8. `showFarewell()`.
 9. `catch`: if `shouldRemoveProjectDir(failedStep)` and there is a `cleanupDir`, delete it with `removeIfExists` (best effort, never hiding the real error); if the failure happened before the tasks and an empty dir had been reused (`restoreEmptyDir`), recreate it with `ensureDir`. Then: `ExecError` with `SIGINT`/`SIGTERM` signal → cancellation message (mentioning the cleanup if any) and `process.exit(130)`; `Error` → `log.error(message)` and `process.exit(1)`; non-`Error` → `log.error(String(error))` and `process.exit(1)`. Final `showWarning` hint: if cleaned, how to retry (`raulmoracode-create`); if the push failed, the project is complete and the manual `git -C … push` is given.
@@ -169,7 +169,7 @@ Internal functions:
 - `showIntro(): void` — `intro("Raulmoracode Create")`.
 - `showError(message: string): void` — `log.error(message)`.
 - `showWarning(message: string): void` — `log.warn(message)`.
-- `showSummary({ projectName, githubUrl, frameworkLabel }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines.
+- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@latest add @raulmoracode/<component>` hint when `shadcn` is true.
 - `showFarewell(): void` — `outro("Proyecto creado correctamente.\n¡Hasta pronto!")`.
 - Note: `run.ts` uses `intro`/`log` directly for the intro and errors; from this module it consumes `showSummary`, `showWarning` and `showFarewell`.
 
@@ -208,7 +208,7 @@ Internal functions:
 - `installDependencies(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — `pnpm install`, `pnpm add <runtime>` (skipped when empty — a bare `add` would fail), `pnpm add -D <dev>` (skipped when empty).
 - `pinnedPackages(framework, selection = FULL_TECH_SELECTION): string[]` — deduplicated `name@version` list of framework pins + runtime + dev (for excludes).
 - `pnpmListJsonArgs(): string[]` → `["list", "--depth", "Infinity", "--json"]`.
-- `refreshPnpmWorkspaceExcludes(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — runs `pnpm list --json`, extracts with `collectLockedPackages` every locked `name@version` (direct + transitive), merges them with `pinnedPackages` and rewrites `pnpm-workspace.yaml` with `mergePnpmWorkspaceYaml` (preserves existing template entries). On `pnpm list` failure, falls back to direct pins only.
+- `refreshPnpmWorkspaceExcludes(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — runs `pnpm list --json`, extracts with `collectLockedPackages` every locked `name@version` (direct + transitive), merges them with `pinnedPackages` and `registryScopeExcludes(selection)` (`@raulmoracode/*`, only with shadcn) and rewrites `pnpm-workspace.yaml` with `mergePnpmWorkspaceYaml` (preserves existing template entries). On `pnpm list` failure, falls back to direct pins only.
 - `normalizePackageJson(projectDir)` — second pass removing `^`/`~` that pnpm may have written during `add`.
 
 ### 7.3 `generators/configure-biome.ts`
@@ -229,7 +229,7 @@ Internal functions:
 
 ### 7.5 Remaining generators (one main function each)
 
-- `configure-shadcn.ts` — `configureShadcn(projectDir, framework)`: writes `components.json` (with `framework.componentsJsonOptions()`) and `src/lib/utils.ts` (`cn()`).
+- `configure-shadcn.ts` — `configureShadcn(projectDir, framework)`: writes `components.json` (with `framework.componentsJsonOptions()`), `src/lib/utils.ts` (`cn()`) and the `@raulmoracode` registry path aliases in every tsconfig present (`ensureRegistryAliases`, merged via pure `withRegistryAliases()`, missing files skipped).
 - `configure-testing.ts` — `configureTesting(projectDir)`: writes `vitest.config.ts` and `src/test/smoke.test.tsx`.
 - `configure-vscode.ts` — `configureVscode(projectDir)`: writes `.vscode/settings.json` and `.vscode/extensions.json`.
 - `configure-git-hooks.ts` — `configureGitHooks(projectDir, selection = FULL_TECH_SELECTION)`: writes `.husky/pre-commit` (`huskyPreCommit(selection)`), `.husky/commit-msg`, marks both executable, and writes `commitlint.config.ts`.
@@ -256,7 +256,7 @@ Internal functions:
 - Pins: `react`/`react-dom` `19.3.0`; dev `typescript 7.0.2`, `vite 8.3.1`, `@vitejs/plugin-react 6.1.1`. Removal patterns: `/eslint/i`, `/oxlint/i`, `/^globals$/`.
 - `componentsJsonOptions()`: `{ rsc: false, tailwindCssPath: "src/index.css" }`.
 - `VITE_MAIN_TSX` (private): rewritten `main.tsx` with `QueryClientProvider` + guard without non-null assertion (`if (!rootElement) throw …`).
-- `ensurePathAlias(projectDir)` (private): adds `baseUrl: "."` and `paths: { "@/*": ["./src/*"] }` to `tsconfig.app.json` **and** the root `tsconfig.json` (the latter is what the shadcn CLI reads; both parsed as JSONC). Skips missing files.
+- `ensurePathAlias(projectDir)` (private): adds `baseUrl: "."` and merges `paths: { "@/*": ["./src/*"] }` into `tsconfig.app.json` **and** the root `tsconfig.json` (the latter is what the shadcn CLI reads; both parsed as JSONC). Merges instead of replacing so the registry aliases written earlier by `configureShadcn` survive. Skips missing files.
 - `VITE_APP_TSX` (private): minimal `App.tsx` (`import "./App.css"`, `return <div>hello</div>`).
 - `configureTailwind`: rewrites `vite.config.ts` (`react()` + `tailwindcss()` plugins, `@` → `./src` alias via `fileURLToPath`) and `src/index.css` (`@import "tailwindcss";`).
 - `configureTanStackQuery`: writes `src/lib/query-client.ts` and `main.tsx`.
@@ -297,7 +297,7 @@ Internal functions:
 | `biome.ts` | `biomeConfig()` | `biome.json`: local `$schema`, `files.includes` (`**`, `!dist`, `!.next`), 2-space formatter, `assist.actions.source.organizeImports: "on"`, linter on with `noSvgWithoutTitle`/`noAmbiguousAnchorText` `off` |
 | `branding.ts` | `SITE_TITLE = "raulmoracode"`, `FAVICON_URL = "https://cdn.raulmoracode.com/icons/favicon.ico"` | — |
 | `commitlint.ts` | `commitlintConfig()` | `commitlint.config.ts` (`{ extends: ["@commitlint/config-conventional"] }`) |
-| `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge` |
+| `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn) |
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
@@ -329,9 +329,9 @@ Internal functions:
 | File | What it covers |
 |---|---|
 | `validation.test.ts` | Names (valid/invalid, length, reserved), GitHub URLs (protocol, host, credentials, format), `isFramework`/`validateFramework`, `satisfiesNodeVersion` |
-| `config.test.ts` | `.nvmrc`, `components.json` + `cn()`, `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (+ Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION`, `resolveTechSelection`), adaptive Husky hooks, Commitlint config |
+| `config.test.ts` | `.nvmrc`, `components.json` + `cn()` + registry aliases/merge/add example, `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (namespaced shadcn example + Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION`, `resolveTechSelection`), adaptive Husky hooks, Commitlint config |
 | `frameworks.test.ts` | Framework registration, exact pins per framework, scripts, removal patterns, runtime/dev lists (no `lucide-react`), pnpm constructors, `patchPackageJson` and `normalizePackageJson` against temp `package.json` (incl. author/homepage/repository, `prepare: husky`), no-trace patch with deselected techs, dependency filtering |
-| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter, workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn, biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit) |
+| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter (vite starter preserves registry aliases), workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn (registry + `cn()` + tsconfig aliases incl. merge/preservation/missing-file skip), biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit) |
 | `install.test.ts` | `installDependencies` with mocked `exec`: order `install` → `add` (exact runtime) → `add -D` (incl. tailwind/biome/vitest/testing-library/clsx/cva/husky/commitlint), `cwd` correctness, empty-add skipping with deselected techs, PostCSS variant on Next, `ExecError` propagation |
 | `git.test.ts` | Constructors (`init`, `branch -M main`, `remote add`, `add .`, `commit`, `push` without force) + integration with real Git in temp dirs: init on `main`, remote, initial commit, push to a bare repo |
 | `exec.test.ts` | Real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |

@@ -161,6 +161,9 @@ prompt (prompts/*.ts, Clack + validation.ts)
   (before that, pnpm would reject recent versions); `refreshPnpmWorkspaceExcludes` merges
   `pinnedPackages()` + the whole lockfile via `pnpm list --json` (`collectLockedPackages`) with
   fallback to pins on failure, preserving existing entries (`mergePnpmWorkspaceYaml`).
+  With shadcn it also excludes the `@raulmoracode/*` scope (pure `registryScopeExcludes()`,
+  pnpm pattern syntax) so `shadcn add @raulmoracode/<component>` can install freshly
+  published scope packages despite the maturity gate.
 - Biome 2.5.14: `organizeImports` lives in `assist.actions.source` (not top-level); `dist`/`.next`
   are ignored; `noSvgWithoutTitle`/`noAmbiguousAnchorText` are `off` (templates ship demo assets
   that trigger them).
@@ -171,6 +174,10 @@ prompt (prompts/*.ts, Clack + validation.ts)
 - shadcn on Vite needs the `@/*` alias in **three** places: `vite.config.ts` (via
   `fileURLToPath`), `tsconfig.app.json` and the root `tsconfig.json` (the shadcn CLI only reads the
   root one; without it, a literal `@/` folder is created). Tsconfigs are parsed as JSONC.
+  `configureShadcn` additionally writes the registry aliases (`@components/*`, `@lib/*`,
+  `@hooks/*` → `src/...`, merged via pure `withRegistryAliases()`, never overwriting existing
+  paths) because registry file targets use those prefixes; Vite's `ensurePathAlias` merges for
+  the same reason (it runs after shadcn in `run.ts`).
 - Testing: `vitest.config.ts` (`environment: jsdom`) + `src/test/smoke.test.tsx` (Testing
   Library). Requires `jsdom`. Note: the generated `test` script is `vitest` (watch); E2E
   verifies with `vitest run` / `CI=true` so it does not hang.
