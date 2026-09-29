@@ -70,6 +70,7 @@ vi.mock("@clack/prompts", () => ({
   multiselect: vi.fn(async () => [
     "tailwind",
     "shadcn",
+    "theme",
     "tanstack-query",
     "zustand",
     "forms",
@@ -291,6 +292,17 @@ describe("end-to-end project creation", () => {
     expect(workspace).toContain("minimumReleaseAgeExclude:");
     expect(workspace).toContain("@tanstack/query-core@5.104.0");
     expect(workspace).toContain("'@raulmoracode/*'");
+
+    const themedCss =
+      process.env.E2E_FRAMEWORK === "next"
+        ? join(projectDir, "src", "app", "globals.css")
+        : join(projectDir, "src", "index.css");
+    expect(await readFile(themedCss, "utf8")).toContain("oklch");
+    expect(
+      existsSync(join(projectDir, "src", "package.json")),
+      "theme junk src/package.json",
+    ).toBe(false);
+    expect(pkg.devDependencies["tw-animate-css"]).toBe("1.4.0");
 
     if (process.env.E2E_FRAMEWORK === "next") {
       const { readdir } = await import("node:fs/promises");

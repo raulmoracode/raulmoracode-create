@@ -9,6 +9,9 @@ export const RAULMORACODE_REGISTRY_CATALOG_URL =
 export const SHADCN_VERSION = "4.21.0";
 export const RAULMORACODE_REGISTRY_ADD_EXAMPLE = `pnpm dlx shadcn@${SHADCN_VERSION} add @raulmoracode/<component>`;
 
+/** Registry item applied by the optional theme preset. */
+export const REGISTRY_THEME_SPEC = "@raulmoracode/theme";
+
 /**
  * Path aliases required by the `@raulmoracode` registry items.
  *

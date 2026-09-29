@@ -14,6 +14,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 const FULL_TECH = [
   "tailwind",
   "shadcn",
+  "theme",
   "tanstack-query",
   "zustand",
   "forms",

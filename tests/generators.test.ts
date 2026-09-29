@@ -10,6 +10,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
   return { ...actual, exec: execMock };
 });
 
+import { SHADCN_VERSION } from "../src/config/components.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
 import {
@@ -26,6 +27,10 @@ import {
 import { refreshPnpmWorkspaceExcludes } from "../src/generators/configure-project.js";
 import { configureShadcn } from "../src/generators/configure-shadcn.js";
 import { configureTesting } from "../src/generators/configure-testing.js";
+import {
+  applyRegistryTheme,
+  themeAddArgs,
+} from "../src/generators/configure-theme.js";
 import { configureVscode } from "../src/generators/configure-vscode.js";
 import { listDirEntries, writeTextFile } from "../src/utils/filesystem.js";
 
@@ -353,6 +358,7 @@ describe("refreshPnpmWorkspaceExcludes", () => {
     await refreshPnpmWorkspaceExcludes(dir, viteFramework, false, {
       tailwind: true,
       shadcn: false,
+      theme: false,
       "tanstack-query": false,
       zustand: false,
       forms: false,
@@ -471,6 +477,87 @@ describe("configureShadcn", () => {
   });
 });
 
+describe("configureTheme", () => {
+  it("invokes the shadcn CLI with an args array in the project dir", async () => {
+    execMock.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    const dir = await makeTempDir();
+    await applyRegistryTheme(dir, viteFramework, false);
+    expect(execMock).toHaveBeenCalledWith(
+      "pnpm",
+      [
+        "dlx",
+        `shadcn@${SHADCN_VERSION}`,
+        "add",
+        "@raulmoracode/theme",
+        "--yes",
+        "--overwrite",
+      ],
+      expect.objectContaining({ cwd: dir }),
+    );
+    expect(themeAddArgs()).toEqual([
+      "dlx",
+      `shadcn@${SHADCN_VERSION}`,
+      "add",
+      "@raulmoracode/theme",
+      "--yes",
+      "--overwrite",
+    ]);
+  });
+
+  it("removes the theme junk and restores aliases on Vite", async () => {
+    execMock.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    const dir = await makeTempDir();
+    for (const file of [
+      "package.json",
+      "tsconfig.json",
+      "postcss.config.mjs",
+    ]) {
+      await writeTextFile(join(dir, "src", file), "{}");
+    }
+    await writeTextFile(join(dir, "src", "app", "globals.css"), ":root{}");
+    await writeTextFile(
+      join(dir, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: {} }),
+    );
+
+    await applyRegistryTheme(dir, viteFramework, false);
+
+    for (const file of [
+      "package.json",
+      "tsconfig.json",
+      "postcss.config.mjs",
+    ]) {
+      await expect(readFile(join(dir, "src", file))).rejects.toThrow();
+    }
+    await expect(
+      readFile(join(dir, "src", "app", "globals.css")),
+    ).rejects.toThrow();
+    const parsed = JSON.parse(await readFromFile(dir, "tsconfig.json")) as {
+      compilerOptions: { paths: Record<string, string[]> };
+    };
+    expect(parsed.compilerOptions.paths["@components/*"]).toEqual([
+      "./src/components/*",
+    ]);
+  });
+
+  it("keeps the themed globals.css on Next.js", async () => {
+    execMock.mockResolvedValue({ code: 0, stdout: "", stderr: "" });
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "src", "tsconfig.json"), "{}");
+    await writeTextFile(
+      join(dir, "src", "app", "globals.css"),
+      ":root{--background: oklch(1 0 0)}",
+    );
+
+    await applyRegistryTheme(dir, nextFramework, false);
+
+    await expect(readFile(join(dir, "src", "tsconfig.json"))).rejects.toThrow();
+    expect(await readFromFile(dir, "src", "app", "globals.css")).toContain(
+      "oklch",
+    );
+  });
+});
+
 describe("configureBiome", () => {
   it("writes biome.json and removes conflicting linter configs", async () => {
     const dir = await makeTempDir();
@@ -529,6 +616,7 @@ describe("configureGitHooks", () => {
     await configureGitHooks(dir, {
       tailwind: true,
       shadcn: true,
+      theme: true,
       "tanstack-query": true,
       zustand: true,
       forms: true,
