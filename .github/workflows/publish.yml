@@ -100,12 +100,18 @@ jobs:
       - name: Verify the published version was built from this commit
         run: |
           version="$(node -p "require('./package.json').version")"
+          pkg="${{ steps.pkg.outputs.name }}"
           published=""
-          for attempt in {1..10}; do
-            published="$(npm view "${{ steps.pkg.outputs.name }}@$version" gitHead 2>/dev/null || true)"
+          for attempt in {1..30}; do
+            published="$(npm view "$pkg@$version" gitHead 2>/dev/null || true)"
             [[ -n "$published" ]] && break
-            sleep 6
+            echo "Attempt $attempt: $version is not visible in the registry yet (npm publishes asynchronously)."
+            sleep 20
           done
+          if [[ -z "$published" ]]; then
+            echo "::error::npm never exposed $version after 10 minutes, so this run is inconclusive rather than proven. npm reported the package as published, so check https://www.npmjs.com/package/$pkg before assuming a failure."
+            exit 1
+          fi
           if [[ "$published" != "$GITHUB_SHA" ]]; then
             echo "::error::npm recorded gitHead '$published' for $version, but this run published commit '$GITHUB_SHA'. The registry and the git tag are out of sync."
             exit 1
