@@ -1,3 +1,4 @@
+import { registryScopeExcludes } from "../config/components.js";
 import {
   collectLockedPackages,
   mergePnpmWorkspaceYaml,
@@ -283,7 +284,11 @@ export async function refreshPnpmWorkspaceExcludes(
   } catch {
     existing = null;
   }
-  const excludes = [...pinnedPackages(framework, selection), ...locked];
+  const excludes = [
+    ...pinnedPackages(framework, selection),
+    ...registryScopeExcludes(selection),
+    ...locked,
+  ];
   await writeTextFile(
     workspacePath,
     mergePnpmWorkspaceYaml(existing, excludes),

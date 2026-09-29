@@ -230,6 +230,25 @@ describe("end-to-end project creation", () => {
       expect(existsSync(join(projectDir, file)), file).toBe(true);
     }
 
+    const generatedComponentsJson = await readFile(
+      join(projectDir, "components.json"),
+      "utf8",
+    );
+    expect(generatedComponentsJson).toContain(
+      "https://registry.raulmoracode.com/r/{name}.json",
+    );
+    const generatedTsconfig = JSON.parse(
+      await readFile(join(projectDir, "tsconfig.json"), "utf8"),
+    ) as {
+      compilerOptions?: { paths?: Record<string, string[]> };
+    };
+    expect(generatedTsconfig.compilerOptions?.paths?.["@components/*"]).toEqual(
+      ["./src/components/*"],
+    );
+    expect(generatedTsconfig.compilerOptions?.paths?.["@lib/*"]).toEqual([
+      "./src/lib/*",
+    ]);
+
     const preCommit = await readFile(
       join(projectDir, ".husky", "pre-commit"),
       "utf8",
@@ -271,6 +290,7 @@ describe("end-to-end project creation", () => {
     expect(workspace).toContain("minimumReleaseAge: 10080");
     expect(workspace).toContain("minimumReleaseAgeExclude:");
     expect(workspace).toContain("@tanstack/query-core@5.104.0");
+    expect(workspace).toContain("'@raulmoracode/*'");
 
     if (process.env.E2E_FRAMEWORK === "next") {
       const { readdir } = await import("node:fs/promises");
@@ -329,6 +349,9 @@ describe("end-to-end project creation", () => {
       };
       expect(tsconfigApp.compilerOptions.paths).toEqual({
         "@/*": ["./src/*"],
+        "@components/*": ["./src/components/*"],
+        "@lib/*": ["./src/lib/*"],
+        "@hooks/*": ["./src/hooks/*"],
       });
       const viteConfig = await readFile(
         join(projectDir, "vite.config.ts"),

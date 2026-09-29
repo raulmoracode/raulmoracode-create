@@ -60,7 +60,7 @@ raulmoracode-create --version   # show the installed version
   - Next.js: `pnpm create next-app@16.3.6 <name> --ts --app --src-dir --import-alias "@/*" --biome --use-pnpm --disable-git --yes`.
 - Installs dependencies with **pnpm** and pins exact versions (no `^` or `~`).
 - Configures **Tailwind CSS 4.3.3** (CSS-first configuration, `@tailwindcss/vite` for Vite and `@tailwindcss/postcss` for Next.js).
-- Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry) and the `cn()` helper (`src/lib/utils.ts`). No components are preinstalled; add them later with `pnpm dlx shadcn@latest add <component>`.
+- Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry), the `cn()` helper (`src/lib/utils.ts`) and the registry path aliases (`@components/*`, `@lib/*`, `@hooks/*` in the tsconfigs) so `pnpm dlx shadcn@latest add @raulmoracode/<component>` resolves file targets out of the box. No components are preinstalled; add them later with `pnpm dlx shadcn@latest add <component>`.
 - Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5** and **TanStack Query 5.104.0**, and wires the TanStack Query provider.
 - Configures **Biome 2.5.14** (formatter, linter and organize imports) and removes the ESLint/Oxlint leftovers from the official templates.
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
@@ -70,7 +70,7 @@ raulmoracode-create --version   # show the installed version
 - Ships a minimal **starter** for React + Vite: `public/` and `src/assets/` are emptied, `App.tsx` renders a simple hello and `App.css` starts empty.
 - Ships a minimal **starter** for Next.js: `public/` is emptied and `page.tsx` renders a simple hello (its orphaned `page.module.css` is removed). `AGENTS.md` is kept and `CLAUDE.md` is removed.
 - Fills in **project metadata** in `package.json`: `author` (Raul Mora, https://raulmoracode.com), `homepage` and `repository` with the GitHub URL you enter at the start.
-- Writes **`pnpm-workspace.yaml`** with `minimumReleaseAge: 10080` plus `minimumReleaseAgeExclude` entries for every locked package, so installs keep working (pnpm enforces the policy against the whole lockfile, not just direct dependencies).
+- Writes **`pnpm-workspace.yaml`** with `minimumReleaseAge: 10080` plus `minimumReleaseAgeExclude` entries for every locked package, so installs keep working (pnpm enforces the policy against the whole lockfile, not just direct dependencies). When shadcn is selected, the `@raulmoracode/*` scope is also excluded so `shadcn add @raulmoracode/<component>` can install freshly published packages from your registry.
 - Initializes Git on `main`, adds the remote, creates the commit `chore: initial project setup` and pushes with `git push -u origin main` (never `--force`). If the remote already contains commits that do not exist locally, the process stops with a clear message instead of overwriting anything.
 
 ## Generated projects
@@ -117,7 +117,7 @@ After adding components, normalize their style with Biome (the shadcn CLI uses i
 pnpm exec biome check --write .
 ```
 
-Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`).
+Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`). Both frameworks also map the `@raulmoracode` registry aliases (`@components/*`, `@lib/*`, `@hooks/*` to `src/...`) so registry file targets resolve when running `pnpm dlx shadcn@latest add @raulmoracode/<component>`.
 
 Every generated project ships an `AGENTS.md` file with guidelines for AI coding agents (source of truth, conventions, validation, Git safety and security rules), plus a project tooling section (pnpm exclusively, script map and the shadcn workflow).
 

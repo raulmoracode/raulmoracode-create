@@ -5,9 +5,15 @@ import { FAVICON_URL, SITE_TITLE } from "../src/config/branding.js";
 import { commitlintConfig } from "../src/config/commitlint.js";
 import {
   componentsJson,
+  RAULMORACODE_REGISTRY_ADD_EXAMPLE,
+  RAULMORACODE_REGISTRY_CATALOG_URL,
   RAULMORACODE_REGISTRY_NAME,
   RAULMORACODE_REGISTRY_URL,
+  REGISTRY_PATH_ALIASES,
+  REGISTRY_SCOPE_EXCLUDE,
+  registryScopeExcludes,
   utilsTs,
+  withRegistryAliases,
 } from "../src/config/components.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
@@ -138,6 +144,46 @@ describe("components.json (shadcn)", () => {
     expect(content).toContain('from "tailwind-merge"');
     expect(content).toContain("export function cn(");
   });
+
+  it("exposes the registry path aliases required by registry file targets", () => {
+    expect(REGISTRY_PATH_ALIASES).toEqual({
+      "@components/*": ["./src/components/*"],
+      "@lib/*": ["./src/lib/*"],
+      "@hooks/*": ["./src/hooks/*"],
+    });
+  });
+
+  it("merges registry aliases without overwriting existing paths", () => {
+    expect(withRegistryAliases()).toEqual(REGISTRY_PATH_ALIASES);
+    expect(
+      withRegistryAliases({
+        "@/*": ["./src/*"],
+        "@lib/*": ["./custom/lib/*"],
+      }),
+    ).toEqual({
+      "@components/*": ["./src/components/*"],
+      "@lib/*": ["./custom/lib/*"],
+      "@hooks/*": ["./src/hooks/*"],
+      "@/*": ["./src/*"],
+    });
+  });
+
+  it("documents the namespaced add command and the catalogue URL", () => {
+    expect(RAULMORACODE_REGISTRY_ADD_EXAMPLE).toBe(
+      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
+    );
+    expect(RAULMORACODE_REGISTRY_CATALOG_URL).toBe(
+      "https://registry.raulmoracode.com",
+    );
+  });
+
+  it("exempts the registry scope from minimumReleaseAge only with shadcn", () => {
+    expect(REGISTRY_SCOPE_EXCLUDE).toBe("@raulmoracode/*");
+    expect(registryScopeExcludes()).toEqual(["@raulmoracode/*"]);
+    expect(
+      registryScopeExcludes({ ...FULL_TECH_SELECTION, shadcn: false }),
+    ).toEqual([]);
+  });
 });
 
 describe("branding", () => {
@@ -231,7 +277,10 @@ describe("agents guide", () => {
     );
     expect(content).toContain("## Project tooling");
     expect(content).toContain("uses pnpm exclusively");
-    expect(content).toContain("pnpm dlx shadcn@latest add <component>");
+    expect(content).toContain(
+      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
+    );
+    expect(content).toContain("https://registry.raulmoracode.com");
     expect(content).toContain("`@raulmoracode` registry");
   });
 

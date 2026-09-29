@@ -186,6 +186,41 @@ describe("configureStarter (vite)", () => {
       "return <div>hello</div>;",
     );
   });
+
+  it("preserves the @raulmoracode registry aliases written by configureShadcn", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "tsconfig.app.json"),
+      JSON.stringify({
+        compilerOptions: {
+          target: "es2023",
+          types: ["vite/client"],
+        },
+      }),
+    );
+    await writeTextFile(
+      join(dir, "tsconfig.json"),
+      JSON.stringify({
+        files: [],
+        references: [{ path: "./tsconfig.app.json" }],
+      }),
+    );
+
+    // Real pipeline order in run.ts: configureShadcn first, starter after.
+    await configureShadcn(dir, viteFramework);
+    await viteFramework.configureStarter?.(dir);
+
+    for (const file of ["tsconfig.app.json", "tsconfig.json"]) {
+      const parsed = JSON.parse(await readFromFile(dir, file)) as {
+        compilerOptions: { paths: Record<string, string[]> };
+      };
+      expect(parsed.compilerOptions.paths["@/*"]).toEqual(["./src/*"]);
+      expect(parsed.compilerOptions.paths["@components/*"]).toEqual([
+        "./src/components/*",
+      ]);
+      expect(parsed.compilerOptions.paths["@lib/*"]).toEqual(["./src/lib/*"]);
+    }
+  });
 });
 
 describe("configureBranding (next)", () => {
@@ -291,6 +326,7 @@ describe("refreshPnpmWorkspaceExcludes", () => {
     expect(content).toContain("'husky@9.1.7'");
     expect(content).toContain("'@commitlint/cli@21.2.3'");
     expect(content).toContain("'@commitlint/config-conventional@21.2.3'");
+    expect(content).toContain("'@raulmoracode/*'");
     expect(execMock).toHaveBeenCalledWith(
       "pnpm",
       ["list", "--depth", "Infinity", "--json"],
@@ -306,6 +342,26 @@ describe("refreshPnpmWorkspaceExcludes", () => {
     expect(content).toContain("minimumReleaseAge: 10080");
     expect(content).toContain("'vite@8.3.1'");
     expect(content).toContain("'husky@9.1.7'");
+    expect(content).toContain("'@raulmoracode/*'");
+  });
+
+  it("omits the registry scope exclusion when shadcn is deselected", async () => {
+    execMock.mockRejectedValue(new Error("pnpm list failed"));
+    const dir = await makeTempDir();
+    await refreshPnpmWorkspaceExcludes(dir, viteFramework, false, {
+      tailwind: true,
+      shadcn: false,
+      "tanstack-query": false,
+      zustand: false,
+      forms: false,
+      biome: false,
+      testing: false,
+      husky: false,
+      vscode: false,
+    });
+    const content = await readFromFile(dir, "pnpm-workspace.yaml");
+    expect(content).toContain("minimumReleaseAge: 10080");
+    expect(content).not.toContain("@raulmoracode");
   });
 
   it("preserves existing workspace settings", async () => {
@@ -336,6 +392,83 @@ describe("configureShadcn", () => {
     expect(await readFromFile(dir, "src", "lib", "utils.ts")).toContain(
       "export function cn(",
     );
+  });
+
+  it("adds the registry path aliases to every tsconfig present", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "tsconfig.app.json"),
+      [
+        "{",
+        "  /* Bundler mode */",
+        '  "compilerOptions": {',
+        '    "target": "es2023" // keep me',
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    await writeTextFile(
+      join(dir, "tsconfig.json"),
+      JSON.stringify({
+        files: [],
+        references: [{ path: "./tsconfig.app.json" }],
+      }),
+    );
+
+    await configureShadcn(dir, viteFramework);
+
+    for (const file of ["tsconfig.app.json", "tsconfig.json"]) {
+      const parsed = JSON.parse(await readFromFile(dir, file)) as {
+        compilerOptions: { paths: Record<string, string[]> };
+      };
+      expect(parsed.compilerOptions.paths["@components/*"]).toEqual([
+        "./src/components/*",
+      ]);
+      expect(parsed.compilerOptions.paths["@lib/*"]).toEqual(["./src/lib/*"]);
+      expect(parsed.compilerOptions.paths["@hooks/*"]).toEqual([
+        "./src/hooks/*",
+      ]);
+    }
+    const appConfig = JSON.parse(
+      await readFromFile(dir, "tsconfig.app.json"),
+    ) as { compilerOptions: { target: string } };
+    expect(appConfig.compilerOptions.target).toBe("es2023");
+  });
+
+  it("preserves existing tsconfig paths when adding registry aliases", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: { "@/*": ["./src/*"], "@lib/*": ["./custom/lib/*"] },
+        },
+      }),
+    );
+
+    await configureShadcn(dir, viteFramework);
+
+    const parsed = JSON.parse(await readFromFile(dir, "tsconfig.json")) as {
+      compilerOptions: {
+        baseUrl: string;
+        paths: Record<string, string[]>;
+      };
+    };
+    expect(parsed.compilerOptions.baseUrl).toBe(".");
+    expect(parsed.compilerOptions.paths["@/*"]).toEqual(["./src/*"]);
+    expect(parsed.compilerOptions.paths["@lib/*"]).toEqual(["./custom/lib/*"]);
+    expect(parsed.compilerOptions.paths["@components/*"]).toEqual([
+      "./src/components/*",
+    ]);
+  });
+
+  it("skips missing tsconfigs without failing", async () => {
+    const dir = await makeTempDir();
+    await configureShadcn(dir, viteFramework);
+    const content = await readFromFile(dir, "components.json");
+    expect(content).toContain("@raulmoracode");
   });
 });
 
