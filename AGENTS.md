@@ -89,7 +89,9 @@ failures → `PreflightError`.
 
 1. `Creating project`: `createProject` (delegates to the framework) → `configureTailwind`
    (only if `selection.tailwind`) → `configureBranding` (always) → `configureShadcn` (only if
-   `selection.shadcn`) → `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
+   `selection.shadcn`) → `applyRegistryTheme` (only if `selection.theme`; needs shadcn via the
+   tech cascade; removes the CLI's `src/`-prefixed junk and restores aliases; must run before
+   `patchPackageJson` because the theme overwrites `package.json`) → `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
    (optional, always) → `configureBiome` (only if `selection.biome`) → `configureTesting`
    (only if `selection.testing`) → `configureVscode` (only if `selection.vscode`) →
    `configureNode` + `configureEditorconfig` (always) → **`configureGitHooks(selection)`**

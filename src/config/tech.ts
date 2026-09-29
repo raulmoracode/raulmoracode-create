@@ -1,6 +1,7 @@
 export const TECH_IDS = [
   "tailwind",
   "shadcn",
+  "theme",
   "tanstack-query",
   "zustand",
   "forms",
@@ -26,6 +27,11 @@ export const TECH_OPTIONS: TechOption[] = [
     id: "shadcn",
     label: "shadcn",
     hint: "components.json + cn() (requiere Tailwind)",
+  },
+  {
+    id: "theme",
+    label: "Raulmoracode theme",
+    hint: "Tema nature del registry (requiere shadcn)",
   },
   {
     id: "tanstack-query",
@@ -63,6 +69,7 @@ export const TECH_OPTIONS: TechOption[] = [
 export const FULL_TECH_SELECTION: TechSelection = {
   tailwind: true,
   shadcn: true,
+  theme: true,
   "tanstack-query": true,
   zustand: true,
   forms: true,
@@ -82,6 +89,10 @@ export function resolveTechSelection(
 ): ResolvedTechSelection {
   const selection: TechSelection = { ...input };
   const notes: string[] = [];
+  if (selection.theme && !selection.shadcn) {
+    selection.shadcn = true;
+    notes.push("El theme necesita shadcn: se mantiene shadcn.");
+  }
   if (selection.shadcn && !selection.tailwind) {
     selection.tailwind = true;
     notes.push("shadcn necesita Tailwind CSS: se mantiene Tailwind.");

@@ -78,6 +78,7 @@ describe("installDependencies", () => {
     await installDependencies("/tmp/my-project", viteFramework, false, {
       tailwind: false,
       shadcn: false,
+      theme: false,
       "tanstack-query": false,
       zustand: false,
       forms: false,
@@ -101,6 +102,7 @@ describe("installDependencies", () => {
     await installDependencies("/tmp/my-project", viteFramework, false, {
       tailwind: false,
       shadcn: true,
+      theme: false,
       "tanstack-query": false,
       zustand: true,
       forms: false,

@@ -18,6 +18,7 @@ import {
 } from "../generators/configure-project.js";
 import { configureShadcn } from "../generators/configure-shadcn.js";
 import { configureTesting } from "../generators/configure-testing.js";
+import { applyRegistryTheme } from "../generators/configure-theme.js";
 import { configureVscode } from "../generators/configure-vscode.js";
 import { createProject } from "../generators/create-project.js";
 import { createCommit } from "../git/commit.js";
@@ -201,6 +202,10 @@ export async function run(options: RunOptions = {}): Promise<void> {
           if (selection.shadcn) {
             message("Configuring shadcn");
             await configureShadcn(projectDir, framework);
+          }
+          if (selection.theme) {
+            message("Applying Raulmoracode theme");
+            await applyRegistryTheme(projectDir, framework, verbose);
           }
           if (selection["tanstack-query"]) {
             message("Configuring TanStack Query");

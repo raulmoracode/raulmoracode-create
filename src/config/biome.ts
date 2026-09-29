@@ -27,6 +27,18 @@ export function biomeConfig(): string {
           },
         },
       },
+      // Tailwind v4 directives (@custom-variant, @theme, ...) are not
+      // parseable by Biome and would fail `pnpm check`. These entry files
+      // are Tailwind-owned (even more so with the registry theme), so Biome
+      // skips them entirely on both frameworks.
+      overrides: [
+        {
+          includes: ["src/index.css", "src/app/globals.css"],
+          formatter: { enabled: false },
+          linter: { enabled: false },
+          assist: { enabled: false },
+        },
+      ],
     },
     null,
     2,

@@ -20,6 +20,7 @@ import {
 const NO_TECH: TechSelection = {
   tailwind: false,
   shadcn: false,
+  theme: false,
   "tanstack-query": false,
   zustand: false,
   forms: false,
@@ -140,6 +141,7 @@ describe("dependency installation", () => {
     expect(viteDev.tailwindcss).toBe("4.3.3");
     expect(viteDev["@tailwindcss/vite"]).toBe("4.3.3");
     expect(viteDev["@tailwindcss/postcss"]).toBeUndefined();
+    expect(viteDev["tw-animate-css"]).toBe("1.4.0");
     expect(viteDev["@biomejs/biome"]).toBe("2.5.14");
     expect(vitestOf(viteDev)).toBe("5.0.2");
     expect(viteDev["@testing-library/react"]).toBe("16.3.3");
