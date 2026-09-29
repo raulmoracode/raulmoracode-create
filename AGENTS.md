@@ -89,7 +89,9 @@ failures → `PreflightError`.
 
 1. `Creating project`: `createProject` (delegates to the framework) → `configureTailwind`
    (only if `selection.tailwind`) → `configureBranding` (always) → `configureShadcn` (only if
-   `selection.shadcn`) → `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
+   `selection.shadcn`) → `applyRegistryTheme` (only if `selection.theme`; needs shadcn via the
+   tech cascade; removes the CLI's `src/`-prefixed junk and restores aliases; must run before
+   `patchPackageJson` because the theme overwrites `package.json`) → `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
    (optional, always) → `configureBiome` (only if `selection.biome`) → `configureTesting`
    (only if `selection.testing`) → `configureVscode` (only if `selection.vscode`) →
    `configureNode` + `configureEditorconfig` (always) → **`configureGitHooks(selection)`**
@@ -98,7 +100,7 @@ failures → `PreflightError`.
    `check/format/lint` scripts without Biome, `test` without testing, `prepare` and
    Husky/Commitlint devDeps without Husky) → `configureReadme(...)` (always, after the
    patch so the scripts table matches the final `package.json`) → `augmentGitignore` (always).
-2. `Installing dependencies`: `installDependencies` (`pnpm install` → `pnpm add <runtime>` →
+2. `Installing dependencies`: `installDependencies` (`pnpm install --no-frozen-lockfile` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
    `formatProject` (`pnpm exec biome check --write .`) → `refreshPnpmWorkspaceExcludes`.
 3. `Initializing Git`: `initRepository` (`git init` + `branch -M main`) → **`pnpm exec husky`**

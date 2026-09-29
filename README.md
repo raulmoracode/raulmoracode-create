@@ -60,7 +60,8 @@ raulmoracode-create --version   # show the installed version
   - Next.js: `pnpm create next-app@16.3.6 <name> --ts --app --src-dir --import-alias "@/*" --biome --use-pnpm --disable-git --yes`.
 - Installs dependencies with **pnpm** and pins exact versions (no `^` or `~`).
 - Configures **Tailwind CSS 4.3.3** (CSS-first configuration, `@tailwindcss/vite` for Vite and `@tailwindcss/postcss` for Next.js).
-- Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry), the `cn()` helper (`src/lib/utils.ts`) and the registry path aliases (`@components/*`, `@lib/*`, `@hooks/*` in the tsconfigs) so `pnpm dlx shadcn@latest add @raulmoracode/<component>` resolves file targets out of the box. No components are preinstalled; add them later with `pnpm dlx shadcn@latest add <component>`.
+- Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry), the `cn()` helper (`src/lib/utils.ts`) and the registry path aliases (`@components/*`, `@lib/*`, `@hooks/*` in the tsconfigs) so `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` resolves file targets out of the box. No components are preinstalled; add them later with `pnpm dlx shadcn@4.21.0 add <component>`.
+- Optionally applies the **Raulmoracode nature theme** from the registry (requires shadcn): nature tokens land in the Tailwind entry CSS, `tw-animate-css` is pinned, and the CLI removes the Next-oriented leftovers the shadcn CLI drops into `src/` on Vite projects.
 - Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5** and **TanStack Query 5.104.0**, and wires the TanStack Query provider.
 - Configures **Biome 2.5.14** (formatter, linter and organize imports) and removes the ESLint/Oxlint leftovers from the official templates.
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
@@ -81,6 +82,7 @@ Every generated project includes:
 - React + Vite or Next.js (official structure)
 - Tailwind CSS 4
 - shadcn ready (`components.json` with the `@raulmoracode` registry and the `cn()` helper)
+- Raulmoracode nature theme (optional, applied from the registry)
 - Zustand
 - React Hook Form + Zod
 - TanStack Query (provider included)
@@ -109,8 +111,8 @@ pnpm lint
 Add shadcn components:
 
 ```bash
-pnpm dlx shadcn@latest add card
-pnpm dlx shadcn@latest add @raulmoracode/<component>
+pnpm dlx shadcn@4.21.0 add card
+pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>
 ```
 
 After adding components, normalize their style with Biome (the shadcn CLI uses its own formatting):
@@ -119,7 +121,7 @@ After adding components, normalize their style with Biome (the shadcn CLI uses i
 pnpm exec biome check --write .
 ```
 
-Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`). Both frameworks also map the `@raulmoracode` registry aliases (`@components/*`, `@lib/*`, `@hooks/*` to `src/...`) so registry file targets resolve when running `pnpm dlx shadcn@latest add @raulmoracode/<component>`.
+Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`). Both frameworks also map the `@raulmoracode` registry aliases (`@components/*`, `@lib/*`, `@hooks/*` to `src/...`) so registry file targets resolve when running `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>`.
 
 Every generated project ships an `AGENTS.md` file with guidelines for AI coding agents (source of truth, conventions, validation, Git safety and security rules), plus a project tooling section (pnpm exclusively, script map and the shadcn workflow).
 
@@ -155,7 +157,7 @@ npm publish --access public
 
 Create the `NPM_TOKEN` (granular, read+write on `@raulmoracode/create`) at `npmjs.com > Access Tokens` and save it as `Settings > Secrets > Actions > NPM_TOKEN`.
 
-The repository also ships a GitHub Actions workflow (`.github/workflows/publish.yml`) that builds, tests and publishes the package to npmjs on every `v*` tag using `NPM_TOKEN`.
+The repository also ships a GitHub Actions workflow (`.github/workflows/publish.yml`) that builds, tests and publishes the package to npmjs on every `v*` tag using `NPM_TOKEN`, plus a CI workflow (`.github/workflows/ci.yml`) that runs check, lint, tests (including the Vite E2E) and build on every `main` push and pull request, with the Next.js E2E as a separate job.
 
 ## Development
 
@@ -195,7 +197,7 @@ External commands are always executed with argument arrays through `utils/exec.t
 The following deviations from the naive expected configuration were verified against the real tools and are intentional:
 
 - **`create-vite@9.2.1`** is used for Vite projects because `create-vite@8.3.1` does not exist; the 9.x line is the one that scaffolds the Vite 8.x line. `vite` is then pinned to `8.3.1` exactly.
-- **`components.json`** must contain the full shadcn configuration (`$schema`, `style`, `tailwind`, `rsc`, `tsx`, `aliases`) because shadcn 4.x rejects a config with only `registries` — and `pnpm dlx shadcn@latest add card` is a hard requirement. The `@raulmoracode` registry entry is exactly the mandated one.
+- **`components.json`** must contain the full shadcn configuration (`$schema`, `style`, `tailwind`, `rsc`, `tsx`, `aliases`) because shadcn 4.x rejects a config with only `registries` — and `pnpm dlx shadcn@4.21.0 add card` is a hard requirement. The `@raulmoracode` registry entry is exactly the mandated one.
 - **`biome.json`** enables organize imports through `assist.actions.source.organizeImports` because Biome 2.5.14 removed the top-level `organizeImports` key; it ignores `dist`/`.next` build output; and disables `noSvgWithoutTitle`/`noAmbiguousAnchorText`, which fire on the official Vite/Next template demo assets.
 - **`jsdom`** (Testing Library DOM environment) and **`clsx` + `tailwind-merge`** (shadcn `cn()` helper) are installed because they are strictly required by the mandated Testing Library and shadcn setups.
 

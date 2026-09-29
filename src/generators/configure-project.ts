@@ -18,6 +18,9 @@ export const PNPM_VERSION = "12.6.0";
 
 export const CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1";
 
+/** Required by the `@raulmoracode` theme globals (only with the theme). */
+export const TW_ANIMATE_CSS_VERSION = "1.4.0";
+
 export const HUSKY_VERSION = "9.1.7";
 export const COMMITLINT_CLI_VERSION = "21.2.3";
 export const COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3";
@@ -67,6 +70,9 @@ export function devDependencies(
   if (selection.tailwind) {
     common.tailwindcss = "4.3.3";
   }
+  if (selection.theme) {
+    common["tw-animate-css"] = TW_ANIMATE_CSS_VERSION;
+  }
   if (framework.id === "vite") {
     return selection.tailwind
       ? { ...common, "@tailwindcss/vite": "4.3.3" }
@@ -78,7 +84,10 @@ export function devDependencies(
 }
 
 export function pnpmInstallArgs(): string[] {
-  return ["install"];
+  // Never frozen: patchPackageJson rewrites package.json after the official
+  // scaffold (Next.js ships its own lockfile), so the lockfile is stale by
+  // design here — and pnpm 12 defaults to frozen installs when CI=true.
+  return ["install", "--no-frozen-lockfile"];
 }
 
 export function pnpmAddArgs(dependencies: Record<string, string>): string[] {

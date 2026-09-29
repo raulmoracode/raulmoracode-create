@@ -12,6 +12,7 @@ import {
   REGISTRY_PATH_ALIASES,
   REGISTRY_SCOPE_EXCLUDE,
   registryScopeExcludes,
+  SHADCN_VERSION,
   utilsTs,
   withRegistryAliases,
 } from "../src/config/components.js";
@@ -80,6 +81,14 @@ describe("biome.json", () => {
         },
       },
     });
+    expect(parsed.overrides).toEqual([
+      {
+        includes: ["src/index.css", "src/app/globals.css"],
+        formatter: { enabled: false },
+        linter: { enabled: false },
+        assist: { enabled: false },
+      },
+    ]);
   });
 });
 
@@ -175,8 +184,9 @@ describe("components.json (shadcn)", () => {
   });
 
   it("documents the namespaced add command and the catalogue URL", () => {
+    expect(SHADCN_VERSION).toBe("4.21.0");
     expect(RAULMORACODE_REGISTRY_ADD_EXAMPLE).toBe(
-      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
+      `pnpm dlx shadcn@${SHADCN_VERSION} add @raulmoracode/<component>`,
     );
     expect(RAULMORACODE_REGISTRY_CATALOG_URL).toBe(
       "https://registry.raulmoracode.com",
@@ -283,9 +293,8 @@ describe("agents guide", () => {
     );
     expect(content).toContain("## Project tooling");
     expect(content).toContain("uses pnpm exclusively");
-    expect(content).toContain(
-      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
-    );
+    expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);
+    expect(content).not.toContain("shadcn@latest");
     expect(content).toContain("https://registry.raulmoracode.com");
     expect(content).toContain("`@raulmoracode` registry");
   });
@@ -383,7 +392,7 @@ describe("Husky hooks", () => {
 
 describe("Tech preset", () => {
   it("full preset selects every technology", () => {
-    expect(TECH_IDS).toHaveLength(9);
+    expect(TECH_IDS).toHaveLength(10);
     for (const id of TECH_IDS) {
       expect(FULL_TECH_SELECTION[id]).toBe(true);
     }
@@ -406,6 +415,20 @@ describe("Tech preset", () => {
     expect(selection.tailwind).toBe(true);
     expect(notes).toHaveLength(1);
     expect(notes[0]).toContain("Tailwind");
+  });
+
+  it("forces shadcn (and Tailwind) when the theme is kept without them", () => {
+    const { selection, notes } = resolveTechSelection({
+      ...FULL_TECH_SELECTION,
+      tailwind: false,
+      shadcn: false,
+    });
+    expect(selection.theme).toBe(true);
+    expect(selection.shadcn).toBe(true);
+    expect(selection.tailwind).toBe(true);
+    expect(notes).toHaveLength(2);
+    expect(notes[0]).toContain("shadcn");
+    expect(notes[1]).toContain("Tailwind");
   });
 
   it("accepts a fully deselected preset", () => {
