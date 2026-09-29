@@ -5,8 +5,9 @@ export const RAULMORACODE_REGISTRY_URL =
   "https://registry.raulmoracode.com/r/{name}.json";
 export const RAULMORACODE_REGISTRY_CATALOG_URL =
   "https://registry.raulmoracode.com";
-export const RAULMORACODE_REGISTRY_ADD_EXAMPLE =
-  "pnpm dlx shadcn@latest add @raulmoracode/<component>";
+/** Pinned shadcn CLI used in every documented `add` command (verified live). */
+export const SHADCN_VERSION = "4.21.0";
+export const RAULMORACODE_REGISTRY_ADD_EXAMPLE = `pnpm dlx shadcn@${SHADCN_VERSION} add @raulmoracode/<component>`;
 
 /** Registry item applied by the optional theme preset. */
 export const REGISTRY_THEME_SPEC = "@raulmoracode/theme";

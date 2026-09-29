@@ -99,7 +99,7 @@ failures → `PreflightError`.
    `pnpm test` only with testing) → `patchPackageJson(..., selection)` (drops
    `check/format/lint` scripts without Biome, `test` without testing, `prepare` and
    Husky/Commitlint devDeps without Husky) → `augmentGitignore` (always).
-2. `Installing dependencies`: `installDependencies` (`pnpm install` → `pnpm add <runtime>` →
+2. `Installing dependencies`: `installDependencies` (`pnpm install --no-frozen-lockfile` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
    `formatProject` (`pnpm exec biome check --write .`) → `refreshPnpmWorkspaceExcludes`.
 3. `Initializing Git`: `initRepository` (`git init` + `branch -M main`) → **`pnpm exec husky`**

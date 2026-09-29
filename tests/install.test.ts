@@ -30,7 +30,7 @@ describe("installDependencies", () => {
 
     const [first, second, third] = execMock.mock.calls.map(argsOf);
     expect(first.command).toBe("pnpm");
-    expect(first.args).toEqual(["install"]);
+    expect(first.args).toEqual(["install", "--no-frozen-lockfile"]);
     expect(second.command).toBe("pnpm");
     expect(second.args[0]).toBe("add");
     expect(second.args).toContain("zustand@5.0.15");
@@ -64,7 +64,7 @@ describe("installDependencies", () => {
 
     expect(execMock).toHaveBeenCalledTimes(3);
     const [first, second, third] = execMock.mock.calls.map(argsOf);
-    expect(first.args).toEqual(["install"]);
+    expect(first.args).toEqual(["install", "--no-frozen-lockfile"]);
     expect(second.args[0]).toBe("add");
     expect(third.args[0]).toBe("add");
     expect(third.args).toContain("-D");
@@ -94,7 +94,7 @@ describe("installDependencies", () => {
     expect(execMock).toHaveBeenCalledTimes(1);
     const [first] = execMock.mock.calls.map(argsOf);
     expect(first.command).toBe("pnpm");
-    expect(first.args).toEqual(["install"]);
+    expect(first.args).toEqual(["install", "--no-frozen-lockfile"]);
   });
 
   it("installs only the selected techs", async () => {

@@ -10,6 +10,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
   return { ...actual, exec: execMock };
 });
 
+import { SHADCN_VERSION } from "../src/config/components.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
 import {
@@ -167,17 +168,19 @@ describe("configureStarter (vite)", () => {
     const tsconfig = JSON.parse(
       await readFromFile(dir, "tsconfig.app.json"),
     ) as {
-      compilerOptions: { baseUrl: string; paths: Record<string, string[]> };
+      compilerOptions: { baseUrl?: string; paths: Record<string, string[]> };
     };
-    expect(tsconfig.compilerOptions.baseUrl).toBe(".");
+    // TypeScript 7 removed baseUrl (TS5102): paths must resolve without it.
+    expect(tsconfig.compilerOptions.baseUrl).toBeUndefined();
     expect(tsconfig.compilerOptions.paths).toEqual({ "@/*": ["./src/*"] });
     expect(tsconfig.compilerOptions.target).toBe("es2023");
     expect(tsconfig.compilerOptions.types).toEqual(["vite/client"]);
     const rootTsconfig = JSON.parse(
       await readFromFile(dir, "tsconfig.json"),
     ) as {
-      compilerOptions: { baseUrl: string; paths: Record<string, string[]> };
+      compilerOptions: { baseUrl?: string; paths: Record<string, string[]> };
     };
+    expect(rootTsconfig.compilerOptions.baseUrl).toBeUndefined();
     expect(rootTsconfig.compilerOptions.paths).toEqual({
       "@/*": ["./src/*"],
     });
@@ -447,7 +450,6 @@ describe("configureShadcn", () => {
       join(dir, "tsconfig.json"),
       JSON.stringify({
         compilerOptions: {
-          baseUrl: ".",
           paths: { "@/*": ["./src/*"], "@lib/*": ["./custom/lib/*"] },
         },
       }),
@@ -457,11 +459,9 @@ describe("configureShadcn", () => {
 
     const parsed = JSON.parse(await readFromFile(dir, "tsconfig.json")) as {
       compilerOptions: {
-        baseUrl: string;
         paths: Record<string, string[]>;
       };
     };
-    expect(parsed.compilerOptions.baseUrl).toBe(".");
     expect(parsed.compilerOptions.paths["@/*"]).toEqual(["./src/*"]);
     expect(parsed.compilerOptions.paths["@lib/*"]).toEqual(["./custom/lib/*"]);
     expect(parsed.compilerOptions.paths["@components/*"]).toEqual([
@@ -486,7 +486,7 @@ describe("configureTheme", () => {
       "pnpm",
       [
         "dlx",
-        "shadcn@latest",
+        `shadcn@${SHADCN_VERSION}`,
         "add",
         "@raulmoracode/theme",
         "--yes",
@@ -496,7 +496,7 @@ describe("configureTheme", () => {
     );
     expect(themeAddArgs()).toEqual([
       "dlx",
-      "shadcn@latest",
+      `shadcn@${SHADCN_VERSION}`,
       "add",
       "@raulmoracode/theme",
       "--yes",

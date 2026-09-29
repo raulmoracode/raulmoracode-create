@@ -12,6 +12,7 @@ import {
   REGISTRY_PATH_ALIASES,
   REGISTRY_SCOPE_EXCLUDE,
   registryScopeExcludes,
+  SHADCN_VERSION,
   utilsTs,
   withRegistryAliases,
 } from "../src/config/components.js";
@@ -177,8 +178,9 @@ describe("components.json (shadcn)", () => {
   });
 
   it("documents the namespaced add command and the catalogue URL", () => {
+    expect(SHADCN_VERSION).toBe("4.21.0");
     expect(RAULMORACODE_REGISTRY_ADD_EXAMPLE).toBe(
-      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
+      `pnpm dlx shadcn@${SHADCN_VERSION} add @raulmoracode/<component>`,
     );
     expect(RAULMORACODE_REGISTRY_CATALOG_URL).toBe(
       "https://registry.raulmoracode.com",
@@ -285,9 +287,8 @@ describe("agents guide", () => {
     );
     expect(content).toContain("## Project tooling");
     expect(content).toContain("uses pnpm exclusively");
-    expect(content).toContain(
-      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
-    );
+    expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);
+    expect(content).not.toContain("shadcn@latest");
     expect(content).toContain("https://registry.raulmoracode.com");
     expect(content).toContain("`@raulmoracode` registry");
   });

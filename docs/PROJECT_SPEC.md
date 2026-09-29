@@ -96,6 +96,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
+├── .github/workflows/ci.yml     # check/lint/test/build + Next E2E on main pushes and PRs
 ├── package.json, tsconfig.json, vitest.config.ts, biome.json
 ├── .nvmrc (24), .gitignore, README.md, LICENSE
 └── dist/                         # compiled output (generated, not versioned)
@@ -169,7 +170,7 @@ Internal functions:
 - `showIntro(): void` — `intro("Raulmoracode Create")`.
 - `showError(message: string): void` — `log.error(message)`.
 - `showWarning(message: string): void` — `log.warn(message)`.
-- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@latest add @raulmoracode/<component>` hint when `shadcn` is true.
+- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` hint when `shadcn` is true.
 - `showFarewell(): void` — `outro("Proyecto creado correctamente.\n¡Hasta pronto!")`.
 - Note: `run.ts` uses `intro`/`log` directly for the intro and errors; from this module it consumes `showSummary`, `showWarning` and `showFarewell`.
 
@@ -205,7 +206,7 @@ Internal functions:
 - `projectScripts(framework, selection)` (private) — `framework.scripts()` minus `check/format/lint` without Biome, minus `test` without testing, plus `prepare: husky` with Husky.
 - `patchPackageJson(projectDir, framework, projectName, githubUrl, selection = FULL_TECH_SELECTION): Promise<void>` — reads the scaffold's `package.json` and sets `name`, `version: "0.1.0"`, `private: true`, `type: "module"`, `author` (Raul Mora), `homepage` (GitHub URL), `repository: { type: "git", url }`, computed `scripts`, `engines: { node: ">=24" }`, `packageManager: pnpm@12.6.0`; applies framework pins; adds Husky/Commitlint devDeps only with Husky (so the first `pnpm install` can run `prepare`); removes lint dependencies from the template per `removedDependencyPatterns()`; strips remaining `^`/`~`; rewrites the object in conventional order (metadata → scripts → engines → deps) preserving unknown template keys. No trace of deselected techs.
 - `removeToolingConfig(projectDir, relativePaths)` — deletes the given list.
-- `installDependencies(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — `pnpm install`, `pnpm add <runtime>` (skipped when empty — a bare `add` would fail), `pnpm add -D <dev>` (skipped when empty).
+- `installDependencies(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — `pnpm install --no-frozen-lockfile` (never frozen: the scaffold lockfile is stale by design after `patchPackageJson`, and pnpm 12 freezes installs when `CI=true`), `pnpm add <runtime>` (skipped when empty — a bare `add` would fail), `pnpm add -D <dev>` (skipped when empty).
 - `pinnedPackages(framework, selection = FULL_TECH_SELECTION): string[]` — deduplicated `name@version` list of framework pins + runtime + dev (for excludes).
 - `pnpmListJsonArgs(): string[]` → `["list", "--depth", "Infinity", "--json"]`.
 - `refreshPnpmWorkspaceExcludes(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — runs `pnpm list --json`, extracts with `collectLockedPackages` every locked `name@version` (direct + transitive), merges them with `pinnedPackages` and `registryScopeExcludes(selection)` (`@raulmoracode/*`, only with shadcn) and rewrites `pnpm-workspace.yaml` with `mergePnpmWorkspaceYaml` (preserves existing template entries). On `pnpm list` failure, falls back to direct pins only.
@@ -230,7 +231,7 @@ Internal functions:
 ### 7.5 Remaining generators (one main function each)
 
 - `configure-shadcn.ts` — `configureShadcn(projectDir, framework)`: writes `components.json` (with `framework.componentsJsonOptions()`), `src/lib/utils.ts` (`cn()`) and the `@raulmoracode` registry path aliases in every tsconfig present (`ensureRegistryAliases`, merged via pure `withRegistryAliases()`, missing files skipped).
-- `configure-theme.ts` — `themeAddArgs()` (pure `pnpm dlx shadcn@latest add @raulmoracode/theme --yes --overwrite`) + `applyRegistryTheme(projectDir, framework, verbose)`: runs the shadcn CLI, removes its `src/`-prefixed junk (`src/package.json`, `src/tsconfig.json`, `src/postcss.config.mjs`, plus `src/app/globals.css` on Vite where tokens already landed in the entry CSS) and restores registry aliases. Runs after shadcn, before `patchPackageJson`.
+- `configure-theme.ts` — `themeAddArgs()` (pure `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`) + `applyRegistryTheme(projectDir, framework, verbose)`: runs the shadcn CLI, removes its `src/`-prefixed junk (`src/package.json`, `src/tsconfig.json`, `src/postcss.config.mjs`, plus `src/app/globals.css` on Vite where tokens already landed in the entry CSS) and restores registry aliases. Runs after shadcn, before `patchPackageJson`.
 - `configure-testing.ts` — `configureTesting(projectDir)`: writes `vitest.config.ts` and `src/test/smoke.test.tsx`.
 - `configure-vscode.ts` — `configureVscode(projectDir)`: writes `.vscode/settings.json` and `.vscode/extensions.json`.
 - `configure-git-hooks.ts` — `configureGitHooks(projectDir, selection = FULL_TECH_SELECTION)`: writes `.husky/pre-commit` (`huskyPreCommit(selection)`), `.husky/commit-msg`, marks both executable, and writes `commitlint.config.ts`.
@@ -257,7 +258,7 @@ Internal functions:
 - Pins: `react`/`react-dom` `19.3.0`; dev `typescript 7.0.2`, `vite 8.3.1`, `@vitejs/plugin-react 6.1.1`. Removal patterns: `/eslint/i`, `/oxlint/i`, `/^globals$/`.
 - `componentsJsonOptions()`: `{ rsc: false, tailwindCssPath: "src/index.css" }`.
 - `VITE_MAIN_TSX` (private): rewritten `main.tsx` with `QueryClientProvider` + guard without non-null assertion (`if (!rootElement) throw …`).
-- `ensurePathAlias(projectDir)` (private): adds `baseUrl: "."` and merges `paths: { "@/*": ["./src/*"] }` into `tsconfig.app.json` **and** the root `tsconfig.json` (the latter is what the shadcn CLI reads; both parsed as JSONC). Merges instead of replacing so the registry aliases written earlier by `configureShadcn` survive. Skips missing files.
+- `ensurePathAlias(projectDir)` (private): merges `paths: { "@/*": ["./src/*"] }` into `tsconfig.app.json` **and** the root `tsconfig.json` (the latter is what the shadcn CLI reads; both parsed as JSONC). Never writes `baseUrl` (TypeScript 7 removed the option, TS5102). Merges instead of replacing so the registry aliases written earlier by `configureShadcn` survive. Skips missing files.
 - `VITE_APP_TSX` (private): minimal `App.tsx` (`import "./App.css"`, `return <div>hello</div>`).
 - `configureTailwind`: rewrites `vite.config.ts` (`react()` + `tailwindcss()` plugins, `@` → `./src` alias via `fileURLToPath`) and `src/index.css` (`@import "tailwindcss";`).
 - `configureTanStackQuery`: writes `src/lib/query-client.ts` and `main.tsx`.
@@ -352,6 +353,7 @@ Internal functions:
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.
 - **`.nvmrc`**: `24`. **`.gitignore`**: `node_modules`, `dist`, `.env`, `.env.*`, `*.tgz`.
 - **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` permission: checkout, pnpm 12, Node 24 (npmjs registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish --access public` with `NPM_TOKEN`.
+- **`.github/workflows/ci.yml`**: on `main` pushes and pull requests, with `contents:read` permission: `validate` job (checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `check`, `lint`, `test` incl. the Vite E2E, `build`) plus an `e2e-next` job with `E2E_FRAMEWORK=next`.
 - **`README.md`**: global install (npmjs, no auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth, publish, development, architecture, verified adjustments, packaging.
 - **`LICENSE`**: MIT.
 
@@ -385,7 +387,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 
 ### 14.3 Vite specifics
 
-`index.html` (`raulmoracode` title, CDN favicon), `vite.config.ts` (react + tailwind + `@` alias), `src/index.css`, `src/main.tsx` (provider), minimal `src/App.tsx` + empty `App.css`, emptied `public/` and `src/assets/`, `tsconfig.app.json` and root `tsconfig.json` with `baseUrl`+`paths @/*`.
+`index.html` (`raulmoracode` title, CDN favicon), `vite.config.ts` (react + tailwind + `@` alias), `src/index.css`, `src/main.tsx` (provider), minimal `src/App.tsx` + empty `App.css`, emptied `public/` and `src/assets/`, `tsconfig.app.json` and root `tsconfig.json` with `paths @/*` (no `baseUrl`: removed in TypeScript 7).
 
 ### 14.4 Next.js specifics
 
