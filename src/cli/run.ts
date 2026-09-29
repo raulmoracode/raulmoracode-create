@@ -16,6 +16,7 @@ import {
   patchPackageJson,
   refreshPnpmWorkspaceExcludes,
 } from "../generators/configure-project.js";
+import { configureReadme } from "../generators/configure-readme.js";
 import { configureShadcn } from "../generators/configure-shadcn.js";
 import { configureTesting } from "../generators/configure-testing.js";
 import { configureVscode } from "../generators/configure-vscode.js";
@@ -230,6 +231,14 @@ export async function run(options: RunOptions = {}): Promise<void> {
             await configureGitHooks(projectDir, selection);
           }
           await patchPackageJson(
+            projectDir,
+            framework,
+            projectName,
+            githubUrl,
+            selection,
+          );
+          message("Writing README");
+          await configureReadme(
             projectDir,
             framework,
             projectName,

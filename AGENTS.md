@@ -96,7 +96,8 @@ failures → `PreflightError`.
    (only if `selection.husky`; `pre-commit` adapts: `pnpm check` line only with Biome,
    `pnpm test` only with testing) → `patchPackageJson(..., selection)` (drops
    `check/format/lint` scripts without Biome, `test` without testing, `prepare` and
-   Husky/Commitlint devDeps without Husky) → `augmentGitignore` (always).
+   Husky/Commitlint devDeps without Husky) → `configureReadme(...)` (always, after the
+   patch so the scripts table matches the final `package.json`) → `augmentGitignore` (always).
 2. `Installing dependencies`: `installDependencies` (`pnpm install` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
    `formatProject` (`pnpm exec biome check --write .`) → `refreshPnpmWorkspaceExcludes`.

@@ -26,6 +26,12 @@ import {
 } from "../src/config/pnpm-workspace.js";
 import { queryClientConfig } from "../src/config/query.js";
 import {
+  CREATE_REPO_URL,
+  type ReadmeOptions,
+  readmeMd,
+  SITE_URL,
+} from "../src/config/readme.js";
+import {
   nextPostcssConfig,
   tailwindCss,
   viteTailwindConfig,
@@ -457,5 +463,143 @@ describe("Commitlint configuration", () => {
     expect(content).not.toMatch(/\/Users\//);
     expect(content).not.toMatch(/\/home\//);
     expect(content).not.toMatch(/[A-Z]:\\/);
+  });
+});
+
+describe("Generated README", () => {
+  const versions: Record<string, string> = {
+    react: "19.3.0",
+    "react-dom": "19.3.0",
+    vite: "8.3.1",
+    next: "16.3.6",
+    typescript: "7.0.2",
+    tailwindcss: "4.3.3",
+    "@tanstack/react-query": "5.104.0",
+    zustand: "5.0.15",
+    "react-hook-form": "7.89.0",
+    zod: "4.6.5",
+    "@biomejs/biome": "2.5.14",
+    vitest: "5.0.2",
+    husky: "9.1.7",
+  };
+
+  const viteScripts: Record<string, string> = {
+    dev: "vite",
+    build: "vite build",
+    check: "biome check .",
+    format: "biome format --write .",
+    lint: "biome lint .",
+    test: "vitest",
+    prepare: "husky",
+  };
+
+  function viteOptions(): ReadmeOptions {
+    return {
+      projectName: "my-project",
+      githubUrl: "https://github.com/raulmoracode/my-project",
+      frameworkId: "vite",
+      frameworkLabel: "React + Vite",
+      scripts: viteScripts,
+      versions,
+      pnpmVersion: "12.6.0",
+      selection: { ...FULL_TECH_SELECTION },
+    };
+  }
+
+  it("titles with the project name and credits the generator", () => {
+    const content = readmeMd(viteOptions());
+    expect(content).toContain("# my-project");
+    expect(content).toContain(
+      "This is a **React + Vite** project generated with [`@raulmoracode/create`]",
+    );
+    expect(content).toContain(CREATE_REPO_URL);
+    expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("pins requirements and links the repository", () => {
+    const content = readmeMd(viteOptions());
+    expect(content).toContain("**Node.js 24**");
+    expect(content).toContain("**pnpm 12.6.0**");
+    expect(content).toContain(
+      "[github.com/raulmoracode/my-project](https://github.com/raulmoracode/my-project)",
+    );
+    expect(content).toContain(SITE_URL);
+  });
+
+  it("tables only real scripts in canonical order, skipping lifecycle ones", () => {
+    const content = readmeMd(viteOptions());
+    const rows = content
+      .split("\n")
+      .filter((line) => line.startsWith("| `pnpm "));
+    expect(rows.map((row) => /`pnpm (\w+)`/.exec(row)?.[1])).toEqual([
+      "dev",
+      "build",
+      "check",
+      "format",
+      "lint",
+      "test",
+    ]);
+    expect(content).toContain("(`dist/`)");
+    expect(content).not.toContain("pnpm prepare");
+  });
+
+  it("lists the selected stack with exact versions", () => {
+    const content = readmeMd(viteOptions());
+    expect(content).toContain(
+      "**React 19.3.0 + Vite 8.3.1 + TypeScript 7.0.2**",
+    );
+    expect(content).toContain("**Tailwind CSS 4.3.3**");
+    expect(content).toContain("**TanStack Query 5.104.0**");
+    expect(content).toContain("**Zustand 5.0.15**");
+    expect(content).toContain("**React Hook Form 7.89.0 + Zod 4.6.5**");
+    expect(content).toContain("**Biome 2.5.14**");
+    expect(content).toContain("**Vitest 5.0.2 + Testing Library**");
+    expect(content).toContain("**Husky 9.1.7 + Commitlint**");
+  });
+
+  it("documents the namespaced registry workflow with shadcn", () => {
+    const content = readmeMd(viteOptions());
+    expect(content).toContain(
+      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
+    );
+    expect(content).toContain("https://registry.raulmoracode.com");
+    expect(content).toContain("`pre-commit` runs `pnpm check` and `pnpm test`");
+    expect(content).toContain("src/main.tsx");
+  });
+
+  it("adapts to Next.js with deselected techs", () => {
+    const content = readmeMd({
+      projectName: "my-app",
+      githubUrl: "https://github.com/raulmoracode/my-app",
+      frameworkId: "next",
+      frameworkLabel: "Next.js",
+      scripts: { dev: "next dev", build: "next build", start: "next start" },
+      versions: { next: "16.3.6", react: "19.3.0" },
+      pnpmVersion: "12.6.0",
+      selection: {
+        tailwind: false,
+        shadcn: false,
+        "tanstack-query": false,
+        zustand: false,
+        forms: false,
+        biome: false,
+        testing: false,
+        husky: false,
+        vscode: false,
+      },
+    });
+    expect(content).toContain("# my-app");
+    expect(content).toContain("This is a **Next.js** project generated with");
+    expect(content).toContain("**Next.js 16.3.6 + React 19.3.0 + TypeScript**");
+    expect(content).toContain("| `pnpm start` | Start the production server |");
+    expect(content).toContain("(`.next/`)");
+    expect(content).not.toContain("Tailwind");
+    expect(content).not.toContain("shadcn components");
+    expect(content).not.toContain("components.json");
+    expect(content).not.toContain("providers.tsx");
+    expect(content).not.toContain("test/");
+    expect(content).not.toContain("Git workflow");
+    expect(content).toContain("layout.tsx");
+    expect(content).not.toContain("main.tsx");
   });
 });
