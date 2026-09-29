@@ -1,35 +1,65 @@
 # Changelog
 
-Todas las novedades de `@raulmoracode/create` se documentan en este fichero.
+All notable changes to `@raulmoracode/create` are documented in this file.
 
-El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y
-el versionado sigue [SemVer](https://semver.org/lang/es/).
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nada pendiente.
+Nothing pending yet.
+
+## [1.0.2] - 2026-09-29
+
+First stable release. This is the first version where the git tag, the
+`CHANGELOG.md` entry, the `package.json` version and the npm `dist-tag` all
+agree, and where the publish pipeline refuses to run if they ever stop
+agreeing.
+
+### Added
+
+- Interactive Clack CLI asking for the framework (React + Vite or Next.js), the
+  tech preset, the project name and the GitHub repository URL.
+- Scaffolding through the official generators, `create-vite@9.2.1` and
+  `create-next-app@16.3.6`, both pinned to exact versions.
+- Twelve configuration steps applied to the generated project: Tailwind CSS,
+  branding, shadcn/ui, TanStack Query, Biome, Vitest, VS Code, `.nvmrc`,
+  `.editorconfig`, Git hooks, `patchPackageJson` and `.gitignore`.
+- Multiselect tech preset: Tailwind, shadcn/ui, TanStack Query, Biome, testing
+  and Husky + Commitlint.
+- Dependency installation with pnpm, normalising every version to an exact pin
+  (no `^`, no `~`).
+- Git initialisation on `main`, an initial `chore: initial project setup`
+  commit and `push -u origin main` to GitHub.
+- Preflights for Node >= 24, pnpm, git and the git identity before anything is
+  written to disk.
+- `CHANGELOG.md`, following Keep a Changelog.
+
+### Changed
+
+- `publish.yml` now fails fast, before install/build/test, when the tag is not
+  strict `vX.Y.Z`, when the tag does not match the `package.json` version, or
+  when that version already exists on npm.
+
+## [1.0.1] - 2026-09-29
+
+Withdrawn. It was unpublished on the same day it was published.
+
+npm permanently reserves every `name@version` pair that has ever been used —
+"this is true even if that package is unpublished". The version number can
+therefore never be reused, by this project or by anyone else, which is why the
+next release had to jump to 1.0.2.
 
 ## [1.0.0] - 2026-09-29
 
-Primera release estable de `@raulmoracode/create`, publicada en npmjs.
+Deprecated. Published by mistake before the release process was set up: it had
+no git tag, and the breaking change that removed the private registry, the
+`.npmrc` and `GH_TOKEN` shipped in it as if it were a patch.
 
-### Añadido
+It is deprecated in favour of 1.0.2. The install command is unchanged, so
+`npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-- CLI interactiva con Clack que pide framework (React + Vite o Next.js), preset
-  técnico, nombre del proyecto y URL del repositorio de GitHub.
-- Scaffolding con los generadores oficiales: `create-vite@9.2.1` y
-  `create-next-app@16.3.6`, con versiones pineadas exactas.
-- Doce pasos de configuración sobre el proyecto generado: Tailwind CSS,
-  branding, shadcn/ui, TanStack Query, Biome, Vitest, VS Code, `.nvmrc`,
-  `.editorconfig`, Git hooks, `patchPackageJson` y `.gitignore`.
-- Presets seleccionables mediante *multiselect*: Tailwind, shadcn/ui,
-  TanStack Query, Biome, testing y Husky + Commitlint.
-- Instalación de dependencias con pnpm, con normalización de versiones
-  exactas (sin `^` ni `~`).
-- Inicialización de Git sobre `main`, commit inicial
-  `chore: initial project setup` y `push -u origin main` a GitHub.
-- Preflights de Node >= 24, pnpm, git e identidad de git antes de empezar.
-- Publicación en npmjs como paquete público con `dist-tag latest`.
-
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/raulmoracode/raulmoracode-create/releases/tag/v1.0.0
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/raulmoracode/raulmoracode-create/compare/2af3311...v1.0.2
+[1.0.1]: https://github.com/raulmoracode/raulmoracode-create/tree/c7b1301
+[1.0.0]: https://github.com/raulmoracode/raulmoracode-create/tree/2af3311

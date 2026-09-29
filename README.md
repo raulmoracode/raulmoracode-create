@@ -202,9 +202,11 @@ The following deviations from the naive expected configuration were verified aga
 ```bash
 pnpm build
 npm pack
-npm install -g ./raulmoracode-create-1.0.0.tgz
+npm install -g ./raulmoracode-create-*.tgz
 raulmoracode-create
 ```
+
+The glob keeps working across versions: `npm pack` names the tarball after the current `package.json` version, so a hardcoded name would go stale on every release.
 
 The packaged tarball contains `dist/` (including the `raulmoracode-create` bin with its shebang), `README.md` and `LICENSE`.
 
