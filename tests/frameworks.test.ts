@@ -151,7 +151,7 @@ describe("dependency installation", () => {
   });
 
   it("builds pnpm commands from argument arrays", () => {
-    expect(pnpmInstallArgs()).toEqual(["install"]);
+    expect(pnpmInstallArgs()).toEqual(["install", "--no-frozen-lockfile"]);
     expect(pnpmAddArgs({ zustand: "5.0.15" })).toEqual([
       "add",
       "zustand@5.0.15",
