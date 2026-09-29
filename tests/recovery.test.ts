@@ -17,7 +17,6 @@ const FULL_TECH = [
   "tanstack-query",
   "zustand",
   "forms",
-  "registry",
   "biome",
   "testing",
   "husky",
@@ -86,11 +85,6 @@ function execFailure(command: string, args: string[]): ExecError {
 
 beforeEach(async () => {
   execMock.mockReset();
-  delete process.env.GH_TOKEN;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async () => ({ ok: false })),
-  );
   exitSpy = vi
     .spyOn(process, "exit")
     .mockImplementation((() => undefined) as never);

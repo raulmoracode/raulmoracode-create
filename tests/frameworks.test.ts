@@ -23,7 +23,6 @@ const NO_TECH: TechSelection = {
   "tanstack-query": false,
   zustand: false,
   forms: false,
-  registry: false,
   biome: false,
   testing: false,
   husky: false,
@@ -133,7 +132,6 @@ describe("dependency installation", () => {
       "react-hook-form": "7.89.0",
       zod: "4.6.5",
       "@tanstack/react-query": "5.104.0",
-      "@raulmoracode/icons": "1.1.0",
     });
   });
 
@@ -337,11 +335,6 @@ describe("patchPackageJson", () => {
   it("filters runtime, dev and pinned packages by selection", () => {
     expect(runtimeDependencies(NO_TECH)).toEqual({});
     expect(runtimeDependencies(FULL_TECH_SELECTION).zustand).toBe("5.0.15");
-    expect(
-      runtimeDependencies({ ...FULL_TECH_SELECTION, registry: false })[
-        "@raulmoracode/icons"
-      ],
-    ).toBeUndefined();
 
     const dev = devDependencies(viteFramework, NO_TECH);
     expect(dev["@biomejs/biome"]).toBeUndefined();

@@ -24,7 +24,6 @@ import {
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
 import { refreshPnpmWorkspaceExcludes } from "../src/generators/configure-project.js";
-import { configureRegistry } from "../src/generators/configure-registry.js";
 import { configureShadcn } from "../src/generators/configure-shadcn.js";
 import { configureTesting } from "../src/generators/configure-testing.js";
 import { configureVscode } from "../src/generators/configure-vscode.js";
@@ -325,16 +324,6 @@ describe("refreshPnpmWorkspaceExcludes", () => {
   });
 });
 
-describe("configureRegistry", () => {
-  it("writes .npmrc referencing GH_TOKEN", async () => {
-    const dir = await makeTempDir();
-    await configureRegistry(dir);
-    expect(await readFromFile(dir, ".npmrc")).toBe(
-      `@raulmoracode:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=\${GH_TOKEN}\n`,
-    );
-  });
-});
-
 describe("configureShadcn", () => {
   it("writes components.json with the @raulmoracode registry and the cn() helper", async () => {
     const dir = await makeTempDir();
@@ -411,7 +400,6 @@ describe("configureGitHooks", () => {
       "tanstack-query": true,
       zustand: true,
       forms: true,
-      registry: true,
       biome: false,
       testing: true,
       husky: true,

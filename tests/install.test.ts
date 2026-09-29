@@ -37,7 +37,6 @@ describe("installDependencies", () => {
     expect(second.args).toContain("react-hook-form@7.89.0");
     expect(second.args).toContain("zod@4.6.5");
     expect(second.args).toContain("@tanstack/react-query@5.104.0");
-    expect(second.args).toContain("@raulmoracode/icons@1.1.0");
     expect(third.command).toBe("pnpm");
     expect(third.args[0]).toBe("add");
     expect(third.args).toContain("-D");
@@ -82,7 +81,6 @@ describe("installDependencies", () => {
       "tanstack-query": false,
       zustand: false,
       forms: false,
-      registry: false,
       biome: false,
       testing: false,
       husky: false,
@@ -106,7 +104,6 @@ describe("installDependencies", () => {
       "tanstack-query": false,
       zustand: true,
       forms: false,
-      registry: false,
       biome: true,
       testing: false,
       husky: false,
@@ -117,7 +114,6 @@ describe("installDependencies", () => {
     const [, second, third] = execMock.mock.calls.map(argsOf);
     expect(second.args).toContain("zustand@5.0.15");
     expect(second.args).not.toContain("react-hook-form@7.89.0");
-    expect(second.args).not.toContain("@raulmoracode/icons@1.1.0");
     expect(third.args).toContain("@biomejs/biome@2.5.14");
     expect(third.args).toContain("clsx@2.1.1");
     expect(third.args).not.toContain("vitest@5.0.2");

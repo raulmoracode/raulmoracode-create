@@ -59,14 +59,13 @@ describe("help and version output", () => {
     expect(VERSION).toBe(pkg.version);
   });
 
-  it("help text documents usage, options and GH_TOKEN", () => {
+  it("help text documents usage and options", () => {
     const text = helpText();
     expect(text).toContain("Usage:");
     expect(text).toContain("raulmoracode-create [options]");
     expect(text).toContain("--verbose");
     expect(text).toContain("--help");
     expect(text).toContain("--version");
-    expect(text).toContain("GH_TOKEN");
     expect(text).toContain(VERSION);
   });
 

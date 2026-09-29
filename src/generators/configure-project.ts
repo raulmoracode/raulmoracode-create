@@ -35,9 +35,6 @@ export function runtimeDependencies(
   if (selection["tanstack-query"]) {
     dependencies["@tanstack/react-query"] = "5.104.0";
   }
-  if (selection.registry) {
-    dependencies["@raulmoracode/icons"] = "1.1.0";
-  }
   return dependencies;
 }
 

@@ -10,10 +10,10 @@ Complete reference document for the scaffolder: identity, architecture, what eac
 |---|---|
 | Repository | `raulmoracode/create` (`github.com/raulmoracode/raulmoracode-create`) |
 | npm package | `@raulmoracode/create` |
-| Current version | `1.0.0` |
+| Current version | `1.0.1` |
 | Global command (only one) | `raulmoracode-create` |
 | Compiled entry point | `./dist/index.js` (with `#!/usr/bin/env node` shebang) |
-| Publish registry | `https://npm.pkg.github.com` (GitHub Packages, **not** npmjs.com) |
+| Publish registry | `https://registry.npmjs.org/` (npmjs) |
 | Global install | `npm install -g @raulmoracode/create` |
 | License | MIT (`LICENSE`) |
 
@@ -61,7 +61,6 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── configure-biome.ts    # biome.json + formatting
 │   │   ├── configure-vscode.ts   # .vscode/
 │   │   ├── configure-testing.ts  # vitest.config.ts + smoke test
-│   │   ├── configure-registry.ts # registry .npmrc
 │   │   ├── configure-git-hooks.ts# .husky/ + commitlint.config.ts
 │   │   └── configure-node.ts     # .nvmrc, .editorconfig, .gitignore
 │   ├── frameworks/
@@ -82,7 +81,6 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── commitlint.ts         # commitlint.config.ts content
 │   │   ├── editorconfig.ts       # .editorconfig content
 │   │   ├── husky.ts              # .husky hook contents
-│   │   ├── npmrc.ts              # .npmrc content
 │   │   ├── nvmrc.ts              # .nvmrc content
 │   │   ├── pnpm-workspace.ts     # pnpm-workspace.yaml + merge + excludes
 │   │   ├── query.ts              # query-client.ts
@@ -93,12 +91,11 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   └── utils/
 │       ├── exec.ts               # safe process execution (spawn)
 │       ├── filesystem.ts         # file helpers and JSON/JSONC
-│       ├── registry.ts           # private registry access probe
 │       └── validation.ts         # name, URL and framework validation
-├── tests/                        # Vitest suite (13 files, ~165 tests)
+├── tests/                        # Vitest suite (12 files, ~160 tests)
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
-├── .github/workflows/publish.yml # publish to GitHub Packages on v* tags
+├── .github/workflows/publish.yml # publish to npmjs on v* tags
 ├── package.json, tsconfig.json, vitest.config.ts, biome.json
 ├── .nvmrc (24), .gitignore, README.md, LICENSE
 └── dist/                         # compiled output (generated, not versioned)
@@ -141,7 +138,7 @@ Internal functions:
 
 - `requireCommand(command, instructions, verbose): Promise<void>` — runs `<command> --version`. If the process does not exist (`ExecError` with `spawnError`), throws `PreflightError` with install instructions; on any other failure, a generic `PreflightError`.
 - `requireGitIdentity(verbose): Promise<void>` — requires non-empty `git config --get user.name` and `user.email`; otherwise `PreflightError` with the command to configure them.
-- `preflightChecks(verbose): Promise<void>` — in order: Node version (`satisfiesNodeVersion(process.version, 24)`), `pnpm` available, `git` available, Git identity. `GH_TOKEN` is NOT required anymore: after the prompts, `checkPrivateRegistryAccess()` (GET to the `@raulmoracode/icons` metadata with `Bearer $GH_TOKEN`, 10s timeout, never throws) decides whether there is access; without access, `applyPrivateAccess()` returns the selection with `registry: false` plus a warning (identical project but without `.npmrc` and without `@raulmoracode/icons`).
+- `preflightChecks(verbose): Promise<void>` — in order: Node version (`satisfiesNodeVersion(process.version, 24)`), `pnpm` available, `git` available, Git identity. There is no token-based preflight: generated projects contain no `.npmrc` and no private dependencies.
 - `checkDestination(projectName): Promise<{ projectDir, reusedEmptyDir }>` — resolves `<cwd>/<projectName>`. If it exists and is empty, removes it with `removeEmptyDir` (only succeeds when empty) and marks `reusedEmptyDir: true`; if it exists and is NOT empty, `PreflightError` (never deletes user content).
 - `shouldRemoveProjectDir(failedStep: string | null): boolean` (pure, exported) — decides whether to clean up after a failure: `false` when `null` (failure before the tasks, nothing created) or `"Pushing to GitHub"` (project complete locally, only the push failed); `true` otherwise (everything under `./<name>` was created by this run).
 - `checkRemoteAccess(githubUrl, verbose): Promise<void>` — `git ls-remote <url>`; on failure, `PreflightError` (URL, connection, or GitHub authentication).
@@ -151,9 +148,9 @@ Internal functions:
 1. `intro("Raulmoracode Create")`.
 2. `preflightChecks`.
 3. Prompts in order: `promptFramework()` → `promptTechPreset()` (multiselect with everything preselected by default; `resolveTechSelection` forces Tailwind back on if shadcn is left selected without it, with a warning) → `promptProjectName()` → `promptGitHubUrl()`.
-4. `checkDestination` + `checkRemoteAccess`, then private-registry probe → effective selection (`applyPrivateAccess`) + warning when the registry is dropped for lack of access.
+4. `checkDestination` + `checkRemoteAccess`.
 5. `getFramework(frameworkId)` and the Clack `tasks([...])` block (each task records its title in `failedStep` first):
-   - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); branding (always); shadcn (only if `selection.shadcn`); registry (only if `selection.registry`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `augmentGitignore` (always). Returns `"Project created"`.
+   - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); branding (always); shadcn (only if `selection.shadcn`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `augmentGitignore` (always). Returns `"Project created"`.
    - **"Installing dependencies"** → `installDependencies(..., selection)` (`pnpm install`, `pnpm add` runtime unless empty, `pnpm add -D` dev unless empty — a bare `add` with no packages would fail, hence they are skipped); `normalizePackageJson`; `formatProject` only with Biome (it would fail without the binary); `refreshPnpmWorkspaceExcludes(..., selection)`. Returns `"Dependencies installed"`.
    - **"Initializing Git"** → `initRepository` + `pnpm exec husky` only with Husky. **"Configuring remote"** → `addRemote`. **"Creating initial commit"** → `createCommit`. **"Pushing to GitHub"** → `remoteHasDivergentCommits` (if `true`, error with `REMOTE_CONFLICT_MESSAGE`) otherwise `push` (`push -u origin main`, never `--force`).
 6. `showSummary({ projectName, githubUrl, frameworkLabel })`.
@@ -163,9 +160,9 @@ Internal functions:
 
 ### 5.2 `src/cli/args.ts` — flags
 
-- `VERSION = "1.0.0"` — single source of truth for `--version`; pinned to `package.json` by a test.
+- `VERSION = "1.0.1"` — single source of truth for `--version`; pinned to `package.json` by a test.
 - `parseArgs(argv): CliArgs` — `{ help, version, verbose }` (`-h`/`--help`, `-V`/`--version`, `--verbose`; unknown flags are ignored).
-- `helpText()` / `printHelp()` — usage, options, `GH_TOKEN` note, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
+- `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
 ### 5.3 `src/cli/output.ts` — Clack output
 
@@ -200,7 +197,7 @@ Internal functions:
 - `PNPM_VERSION = "12.6.0"` — version pinned in `packageManager` of generated projects.
 - `HUSKY_VERSION = "9.1.7"`, `COMMITLINT_CLI_VERSION = "21.2.3"`, `COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3"`, `CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1"`.
 - `PROJECT_AUTHOR = { name: "Raul Mora", url: "https://raulmoracode.com" }`.
-- `runtimeDependencies(selection = FULL_TECH_SELECTION): Record<string,string>` — exact pins filtered by selection: `zustand 5.0.15` (only if `zustand`), `react-hook-form 7.89.0` + `zod 4.6.5` (only if `forms`), `@tanstack/react-query 5.104.0` (only if `tanstack-query`), `@raulmoracode/icons 1.1.0` (only if `registry`, which also controls the `.npmrc`).
+- `runtimeDependencies(selection = FULL_TECH_SELECTION): Record<string,string>` — exact pins filtered by selection: `zustand 5.0.15` (only if `zustand`), `react-hook-form 7.89.0` + `zod 4.6.5` (only if `forms`), `@tanstack/react-query 5.104.0` (only if `tanstack-query`).
 - `devDependencies(framework, selection = FULL_TECH_SELECTION): Record<string,string>` — common filtered by selection: `@biomejs/biome 2.5.14` (only if `biome`), `vitest 5.0.2` + `@testing-library/react 16.3.3` + `@testing-library/dom 10.4.2` + `jsdom 30.1.1` (only if `testing`), `clsx 2.1.1` + `tailwind-merge 3.7.0` + `class-variance-authority 0.7.1` (only if `shadcn`), `husky` + `@commitlint/cli` + `@commitlint/config-conventional` (only if `husky`), `tailwindcss 4.3.3` (only if `tailwind`); plus `@tailwindcss/vite 4.3.3` (vite, only if `tailwind`) or `@tailwindcss/postcss 4.3.3` + `postcss 8.5.6` (next, only if `tailwind`).
 - `pnpmInstallArgs(): string[]` → `["install"]`.
 - `pnpmAddArgs(deps) / pnpmAddDevArgs(deps)` — build `["add", …"name@version"]` (plus `"-D"`).
@@ -232,7 +229,6 @@ Internal functions:
 
 ### 7.5 Remaining generators (one main function each)
 
-- `configure-registry.ts` — `configureRegistry(projectDir)`: writes `.npmrc` (only called with registry access).
 - `configure-shadcn.ts` — `configureShadcn(projectDir, framework)`: writes `components.json` (with `framework.componentsJsonOptions()`) and `src/lib/utils.ts` (`cn()`).
 - `configure-testing.ts` — `configureTesting(projectDir)`: writes `vitest.config.ts` and `src/test/smoke.test.tsx`.
 - `configure-vscode.ts` — `configureVscode(projectDir)`: writes `.vscode/settings.json` and `.vscode/extensions.json`.
@@ -304,12 +300,11 @@ Internal functions:
 | `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge` |
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
-| `npmrc.ts` | `npmrcContent()` | exact 2-line `.npmrc` with `${GH_TOKEN}`, no real tokens |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
 | `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + quoted `minimumReleaseAgeExclude`, merging existing entries without duplicating) |
 | `query.ts` | `queryClientConfig()` | `query-client.ts` (`staleTime` 60s, `gcTime` 5min, `retry: false`) |
 | `tailwind.ts` | `tailwindCss()`, `viteTailwindConfig()`, `nextPostcssConfig()` | `@import "tailwindcss";`, `vite.config.ts` (react + tailwind + `@` alias), `postcss.config.mjs` |
-| `tech.ts` | `TECH_IDS`, `TechId`, `TechSelection`, `TECH_OPTIONS`, `FULL_TECH_SELECTION`, `resolveTechSelection()`, `applyPrivateAccess()` | tech preset multiselect options; `resolveTechSelection` forces Tailwind back on with shadcn (plus note); `applyPrivateAccess` forces `registry: false` without private access |
+| `tech.ts` | `TECH_IDS`, `TechId`, `TechSelection`, `TECH_OPTIONS`, `FULL_TECH_SELECTION`, `resolveTechSelection()` | tech preset multiselect options; `resolveTechSelection` forces Tailwind back on with shadcn (plus note) |
 | `testing.ts` | `vitestConfig()`, `smokeTest()` | `vitest.config.ts` (`environment: jsdom`) and `src/test/smoke.test.tsx` (Testing Library render) |
 | `vscode.ts` | `vscodeSettings()`, `vscodeExtensions()` | Biome as JS/TS/JSON(+C) formatter, format on save, organize imports, tab 2, local `js/ts.tsdk.path` (formerly `typescript.tsdk`, deprecated by VS Code); recommends `biomejs.biome` |
 
@@ -325,41 +320,38 @@ Internal functions:
 
 **`utils/filesystem.ts`** — `pathExists`, `isDirectory`, `isDirectoryEmpty`, `listDirEntries`, `ensureDir` (recursive), `writeTextFile` (creates parents), `readTextFile`, `readJsonFile<T>`, `stripJsonComments` + `parseJsonc<T>` (JSONC with `//` and `/* */` respecting strings and escapes), `removeIfExists` (recursive+force `rm`), `joinPath`, `resolvePath`, `removeEmptyDir` (only succeeds when empty), `makeExecutable` (`chmod 0o755`).
 
-**`utils/registry.ts`** — `checkPrivateRegistryAccess(): Promise<boolean>`: GET to the `@raulmoracode/icons` metadata on `npm.pkg.github.com` with `Bearer $GH_TOKEN`, 10s timeout via `AbortSignal.timeout`. Returns `false` without a token, on non-OK status, or on any error — it never throws (uses the global `fetch`, no new dependencies).
-
 **`utils/validation.ts`** — `Framework = "vite" | "next"`; `ValidationResult { valid, error? }`; `validateProjectName` (empty, surrounding spaces, >214 chars, leading `.`/`_`, lowercase+digits+`._~-` regex, npm + Windows reserved names); `GitHubUrlResult { owner?, repo? }`; `validateGitHubUrl` (https, `github.com`, no credentials, `owner/repo`, owner/repo regexes); `isFramework` (type guard), `validateFramework`; `satisfiesNodeVersion(version, minimumMajor)` (parses major, compares).
 
 ---
 
-## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, ~165)
+## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, ~160)
 
 | File | What it covers |
 |---|---|
 | `validation.test.ts` | Names (valid/invalid, length, reserved), GitHub URLs (protocol, host, credentials, format), `isFramework`/`validateFramework`, `satisfiesNodeVersion` |
-| `config.test.ts` | `.nvmrc`, `.npmrc` (no tokens), `components.json` + `cn()`, `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (+ Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION`, `resolveTechSelection`, `applyPrivateAccess`), adaptive Husky hooks, Commitlint config |
+| `config.test.ts` | `.nvmrc`, `components.json` + `cn()`, `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (+ Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION`, `resolveTechSelection`), adaptive Husky hooks, Commitlint config |
 | `frameworks.test.ts` | Framework registration, exact pins per framework, scripts, removal patterns, runtime/dev lists (no `lucide-react`), pnpm constructors, `patchPackageJson` and `normalizePackageJson` against temp `package.json` (incl. author/homepage/repository, `prepare: husky`), no-trace patch with deselected techs, dependency filtering |
-| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter, workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), registry, shadcn, biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit) |
+| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter, workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn, biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit) |
 | `install.test.ts` | `installDependencies` with mocked `exec`: order `install` → `add` (exact runtime) → `add -D` (incl. tailwind/biome/vitest/testing-library/clsx/cva/husky/commitlint), `cwd` correctness, empty-add skipping with deselected techs, PostCSS variant on Next, `ExecError` propagation |
 | `git.test.ts` | Constructors (`init`, `branch -M main`, `remote add`, `add .`, `commit`, `push` without force) + integration with real Git in temp dirs: init on `main`, remote, initial commit, push to a bare repo |
 | `exec.test.ts` | Real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
 | `error-handling.test.ts` | Mocked `exec` (`importOriginal` + override): missing pnpm/git, non-zero exits, `remoteHasDivergentCommits` (diverge/ancestor/no-branch/same), `PreflightError`, invalid URLs, `REMOTE_CONFLICT_MESSAGE` |
-| `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, GitHub Packages registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
-| `registry.test.ts` | `checkPrivateRegistryAccess` with stubbed `fetch`: no token (fetch not called), 200, 401/404, network throw, Bearer header + endpoint |
+| `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, npmjs registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
 | `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
-| `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec/fetch, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
-| `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo), with stubbed `fetch` as “with access”: official scaffold, pins, files (incl. `.husky/`, `commitlint.config.ts`), `node_modules`+`pnpm-lock.yaml` (no other lockfiles), `.npmrc` with `${GH_TOKEN}`, workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
+| `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
+| `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins, files (incl. `.husky/`, `commitlint.config.ts`), `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
 ---
 
 ## 13. Root config files
 
-- **`package.json`**: `name @raulmoracode/create`, `version 1.0.0`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, GitHub Packages `publishConfig` with `access public`.
+- **`package.json`**: `name @raulmoracode/create`, `version 1.0.1`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
 - **`tsconfig.json`**: `target ES2022`, `module/moduleResolution NodeNext` (imports with `.js` extension), `outDir dist`, `rootDir src`, `strict` + `noUncheckedIndexedAccess`, `types: [node]`, `include: [src]`.
 - **`vitest.config.ts`**: `node` environment, `include tests/**/*.test.ts`.
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.
 - **`.nvmrc`**: `24`. **`.gitignore`**: `node_modules`, `dist`, `.env`, `.env.*`, `*.tgz`.
-- **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` + `packages:write` permissions: checkout, pnpm 12, Node 24 (GitHub Packages registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish` with `GITHUB_TOKEN`.
-- **`README.md`**: global install (GitHub Packages auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth (pnpm ≥11.5.3 `${GH_TOKEN}` note), publish, development, architecture, verified adjustments, packaging.
+- **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` permission: checkout, pnpm 12, Node 24 (npmjs registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish --access public` with `NPM_TOKEN`.
+- **`README.md`**: global install (npmjs, no auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth, publish, development, architecture, verified adjustments, packaging.
 - **`LICENSE`**: MIT.
 
 ---
@@ -381,12 +373,12 @@ Internal functions:
 | clsx | 2.1.1 | | tailwind-merge | 3.7.0 |
 | class-variance-authority | 0.7.1 | | Husky | 9.1.7 |
 | @commitlint/cli | 21.2.3 | | @commitlint/config-conventional | 21.2.3 |
-| @raulmoracode/icons | 1.1.0 | | pnpm | 12.6.0 |
+| pnpm | 12.6.0 | | | |
 | postcss (Next only) | 8.5.6 | | @tailwindcss/vite or /postcss | 4.3.3 |
 
 ### 14.2 Generated files (full preset)
 
-`package.json` (name, `0.1.0`, `private`, `type module`, `author` Raul Mora, `homepage`+`repository` with the entered URL, `prepare: husky`, framework scripts, `engines`, `packageManager`), `pnpm-lock.yaml` (no `package-lock.json`/`yarn.lock`), `.nvmrc`, `.npmrc` (only with registry access), `.editorconfig`, augmented `.gitignore`, `biome.json`, `commitlint.config.ts`, `.husky/pre-commit` + `.husky/commit-msg` (executable), `components.json`, `vitest.config.ts`, `src/test/smoke.test.tsx`, `src/lib/query-client.ts`, `src/lib/utils.ts` (`cn`), `.vscode/settings.json` + `extensions.json`, `pnpm-workspace.yaml` (`minimumReleaseAge: 10080` + excludes for the whole lockfile), `AGENTS.md`, official generator structure, Git repo on `main` with remote/initial commit/push.
+`package.json` (name, `0.1.0`, `private`, `type module`, `author` Raul Mora, `homepage`+`repository` with the entered URL, `prepare: husky`, framework scripts, `engines`, `packageManager`), `pnpm-lock.yaml` (no `package-lock.json`/`yarn.lock`), `.nvmrc`, `.editorconfig`, augmented `.gitignore`, `biome.json`, `commitlint.config.ts`, `.husky/pre-commit` + `.husky/commit-msg` (executable), `components.json`, `vitest.config.ts`, `src/test/smoke.test.tsx`, `src/lib/query-client.ts`, `src/lib/utils.ts` (`cn`), `.vscode/settings.json` + `extensions.json`, `pnpm-workspace.yaml` (`minimumReleaseAge: 10080` + excludes for the whole lockfile), `AGENTS.md`, official generator structure, Git repo on `main` with remote/initial commit/push.
 
 Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scripts: `dev: vite`, `build: vite build`, `check/format/lint` (biome, only with Biome), `test: vitest` (only with testing). Next scripts: `dev: next dev`, `build: next build`, `start: next start` + the same biome/test scripts when selected.
 
@@ -403,10 +395,10 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 ## 15. Full execution sequence
 
 1. `node dist/index.js` (or `raulmoracode-create`) → flags (`--help`/`--version` exit early) → `run({ verbose })`.
-2. Preflight: Node ≥24 → pnpm → git → Git identity (no mandatory `GH_TOKEN`).
+2. Preflight: Node ≥24 → pnpm → git → Git identity (no tokens involved).
 3. Prompts: framework → tech preset → name → GitHub URL (normalized without trailing `/` or `.git`).
 4. Destination: `<cwd>/<name>` (empty→reused and removed; with content→error, never deletes).
-5. `git ls-remote <url>` (access to the already-existing remote), then private-registry probe → effective selection.
+5. `git ls-remote <url>` (access to the already-existing remote).
 6. Tasks: scaffold gated by selection → `package.json` → `.gitignore` → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
 7. Summary (framework, `./<name>`, URL) → `¿Quieres abrir el proyecto ahora?` → `code .` (tolerant) → farewell.
 8. Errors: `failedStep` recorded per task; cleanup when everything was CLI-created (never on push failure; empty-dir restore on pre-task failures) + actionable hint → exit 1 (130 on SIGINT/SIGTERM); Clack cancellation → clean exit 0.
@@ -419,8 +411,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 - Minimal `components.json` is rejected by shadcn 4.x: generate the full configuration with the exact required `@raulmoracode` registry.
 - Biome 2.5.14 moved `organizeImports` to `assist.actions.source`; ignore `dist`/`.next`; disable `noSvgWithoutTitle`/`noAmbiguousAnchorText` (fire on the official templates' demo assets).
 - `jsdom` (Testing Library), `clsx`+`tailwind-merge` (`cn()`), `class-variance-authority` (`cva()` variants used by shadcn components such as `button`) and Husky/Commitlint (hooks) are necessary additions not listed in the original spec.
-- `minimumReleaseAge: 10080` is written **after** installing (otherwise pnpm rejects recent versions) with excludes for the **whole** lockfile via `pnpm list --json` (+pins as fallback); pnpm ≥11.5.3 also ignores `${GH_TOKEN}` in project `.npmrc` (documented in README; the token belongs at user level).
-- `@raulmoracode/icons@1.1.0` is private on GitHub Packages: pinned per spec, not verifiable without a token (probed at runtime; without access the project is generated without it or `.npmrc`).
+- `minimumReleaseAge: 10080` is written **after** installing (otherwise pnpm rejects recent versions) with excludes for the **whole** lockfile via `pnpm list --json` (+pins as fallback).
 - Next layout patched with tolerant regexes (the template already changed once: `className` on `<body>`); `tsconfig.app.json` parsed as JSONC (the template carries comments).
 - shadcn on Vite needs the `@/*` alias in `vite.config.ts` **and** both tsconfigs (the CLI only reads the root one; without it a literal `@/` folder is created).
 - VS Code deprecated `typescript.tsdk` in favor of `js/ts.tsdk.path` (unified `js/ts.*` namespace); generated settings use the new key.

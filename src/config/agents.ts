@@ -37,7 +37,6 @@ export function agentsMd(): string {
     "- `biome.json`",
     "- `components.json`",
     "- `.nvmrc`",
-    "- `.npmrc`",
     "- framework-specific configuration files",
     "",
     "Use the package manager already configured by the project.",

@@ -73,7 +73,6 @@ vi.mock("@clack/prompts", () => ({
     "tanstack-query",
     "zustand",
     "forms",
-    "registry",
     "biome",
     "testing",
     "husky",
@@ -110,10 +109,7 @@ function makeExecImplementation() {
       return runCommand(command, args, options.cwd);
     }
     if (command === "pnpm" && args[0] === "add") {
-      const filtered = args.filter(
-        (arg) => arg !== "@raulmoracode/icons@1.1.0",
-      );
-      return runCommand(command, filtered, options.cwd);
+      return runCommand(command, args, options.cwd);
     }
     return runCommand(command, args, options.cwd);
   };
@@ -130,18 +126,11 @@ describe("end-to-end project creation", () => {
     bareRemote = await mkdtemp(join(tmpdir(), "raulmoracode-remote-"));
     await runCommand("git", ["init", "--bare"], bareRemote);
     workDir = await mkdtemp(join(tmpdir(), "raulmoracode-work-"));
-    process.env.GH_TOKEN = "test-token";
-    // Simulate the owner path: the token has private registry access.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ ok: true })),
-    );
     process.chdir(workDir);
     execMock.mockImplementation(makeExecImplementation());
   }, 30_000);
 
   afterAll(async () => {
-    delete process.env.GH_TOKEN;
     delete process.env.GIT_CONFIG_GLOBAL;
     vi.unstubAllGlobals();
     await rm(gitConfigDir, { recursive: true, force: true });
@@ -226,7 +215,6 @@ describe("end-to-end project creation", () => {
 
     for (const file of [
       ".nvmrc",
-      ".npmrc",
       ".editorconfig",
       "biome.json",
       "components.json",
@@ -275,9 +263,6 @@ describe("end-to-end project creation", () => {
       true,
     );
     expect(existsSync(join(projectDir, "yarn.lock")), "yarn.lock").toBe(false);
-
-    const npmrc = await readFile(join(projectDir, ".npmrc"), "utf8");
-    expect(npmrc).toContain(`//npm.pkg.github.com/:_authToken=\${GH_TOKEN}`);
 
     const workspace = await readFile(
       join(projectDir, "pnpm-workspace.yaml"),

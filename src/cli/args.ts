@@ -1,4 +1,4 @@
-export const VERSION = "1.0.0";
+export const VERSION = "1.0.1";
 
 export interface CliArgs {
   help: boolean;
@@ -25,11 +25,6 @@ export function helpText(): string {
     "  --verbose        Print the output of every external command.",
     "  -h, --help       Show this help message.",
     "  -V, --version    Show the installed version.",
-    "",
-    "Environment:",
-    "  GH_TOKEN (optional)  Enables the private @raulmoracode/icons package.",
-    "                       Without registry access the project is generated",
-    "                       without .npmrc and without icons.",
     "",
     "Examples:",
     "  raulmoracode-create",
