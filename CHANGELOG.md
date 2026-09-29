@@ -9,6 +9,40 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Nothing pending yet.
 
+## [1.0.3] - 2026-09-29
+
+### Added
+
+- shadcn registry wiring in generated projects: `components.json` declares the
+  `@raulmoracode` registry, tsconfigs gain aliases for registry file targets
+  (`@components/*`, `@lib/*`, `@hooks/*`), and `pnpm-workspace.yaml` excludes
+  the `@raulmoracode/*` scope from `minimumReleaseAge`, so
+  `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` works out of the box.
+- Generated project `README.md` (overwrites the scaffolder default): project
+  title, requirements, scripts table from the final `package.json`, selected
+  stack with exact versions, shadcn registry workflow, Git workflow and a
+  per-framework structure overview.
+- Optional `theme` tech preset applying the raulmoracode nature theme from the
+  registry during scaffolding (pins `tw-animate-css`, cleans the CLI's
+  `src/`-prefixed leftovers, restores aliases). Includes a Biome `overrides`
+  entry for the Tailwind entry files, whose v4 directives Biome cannot parse.
+- CI workflow (`.github/workflows/ci.yml`): check, lint, tests (including the
+  Vite E2E) and build on `main` pushes and pull requests, plus a separate
+  Next.js E2E job.
+
+### Changed
+
+- Every documented `shadcn add` command now uses the pinned `shadcn@4.21.0`
+  (`SHADCN_VERSION`) instead of `shadcn@latest`.
+
+### Fixed
+
+- Scaffold installs no longer run frozen: `pnpm install --no-frozen-lockfile`,
+  fixing `ERR_PNPM_OUTDATED_LOCKFILE` under `CI=true` (caught by the new CI on
+  its first run).
+- Vite tsconfigs no longer set `baseUrl`, which TypeScript 7 rejects
+  (`TS5102`); `paths` resolve without it and the shadcn CLI is unaffected.
+
 ## [1.0.2] - 2026-09-29
 
 First stable release. This is the first version where the git tag, the
@@ -59,7 +93,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/raulmoracode/raulmoracode-create/compare/2af3311...v1.0.2
 [1.0.1]: https://github.com/raulmoracode/raulmoracode-create/tree/c7b1301
 [1.0.0]: https://github.com/raulmoracode/raulmoracode-create/tree/2af3311
