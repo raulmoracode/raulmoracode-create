@@ -1,18 +1,20 @@
 {
   "name": "@raulmoracode/create",
-  "version": "0.1.0",
-  "description": "Scaffold RaulMoraCode projects. pnpm is the official and only supported package manager.",
+  "version": "1.0.0",
+  "description": "Professional CLI to scaffold React + Vite and Next.js projects with Tailwind CSS, shadcn, Biome, Vitest and the @raulmoracode registry.",
   "keywords": [
-    "create",
+    "raulmoracode",
     "scaffold",
     "scaffolder",
     "cli",
+    "react",
     "vite",
     "nextjs",
-    "react",
     "tailwindcss",
-    "pnpm",
-    "raulmoracode"
+    "shadcn",
+    "biome",
+    "vitest",
+    "pnpm"
   ],
   "homepage": "https://github.com/raulmoracode/raulmoracode-create#readme",
   "bugs": {
@@ -25,34 +27,42 @@
   "license": "MIT",
   "author": "raulmoracode",
   "type": "module",
-  "main": "./index.js",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./index.js",
+    ".": "./dist/index.js",
     "./package.json": "./package.json"
   },
   "bin": {
-    "create-raulmoracode": "./bin.js"
+    "raulmoracode-create": "./dist/index.js"
   },
   "files": [
-    "bin.js",
-    "index.js",
-    "lib/",
+    "dist",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "check": "node --check bin.js && node --check index.js && node --check lib/pnpm.js && node --check lib/base.js && node --check lib/scaffold.js",
-    "prepublishOnly": "pnpm run check"
+    "build": "tsc -p tsconfig.json",
+    "check": "biome check .",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@clack/prompts": "^1.8.1"
+    "@clack/prompts": "1.8.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "24.19.0",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
-  "packageManager": "pnpm@12.5.1",
+  "packageManager": "pnpm@12.6.0",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
+    "registry": "https://registry.npmjs.org/",
     "access": "public"
   }
 }

@@ -1,0 +1,438 @@
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const execMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../src/utils/exec.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/utils/exec.js")>();
+  return { ...actual, exec: execMock };
+});
+
+import { nextFramework } from "../src/frameworks/next.js";
+import { viteFramework } from "../src/frameworks/vite.js";
+import {
+  configureBiome,
+  TOOLING_CONFIG_FILES,
+} from "../src/generators/configure-biome.js";
+import { configureGitHooks } from "../src/generators/configure-git-hooks.js";
+import {
+  augmentGitignore,
+  configureEditorconfig,
+  configureNode,
+  requiredGitignoreEntries,
+} from "../src/generators/configure-node.js";
+import { refreshPnpmWorkspaceExcludes } from "../src/generators/configure-project.js";
+import { configureRegistry } from "../src/generators/configure-registry.js";
+import { configureShadcn } from "../src/generators/configure-shadcn.js";
+import { configureTesting } from "../src/generators/configure-testing.js";
+import { configureVscode } from "../src/generators/configure-vscode.js";
+import { listDirEntries, writeTextFile } from "../src/utils/filesystem.js";
+
+const tempDirs: string[] = [];
+
+async function makeTempDir(): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), "raulmoracode-gen-"));
+  tempDirs.push(dir);
+  return dir;
+}
+
+async function readFromFile(dir: string, ...parts: string[]): Promise<string> {
+  return readFile(join(dir, ...parts), "utf8");
+}
+
+afterEach(async () => {
+  execMock.mockReset();
+  while (tempDirs.length > 0) {
+    await rm(tempDirs.pop() as string, { recursive: true, force: true });
+  }
+});
+
+describe("configureNode", () => {
+  it("writes .nvmrc with Node 24", async () => {
+    const dir = await makeTempDir();
+    await configureNode(dir);
+    expect(await readFromFile(dir, ".nvmrc")).toBe("24\n");
+  });
+
+  it("writes .editorconfig", async () => {
+    const dir = await makeTempDir();
+    await configureEditorconfig(dir);
+    const content = await readFromFile(dir, ".editorconfig");
+    expect(content).toContain("root = true");
+    expect(content).toContain("indent_size = 2");
+  });
+
+  it("augments .gitignore without duplicating entries", async () => {
+    const dir = await makeTempDir();
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(join(dir, ".gitignore"), "node_modules\ndist\n", "utf8");
+    await augmentGitignore(dir);
+    const first = await readFromFile(dir, ".gitignore");
+    expect(first).toContain("node_modules");
+    expect(first).toContain("dist");
+    expect(first).toContain(".env");
+    expect(first).toContain(".env.*");
+
+    await augmentGitignore(dir);
+    const second = await readFromFile(dir, ".gitignore");
+    expect(second).toBe(first);
+  });
+
+  it("requires at least the base ignore entries", () => {
+    const entries = requiredGitignoreEntries();
+    for (const required of ["node_modules", "dist", ".env", ".env.*"]) {
+      expect(entries).toContain(required);
+    }
+  });
+});
+
+describe("configureBranding (vite)", () => {
+  it("sets the tab title and CDN favicon in index.html", async () => {
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "index.html"),
+      [
+        "<!doctype html>",
+        "<html>",
+        "  <head>",
+        '    <link rel="icon" type="image/svg+xml" href="/vite.svg" />',
+        "    <title>vite-react-typescript-starter</title>",
+        "  </head>",
+        "</html>",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await viteFramework.configureBranding(dir);
+    const branded = await readFromFile(dir, "index.html");
+    expect(branded).toContain("<title>raulmoracode</title>");
+    expect(branded).toContain(
+      'href="https://cdn.raulmoracode.com/icons/favicon.ico"',
+    );
+    expect(branded).not.toContain("/vite.svg");
+  });
+
+  it("fails clearly when index.html has no title or icon", async () => {
+    const dir = await makeTempDir();
+    await writeFile(join(dir, "index.html"), "<html></html>", "utf8");
+    await expect(viteFramework.configureBranding(dir)).rejects.toThrow();
+  });
+});
+
+describe("configureStarter (vite)", () => {
+  it("removes public and assets files and writes the minimal starter", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "public", "favicon.svg"), "<svg></svg>");
+    await writeTextFile(join(dir, "public", "icons.svg"), "<svg></svg>");
+    await writeTextFile(join(dir, "src", "assets", "hero.png"), "fake-png");
+    await writeTextFile(join(dir, "src", "App.tsx"), "old app");
+    await writeTextFile(join(dir, "src", "App.css"), "old css");
+    await writeTextFile(
+      join(dir, "tsconfig.app.json"),
+      [
+        "{",
+        "  /* Bundler mode */",
+        '  "compilerOptions": {',
+        '    "target": "es2023", // keep me',
+        '    "types": ["vite/client"]',
+        "  }",
+        "}",
+        "",
+      ].join("\n"),
+    );
+    await writeTextFile(
+      join(dir, "tsconfig.json"),
+      JSON.stringify({
+        files: [],
+        references: [{ path: "./tsconfig.app.json" }],
+      }),
+    );
+
+    await viteFramework.configureStarter?.(dir);
+
+    expect(await listDirEntries(join(dir, "public"))).toEqual([]);
+    expect(await listDirEntries(join(dir, "src", "assets"))).toEqual([]);
+    expect(await readFromFile(dir, "src", "App.tsx")).toBe(
+      'import "./App.css";\n\nfunction App() {\n  return <div>hello</div>;\n}\n\nexport default App;\n',
+    );
+    expect(await readFromFile(dir, "src", "App.css")).toBe("");
+    expect(await readFromFile(dir, "AGENTS.md")).toContain(
+      "`@raulmoracode/create`",
+    );
+    const tsconfig = JSON.parse(
+      await readFromFile(dir, "tsconfig.app.json"),
+    ) as {
+      compilerOptions: { baseUrl: string; paths: Record<string, string[]> };
+    };
+    expect(tsconfig.compilerOptions.baseUrl).toBe(".");
+    expect(tsconfig.compilerOptions.paths).toEqual({ "@/*": ["./src/*"] });
+    expect(tsconfig.compilerOptions.target).toBe("es2023");
+    expect(tsconfig.compilerOptions.types).toEqual(["vite/client"]);
+    const rootTsconfig = JSON.parse(
+      await readFromFile(dir, "tsconfig.json"),
+    ) as {
+      compilerOptions: { baseUrl: string; paths: Record<string, string[]> };
+    };
+    expect(rootTsconfig.compilerOptions.paths).toEqual({
+      "@/*": ["./src/*"],
+    });
+  });
+
+  it("does nothing harmful when the directories do not exist", async () => {
+    const dir = await makeTempDir();
+    await viteFramework.configureStarter?.(dir);
+    expect(await readFromFile(dir, "src", "App.tsx")).toContain(
+      "return <div>hello</div>;",
+    );
+  });
+});
+
+describe("configureBranding (next)", () => {
+  const layout = [
+    'import type { Metadata } from "next";',
+    'import "./globals.css";',
+    "",
+    "export const metadata: Metadata = {",
+    '  title: "Create Next App",',
+    '  description: "Generated by create next app",',
+    "};",
+    "",
+  ].join("\n");
+
+  it("sets the tab title and CDN favicon in the layout", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "src", "app", "layout.tsx"), layout);
+    await writeTextFile(join(dir, "src", "app", "favicon.ico"), "fake-icon");
+    await nextFramework.configureBranding(dir);
+    const branded = await readFromFile(dir, "src", "app", "layout.tsx");
+    expect(branded).toContain('title: "raulmoracode"');
+    expect(branded).toContain("https://cdn.raulmoracode.com/icons/favicon.ico");
+    await expect(
+      readFile(join(dir, "src", "app", "favicon.ico")),
+    ).rejects.toThrow();
+  });
+
+  it("fails clearly when the layout has no title", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "src", "app", "layout.tsx"),
+      "export default function RootLayout() { return null; }",
+    );
+    await expect(nextFramework.configureBranding(dir)).rejects.toThrow();
+  });
+});
+
+describe("configureStarter (next)", () => {
+  it("removes public files and writes the minimal home page", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "public", "next.svg"), "<svg></svg>");
+    await writeTextFile(join(dir, "public", "vercel.svg"), "<svg></svg>");
+    await writeTextFile(join(dir, "src", "app", "page.tsx"), "old page");
+    await writeTextFile(join(dir, "src", "app", "page.module.css"), "old css");
+    await writeTextFile(join(dir, "AGENTS.md"), "old agent guide");
+    await writeTextFile(join(dir, "CLAUDE.md"), "@AGENTS.md");
+
+    await nextFramework.configureStarter?.(dir);
+
+    expect(await readFromFile(dir, "AGENTS.md")).toContain(
+      "`@raulmoracode/create`",
+    );
+    expect(await listDirEntries(join(dir, "public"))).toEqual([]);
+    expect(await readFromFile(dir, "src", "app", "page.tsx")).toBe(
+      "export default function Home() {\n  return <div>hello</div>;\n}\n",
+    );
+    await expect(
+      readFile(join(dir, "src", "app", "page.module.css")),
+    ).rejects.toThrow();
+    await expect(readFile(join(dir, "CLAUDE.md"))).rejects.toThrow();
+  });
+
+  it("does nothing harmful when the directories do not exist", async () => {
+    const dir = await makeTempDir();
+    await nextFramework.configureStarter?.(dir);
+    expect(await readFromFile(dir, "src", "app", "page.tsx")).toContain(
+      "return <div>hello</div>;",
+    );
+  });
+});
+
+describe("refreshPnpmWorkspaceExcludes", () => {
+  it("excludes every locked package reported by pnpm list", async () => {
+    execMock.mockResolvedValue({
+      code: 0,
+      stdout: JSON.stringify([
+        {
+          name: "my-project",
+          dependencies: {
+            react: { version: "19.3.0" },
+          },
+          devDependencies: {
+            vite: {
+              version: "8.3.1",
+              dependencies: {
+                "@vitest/mocker": { version: "1.0.0" },
+              },
+            },
+          },
+        },
+      ]),
+      stderr: "",
+    });
+    const dir = await makeTempDir();
+    await refreshPnpmWorkspaceExcludes(dir, viteFramework, false);
+    const content = await readFromFile(dir, "pnpm-workspace.yaml");
+    expect(content).toContain("minimumReleaseAge: 10080");
+    expect(content).toContain("'react@19.3.0'");
+    expect(content).toContain("'vite@8.3.1'");
+    expect(content).toContain("'@vitest/mocker@1.0.0'");
+    expect(content).toContain("'zustand@5.0.15'");
+    expect(content).toContain("'class-variance-authority@0.7.1'");
+    expect(content).toContain("'husky@9.1.7'");
+    expect(content).toContain("'@commitlint/cli@21.2.3'");
+    expect(content).toContain("'@commitlint/config-conventional@21.2.3'");
+    expect(execMock).toHaveBeenCalledWith(
+      "pnpm",
+      ["list", "--depth", "Infinity", "--json"],
+      expect.objectContaining({ cwd: dir }),
+    );
+  });
+
+  it("falls back to pinned packages when pnpm list fails", async () => {
+    execMock.mockRejectedValue(new Error("pnpm list failed"));
+    const dir = await makeTempDir();
+    await refreshPnpmWorkspaceExcludes(dir, viteFramework, false);
+    const content = await readFromFile(dir, "pnpm-workspace.yaml");
+    expect(content).toContain("minimumReleaseAge: 10080");
+    expect(content).toContain("'vite@8.3.1'");
+    expect(content).toContain("'husky@9.1.7'");
+  });
+
+  it("preserves existing workspace settings", async () => {
+    execMock.mockRejectedValue(new Error("pnpm list failed"));
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "pnpm-workspace.yaml"),
+      "minimumReleaseAgeExclude:\n  - react@19.3.0\n",
+      "utf8",
+    );
+    await refreshPnpmWorkspaceExcludes(dir, viteFramework, false);
+    const merged = await readFromFile(dir, "pnpm-workspace.yaml");
+    expect(merged).toContain("minimumReleaseAge: 10080");
+    expect(merged).toContain("minimumReleaseAgeExclude:");
+    expect(merged).toContain("react@19.3.0");
+  });
+});
+
+describe("configureRegistry", () => {
+  it("writes .npmrc referencing GH_TOKEN", async () => {
+    const dir = await makeTempDir();
+    await configureRegistry(dir);
+    expect(await readFromFile(dir, ".npmrc")).toBe(
+      `@raulmoracode:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=\${GH_TOKEN}\n`,
+    );
+  });
+});
+
+describe("configureShadcn", () => {
+  it("writes components.json with the @raulmoracode registry and the cn() helper", async () => {
+    const dir = await makeTempDir();
+    await configureShadcn(dir, viteFramework);
+    const content = await readFromFile(dir, "components.json");
+    expect(content).toContain(
+      "https://registry.raulmoracode.com/r/{name}.json",
+    );
+    expect(content).toContain("ui.shadcn.com/schema.json");
+    expect(await readFromFile(dir, "src", "lib", "utils.ts")).toContain(
+      "export function cn(",
+    );
+  });
+});
+
+describe("configureBiome", () => {
+  it("writes biome.json and removes conflicting linter configs", async () => {
+    const dir = await makeTempDir();
+    const { writeFile } = await import("node:fs/promises");
+    for (const file of TOOLING_CONFIG_FILES) {
+      await writeFile(join(dir, file), "{}", "utf8");
+    }
+    await configureBiome(dir);
+    const biome = await readFromFile(dir, "biome.json");
+    expect(biome).toContain("biomejs");
+    for (const file of TOOLING_CONFIG_FILES) {
+      await expect(readFile(join(dir, file))).rejects.toThrow();
+    }
+  });
+});
+
+describe("configureVscode", () => {
+  it("writes settings.json and extensions.json", async () => {
+    const dir = await makeTempDir();
+    await configureVscode(dir);
+    const settings = await readFromFile(dir, ".vscode", "settings.json");
+    expect(settings).toContain("biomejs.biome");
+    const extensions = await readFromFile(dir, ".vscode", "extensions.json");
+    expect(extensions).toContain("biomejs.biome");
+  });
+});
+
+describe("configureTesting", () => {
+  it("writes the vitest configuration and a smoke test", async () => {
+    const dir = await makeTempDir();
+    await configureTesting(dir);
+    const vitestConfig = await readFromFile(dir, "vitest.config.ts");
+    expect(vitestConfig).toContain('environment: "jsdom"');
+    const smoke = await readFromFile(dir, "src", "test", "smoke.test.tsx");
+    expect(smoke).toContain("@testing-library/react");
+  });
+});
+
+describe("configureGitHooks", () => {
+  it("writes .husky hooks and commitlint.config.ts", async () => {
+    const dir = await makeTempDir();
+    await configureGitHooks(dir);
+    expect(await readFromFile(dir, ".husky", "pre-commit")).toBe(
+      "pnpm check\npnpm test\n",
+    );
+    expect(await readFromFile(dir, ".husky", "commit-msg")).toBe(
+      'pnpm exec commitlint --edit "$1"\n',
+    );
+    const commitlint = await readFromFile(dir, "commitlint.config.ts");
+    expect(commitlint).toContain("@commitlint/config-conventional");
+    expect(commitlint).toContain("extends");
+  });
+
+  it("adapts pre-commit to the selected techs", async () => {
+    const dir = await makeTempDir();
+    await configureGitHooks(dir, {
+      tailwind: true,
+      shadcn: true,
+      "tanstack-query": true,
+      zustand: true,
+      forms: true,
+      registry: true,
+      biome: false,
+      testing: true,
+      husky: true,
+      vscode: true,
+    });
+    expect(await readFromFile(dir, ".husky", "pre-commit")).toBe("pnpm test\n");
+    expect(await readFromFile(dir, ".husky", "commit-msg")).toBe(
+      'pnpm exec commitlint --edit "$1"\n',
+    );
+  });
+
+  it("marks hooks as executable where supported", async () => {
+    const dir = await makeTempDir();
+    await configureGitHooks(dir);
+    if (process.platform === "win32") {
+      return;
+    }
+    const { stat } = await import("node:fs/promises");
+    for (const hook of ["pre-commit", "commit-msg"]) {
+      const mode = (await stat(join(dir, ".husky", hook))).mode;
+      expect(mode & 0o111).toBeGreaterThan(0);
+    }
+  });
+});

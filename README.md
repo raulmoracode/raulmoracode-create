@@ -1,119 +1,231 @@
 # @raulmoracode/create
 
-Scaffold a RaulMoraCode project. **pnpm is the official and only package manager** — the CLI offers no npm, yarn or bun alternatives.
+Professional CLI to scaffold modern React projects. Built with Node.js, TypeScript, [Clack](https://github.com/natemoo-re/clack) and pnpm.
 
-Interactive prompts, spinners and summaries are built with [Clack](https://github.com/natemoo-re/clack) (`@clack/prompts`). Every flag has a non-interactive equivalent, so CI stays prompt-free.
-
-Package hosted on GitHub Packages: `@raulmoracode/create`. Code and package live in the same repo: [`raulmoracode/raulmoracode-create`](https://github.com/raulmoracode/raulmoracode-create).
+- **Package:** [`@raulmoracode/create`](https://www.npmjs.com/package/@raulmoracode/create) (published to npmjs)
+- **Repository:** [`raulmoracode/raulmoracode-create`](https://github.com/raulmoracode/raulmoracode-create)
+- **Command:** `raulmoracode-create`
 
 ## Requirements
 
-- Node.js >= 22 (pinned to `22.22.3` via `.nvmrc` — run `nvm use`)
-- **pnpm** 12.5.1 installed before running the CLI. If it is missing, the CLI stops with install instructions instead of installing anything silently:
-  - Standalone (no Node.js required): `curl -fsSL https://get.pnpm.io/install.sh | sh -`
-  - With Node.js 22.13+: `npx get-pnpm`
-  - Docs: https://pnpm.io/installation
+- [Node.js](https://nodejs.org) 24 LTS
+- [pnpm](https://pnpm.io/installation) (declared per project via `packageManager`)
+- npm
+- [Git](https://git-scm.com/downloads) with a configured identity (`user.name` and `user.email`)
+- A GitHub account and an existing empty repository for the new project
+- `GH_TOKEN` (optional): only needed to install the private `@raulmoracode/icons` package. Without registry access, the project is generated without `.npmrc` and without icons — everything else is identical.
+- [VS Code](https://code.visualstudio.com) (optional, used to open the project at the end)
 
-## Install globally on your machine (GitHub Packages)
+## Install globally
 
-The package is published to GitHub Packages (`https://npm.pkg.github.com`), not npmjs. Even for public packages, GitHub requires authentication to install.
-
-1. Create a GitHub PAT (classic) with `read:packages` (and `write:packages` only if you publish). Never use your password.
-2. Configure auth once in `~/.npmrc`:
-
-```ini
-@raulmoracode:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=ghp_xxx
-```
-
-3. Install globally:
+The package is published to [npmjs](https://www.npmjs.com/package/@raulmoracode/create). No authentication needed.
 
 ```bash
-npm i -g @raulmoracode/create@latest
-# or
-pnpm add -g @raulmoracode/create@latest
+npm install -g @raulmoracode/create
 ```
 
-4. Verify:
+Verify:
 
 ```bash
-create-raulmoracode --help
-create-raulmoracode --version
-which create-raulmoracode
+raulmoracode-create
 ```
-
-Update / uninstall:
-
-```bash
-npm i -g @raulmoracode/create@latest
-npm un -g @raulmoracode/create
-```
-
-> Without global install you can always run it directly: `pnpm create @raulmoracode my-app`, `pnpm dlx @raulmoracode/create my-app` or `npx @raulmoracode/create my-app` (same `~/.npmrc` auth still applies).
 
 ## Usage
 
 ```bash
-create-raulmoracode my-app
-pnpm create @raulmoracode my-app
-pnpm dlx @raulmoracode/create my-app
+raulmoracode-create
 ```
 
-Non-interactive:
+The CLI guides you through the whole process with Clack prompts:
+
+1. Select the technology: **React + Vite** or **Next.js**.
+2. Select the technologies to include (everything preselected by default).
+3. Enter the project name.
+4. Enter the GitHub repository URL (the repository must already exist).
+5. The project is created with the official generators (`create-vite` / `create-next-app`) and fully configured.
+6. Git is initialized, the remote is configured, the initial commit is created and pushed to GitHub.
+7. Optionally open the project with VS Code.
+
+Available flags:
 
 ```bash
-create-raulmoracode marketing-site --framework vite --template marketing
-create-raulmoracode saas-app --framework next --template saas
+raulmoracode-create --verbose   # print the output of every external command
+raulmoracode-create --help      # show help
+raulmoracode-create --version   # show the installed version
 ```
-
-| Flag | Values | Default |
-| ---- | ------ | ------- |
-| `--framework` | `vite` (Vite + React), `next` (Next.js) | prompt |
-| `--template` | `marketing`, `saas`, `portfolio` | prompt |
-| `--no-install` | skip `pnpm install` | install |
-
-The generated project is always pnpm-managed.
 
 ## What the CLI does
 
-1. Verifies `pnpm` is available (clear error + install instructions otherwise).
-2. Scaffolds through the official tools **via pnpm only**:
-   - Vite: `pnpm create vite@latest <name> --template react-ts` (no `--` separator: pnpm forwards args directly and `--template` after `--` is silently ignored)
-   - Next.js: `pnpm create next-app@latest <name> --typescript --tailwind --app --src-dir --import-alias "@/*" --biome --use-pnpm --yes`
-3. Removes foreign lockfiles when a scaffold leaves them behind (`package-lock.json`, `yarn.lock`, `bun.lockb`, `bun.lock`).
-4. Applies the RaulMoraCode Project Base:
-   - `package.json` with `"packageManager": "pnpm@12.5.1"`, `engines.node >= 22`, and scripts `dev` / `build` / `check` (`biome check .`) / `format` (`biome format --write .`)
-   - `biome.json` (format-clean, JSONC-tolerant for scaffold tsconfigs), `components.json` (with the `@raulmoracode` registry), `.npmrc` (`engine-strict=true`), `pnpm-workspace.yaml` (`allowBuilds` so fresh `pnpm install` never fails with `ERR_PNPM_IGNORED_BUILDS`; not a monorepo), pnpm-only `.gitignore` rules
-   - theme CSS (Tailwind v4 + shadcn tokens), `src/lib/utils.ts` (`cn()` helper), starter page for the chosen template (`marketing`, `saas`, `portfolio`)
-   - Vite only: Tailwind v4 plugin wired into `vite.config.ts`, Biome-clean `src/main.tsx`
-5. Installs everything with pnpm (`pnpm add` for base deps, then `pnpm install`), normalizes formatting (`biome check --write .`), leaving the project ready for `pnpm dev` with `pnpm check` and `pnpm build` green.
+- Scaffolds with the **official generators** (never a hand-written template):
+  - React + Vite: `pnpm create vite@9.2.1 <name> --template react-ts` (the `create-vite` release line that scaffolds the Vite 8.x line; `create-vite@8.3.1` does not exist), then pins `vite@8.3.1`, `react@19.3.0` and `typescript@7.0.2`.
+  - Next.js: `pnpm create next-app@16.3.6 <name> --ts --app --src-dir --import-alias "@/*" --biome --use-pnpm --disable-git --yes`.
+- Installs dependencies with **pnpm** and pins exact versions (no `^` or `~`).
+- Configures **Tailwind CSS 4.3.3** (CSS-first configuration, `@tailwindcss/vite` for Vite and `@tailwindcss/postcss` for Next.js).
+- Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry) and the `cn()` helper (`src/lib/utils.ts`). No components are preinstalled; add them later with `pnpm dlx shadcn@latest add <component>`.
+- Configures the private **`@raulmoracode` registry** in `.npmrc` using `${GH_TOKEN}` (never a real token) — but only when registry access is detected; otherwise `.npmrc` and `@raulmoracode/icons` are skipped.
+- Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5**, **TanStack Query 5.104.0** and **@raulmoracode/icons 1.1.0**, and wires the TanStack Query provider.
+- Configures **Biome 2.5.14** (formatter, linter and organize imports) and removes the ESLint/Oxlint leftovers from the official templates.
+- Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
+- Configures **VS Code** (`.vscode/settings.json` and `.vscode/extensions.json`).
+- Pins **Node.js 24** via `.nvmrc` and writes `.editorconfig`.
+- Applies **branding**: tab title `raulmoracode` and favicon `https://cdn.raulmoracode.com/icons/favicon.ico` (in `index.html` for Vite, in the root layout metadata for Next.js).
+- Ships a minimal **starter** for React + Vite: `public/` and `src/assets/` are emptied, `App.tsx` renders a simple hello and `App.css` starts empty.
+- Ships a minimal **starter** for Next.js: `public/` is emptied and `page.tsx` renders a simple hello (its orphaned `page.module.css` is removed). `AGENTS.md` is kept and `CLAUDE.md` is removed.
+- Fills in **project metadata** in `package.json`: `author` (Raul Mora, https://raulmoracode.com), `homepage` and `repository` with the GitHub URL you enter at the start.
+- Writes **`pnpm-workspace.yaml`** with `minimumReleaseAge: 10080` plus `minimumReleaseAgeExclude` entries for every locked package, so installs keep working (pnpm enforces the policy against the whole lockfile, not just direct dependencies).
+- Initializes Git on `main`, adds the remote, creates the commit `chore: initial project setup` and pushes with `git push -u origin main` (never `--force`). If the remote already contains commits that do not exist locally, the process stops with a clear message instead of overwriting anything.
 
-## Project commands (pnpm only)
+## Generated projects
+
+Every generated project includes:
+
+- React + Vite or Next.js (official structure)
+- Tailwind CSS 4
+- shadcn ready (`components.json` with the `@raulmoracode` registry and the `cn()` helper)
+- `@raulmoracode` registry in `.npmrc` (`${GH_TOKEN}`, only with registry access)
+- Zustand
+- React Hook Form + Zod
+- TanStack Query (provider included)
+- Biome (format, lint, organize imports)
+- Vitest + Testing Library
+- VS Code settings
+- Branding (`raulmoracode` tab title and CDN favicon)
+- `pnpm-workspace.yaml` with `minimumReleaseAge: 10080`
+- Node.js 24 (`.nvmrc`)
+- pnpm (`pnpm-lock.yaml`, no `package-lock.json` or `yarn.lock`)
+- Git initialized and pushed to GitHub
+
+### Commands in a generated project
 
 ```bash
+pnpm install
 pnpm dev
 pnpm build
+pnpm test
 pnpm check
 pnpm format
+pnpm lint
 ```
 
-Add registry components:
+Add shadcn components (including the private registry):
 
 ```bash
-pnpm dlx shadcn@latest add @raulmoracode/navbar
+pnpm dlx shadcn@latest add card
+pnpm dlx shadcn@latest add @raulmoracode/<component>
 ```
 
-Requires `RAUL_REGISTRY_TOKEN` in the environment for the private registry (see `components.json`).
-
-## Developing the CLI
-
-The CLI is a standalone project (not a pnpm workspace on purpose). Install its dependencies in isolation:
+After adding components, normalize their style with Biome (the shadcn CLI uses its own formatting):
 
 ```bash
-nvm use
+pnpm exec biome check --write .
+```
+
+Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`).
+
+Every generated project ships an `AGENTS.md` file with guidelines for AI coding agents (source of truth, conventions, validation, Git safety and security rules), plus a project tooling section (pnpm exclusively, script map and the shadcn workflow).
+
+## GitHub authentication
+
+The CLI runs `git push -u origin main`, so Git must be authenticated against GitHub. Any of these work:
+
+- [GitHub CLI](https://cli.github.com): `gh auth login`
+- A credential manager / SSH key configured for `github.com`
+- A `GH_TOKEN` / `GITHUB_TOKEN` environment variable together with a credential helper
+
+### Note on `GH_TOKEN` and pnpm >= 11.5.3
+
+The generated `.npmrc` references `${GH_TOKEN}` as mandated. However, since **pnpm 11.5.3** environment variables are **not** expanded in project-level `.npmrc` credential values (a security fix for [GHSA-3qhv-2rgh-x77r](https://github.com/pnpm/security/advisories/GHSA-3qhv-2rgh-x77r)): pnpm prints a warning and ignores that line, while the registry mapping (`@raulmoracode:registry=...`) still applies. To authenticate installs from GitHub Packages, keep your token in a **user-level** location where expansion works:
+
+```bash
+pnpm config set //npm.pkg.github.com/:_authToken "$GH_TOKEN"
+```
+
+or in `~/.npmrc`:
+
+```ini
+//npm.pkg.github.com/:_authToken=${GH_TOKEN}
+```
+
+## npm
+
+### Install
+
+```bash
+npm install -g @raulmoracode/create
+```
+
+### Update the global installation
+
+```bash
+npm install -g @raulmoracode/create
+```
+
+### Publish (maintainers)
+
+```bash
 pnpm install
+pnpm build
+pnpm test
+npm publish --access public
 ```
 
-## Policy
+Create the `NPM_TOKEN` (granular, read+write on `@raulmoracode/create`) at `npmjs.com > Access Tokens` and save it as `Settings > Secrets > Actions > NPM_TOKEN`.
 
-> **RaulMoraCode uses pnpm as its official package manager. Every project generated by `@raulmoracode/create` uses pnpm, ships `pnpm-lock.yaml`, declares its pnpm version via `packageManager`, and uses pnpm across docs, CI and scaffolding.**
+The repository also ships a GitHub Actions workflow (`.github/workflows/publish.yml`) that builds, tests and publishes the package to npmjs on every `v*` tag using `NPM_TOKEN`.
+
+## Development
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+```
+
+Other useful scripts:
+
+```bash
+pnpm check    # biome check .
+pnpm format   # biome format --write .
+pnpm lint     # biome lint .
+```
+
+### Architecture
+
+```text
+src/
+├── index.ts               # entry point (shebang)
+├── cli/                   # orchestration and Clack output
+├── prompts/               # user interaction (Clack)
+├── generators/            # project configuration steps
+├── frameworks/            # vite / next specific logic
+├── git/                   # git command builders and wrappers
+├── config/                # configuration file templates
+└── utils/                 # exec, filesystem, validation
+tests/                     # vitest suite (external commands are mocked)
+```
+
+External commands are always executed with argument arrays through `utils/exec.ts` (never string interpolation), and every user input is validated before use.
+
+### Verified adjustments
+
+The following deviations from the naive expected configuration were verified against the real tools and are intentional:
+
+- **`create-vite@9.2.1`** is used for Vite projects because `create-vite@8.3.1` does not exist; the 9.x line is the one that scaffolds the Vite 8.x line. `vite` is then pinned to `8.3.1` exactly.
+- **`components.json`** must contain the full shadcn configuration (`$schema`, `style`, `tailwind`, `rsc`, `tsx`, `aliases`) because shadcn 4.x rejects a config with only `registries` — and `pnpm dlx shadcn@latest add card` is a hard requirement. The `@raulmoracode` registry entry is exactly the mandated one.
+- **`biome.json`** enables organize imports through `assist.actions.source.organizeImports` because Biome 2.5.14 removed the top-level `organizeImports` key; it ignores `dist`/`.next` build output; and disables `noSvgWithoutTitle`/`noAmbiguousAnchorText`, which fire on the official Vite/Next template demo assets.
+- **`jsdom`** (Testing Library DOM environment) and **`clsx` + `tailwind-merge`** (shadcn `cn()` helper) are installed because they are strictly required by the mandated Testing Library and shadcn setups.
+
+## Packaging and local verification
+
+```bash
+pnpm build
+npm pack
+npm install -g ./raulmoracode-create-1.0.0.tgz
+raulmoracode-create
+```
+
+The packaged tarball contains `dist/` (including the `raulmoracode-create` bin with its shebang), `README.md` and `LICENSE`.
+
+## License
+
+[MIT](LICENSE)
