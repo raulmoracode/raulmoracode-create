@@ -78,7 +78,10 @@ export function devDependencies(
 }
 
 export function pnpmInstallArgs(): string[] {
-  return ["install"];
+  // Never frozen: patchPackageJson rewrites package.json after the official
+  // scaffold (Next.js ships its own lockfile), so the lockfile is stale by
+  // design here — and pnpm 12 defaults to frozen installs when CI=true.
+  return ["install", "--no-frozen-lockfile"];
 }
 
 export function pnpmAddArgs(dependencies: Record<string, string>): string[] {
