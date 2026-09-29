@@ -1,7 +1,7 @@
 {
   "name": "@raulmoracode/create",
-  "version": "1.0.0",
-  "description": "Professional CLI to scaffold React + Vite and Next.js projects with Tailwind CSS, shadcn, Biome, Vitest and the @raulmoracode registry.",
+  "version": "1.0.1",
+  "description": "Professional CLI to scaffold React + Vite and Next.js projects with Tailwind CSS, shadcn, Biome and Vitest.",
   "keywords": [
     "raulmoracode",
     "scaffold",

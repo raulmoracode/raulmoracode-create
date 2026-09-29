@@ -1,5 +1,4 @@
 import { intro, log, tasks } from "@clack/prompts";
-import { applyPrivateAccess } from "../config/tech.js";
 import { getFramework } from "../frameworks/index.js";
 import {
   configureBiome,
@@ -17,7 +16,6 @@ import {
   patchPackageJson,
   refreshPnpmWorkspaceExcludes,
 } from "../generators/configure-project.js";
-import { configureRegistry } from "../generators/configure-registry.js";
 import { configureShadcn } from "../generators/configure-shadcn.js";
 import { configureTesting } from "../generators/configure-testing.js";
 import { configureVscode } from "../generators/configure-vscode.js";
@@ -40,7 +38,6 @@ import {
   removeIfExists,
   resolvePath,
 } from "../utils/filesystem.js";
-import { checkPrivateRegistryAccess } from "../utils/registry.js";
 import { satisfiesNodeVersion } from "../utils/validation.js";
 import { showFarewell, showSummary, showWarning } from "./output.js";
 
@@ -186,15 +183,6 @@ export async function run(options: RunOptions = {}): Promise<void> {
     restoreEmptyDir = reusedEmptyDir;
     await checkRemoteAccess(githubUrl, verbose);
 
-    const hasPrivateAccess = await checkPrivateRegistryAccess();
-    const effectiveSelection = applyPrivateAccess(selection, hasPrivateAccess);
-    if (selection.registry && !hasPrivateAccess) {
-      showWarning(
-        "Sin acceso al registro privado @raulmoracode (GH_TOKEN ausente o sin permisos): " +
-          "se omite @raulmoracode/icons y el .npmrc.",
-      );
-    }
-
     const framework = getFramework(frameworkId);
 
     await tasks([
@@ -204,21 +192,17 @@ export async function run(options: RunOptions = {}): Promise<void> {
           failedStep = "Creating project";
           message(`Scaffolding with ${framework.label}`);
           await createProject(framework, projectName, process.cwd(), verbose);
-          if (effectiveSelection.tailwind) {
+          if (selection.tailwind) {
             message("Configuring Tailwind CSS");
             await framework.configureTailwind(projectDir);
           }
           message("Configuring branding");
           await framework.configureBranding(projectDir);
-          if (effectiveSelection.shadcn) {
+          if (selection.shadcn) {
             message("Configuring shadcn");
             await configureShadcn(projectDir, framework);
           }
-          if (effectiveSelection.registry) {
-            message("Configuring @raulmoracode registry");
-            await configureRegistry(projectDir);
-          }
-          if (effectiveSelection["tanstack-query"]) {
+          if (selection["tanstack-query"]) {
             message("Configuring TanStack Query");
             await framework.configureTanStackQuery(projectDir);
           }
@@ -226,31 +210,31 @@ export async function run(options: RunOptions = {}): Promise<void> {
             message("Configuring starter");
             await framework.configureStarter(projectDir);
           }
-          if (effectiveSelection.biome) {
+          if (selection.biome) {
             message("Configuring Biome");
             await configureBiome(projectDir);
           }
-          if (effectiveSelection.testing) {
+          if (selection.testing) {
             message("Configuring testing");
             await configureTesting(projectDir);
           }
-          if (effectiveSelection.vscode) {
+          if (selection.vscode) {
             message("Configuring VS Code");
             await configureVscode(projectDir);
           }
           message("Configuring Node version");
           await configureNode(projectDir);
           await configureEditorconfig(projectDir);
-          if (effectiveSelection.husky) {
+          if (selection.husky) {
             message("Configuring Git hooks");
-            await configureGitHooks(projectDir, effectiveSelection);
+            await configureGitHooks(projectDir, selection);
           }
           await patchPackageJson(
             projectDir,
             framework,
             projectName,
             githubUrl,
-            effectiveSelection,
+            selection,
           );
           await augmentGitignore(projectDir);
           return "Project created";
@@ -261,14 +245,9 @@ export async function run(options: RunOptions = {}): Promise<void> {
         task: async (message) => {
           failedStep = "Installing dependencies";
           message("Installing base and additional dependencies");
-          await installDependencies(
-            projectDir,
-            framework,
-            verbose,
-            effectiveSelection,
-          );
+          await installDependencies(projectDir, framework, verbose, selection);
           await normalizePackageJson(projectDir);
-          if (effectiveSelection.biome) {
+          if (selection.biome) {
             message("Formatting project with Biome");
             await formatProject(projectDir, verbose);
           }
@@ -277,24 +256,24 @@ export async function run(options: RunOptions = {}): Promise<void> {
             projectDir,
             framework,
             verbose,
-            effectiveSelection,
+            selection,
           );
-          if (effectiveSelection.zustand) {
+          if (selection.zustand) {
             message("Zustand configured");
           }
-          if (effectiveSelection.forms) {
+          if (selection.forms) {
             message("React Hook Form + Zod configured");
           }
-          if (effectiveSelection["tanstack-query"]) {
+          if (selection["tanstack-query"]) {
             message("TanStack Query configured");
           }
-          if (effectiveSelection.tailwind) {
+          if (selection.tailwind) {
             message("Tailwind configured");
           }
-          if (effectiveSelection.biome) {
+          if (selection.biome) {
             message("Biome configured");
           }
-          if (effectiveSelection.testing) {
+          if (selection.testing) {
             message("Testing configured");
           }
           return "Dependencies installed";
@@ -305,7 +284,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
         task: async () => {
           failedStep = "Initializing Git";
           await initRepository(projectDir, verbose);
-          if (effectiveSelection.husky) {
+          if (selection.husky) {
             await exec("pnpm", ["exec", "husky"], {
               cwd: projectDir,
               verbose,

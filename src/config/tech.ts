@@ -4,7 +4,6 @@ export const TECH_IDS = [
   "tanstack-query",
   "zustand",
   "forms",
-  "registry",
   "biome",
   "testing",
   "husky",
@@ -40,11 +39,6 @@ export const TECH_OPTIONS: TechOption[] = [
     hint: "Formularios con validación",
   },
   {
-    id: "registry",
-    label: "Registro @raulmoracode",
-    hint: ".npmrc + @raulmoracode/icons",
-  },
-  {
     id: "biome",
     label: "Biome",
     hint: "Formato, lint y scripts check/format/lint",
@@ -72,7 +66,6 @@ export const FULL_TECH_SELECTION: TechSelection = {
   "tanstack-query": true,
   zustand: true,
   forms: true,
-  registry: true,
   biome: true,
   testing: true,
   husky: true,
@@ -94,14 +87,4 @@ export function resolveTechSelection(
     notes.push("shadcn necesita Tailwind CSS: se mantiene Tailwind.");
   }
   return { selection, notes };
-}
-
-export function applyPrivateAccess(
-  selection: TechSelection,
-  hasPrivateAccess: boolean,
-): TechSelection {
-  if (hasPrivateAccess) {
-    return selection;
-  }
-  return { ...selection, registry: false };
 }

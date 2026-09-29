@@ -7,8 +7,8 @@
 
 ## 1. What this repo is
 
-CLI published as `@raulmoracode/create` on GitHub Packages (`https://npm.pkg.github.com`,
-**not** npmjs). It exposes a single binary: `raulmoracode-create` (`./dist/index.js`).
+CLI published as `@raulmoracode/create` on npmjs (`https://registry.npmjs.org`).
+It exposes a single binary: `raulmoracode-create` (`./dist/index.js`).
 
 What it does: asks for framework (React+Vite / Next.js) → name → GitHub URL,
 scaffolds with the official generator (`create-vite` / `create-next-app`), applies ~12
@@ -31,7 +31,7 @@ pnpm lint       # biome lint .
 pnpm test       # vitest run        (node environment, tests/**/*.test.ts)
 ```
 
-E2E per framework (requires Node 24, network and `GH_TOKEN=test-token`; the mock filters out `@raulmoracode/icons`):
+E2E per framework (requires Node 24 and network):
 
 ```bash
 E2E_FRAMEWORK=vite pnpm test --run tests/e2e.test.ts
@@ -81,18 +81,15 @@ locally — and restores a reused empty dir on pre-task failures) + actionable h
 (retry vs manual `git push`) → `log.error` + `process.exit(1)` (130 on SIGINT/SIGTERM).
 
 **Preflights (in order):** Node >= 24 → `pnpm --version` → `git --version` →
-git identity (`user.name` + `user.email`). `GH_TOKEN` is OPTIONAL: after the prompts,
-`checkPrivateRegistryAccess()` (`utils/registry.ts`, metadata GET with Bearer token,
-10s timeout, never throws) decides access; without it, `applyPrivateAccess()` forces
-`registry: false` (no `.npmrc`, no `@raulmoracode/icons`) with a warning. User-facing
+git identity (`user.name` + `user.email`). There is no token-based preflight:
+generated projects contain no `.npmrc` and no private dependencies. User-facing
 failures → `PreflightError`.
 
 **Exact order inside `tasks` (do not change without reason):**
 
 1. `Creating project`: `createProject` (delegates to the framework) → `configureTailwind`
    (only if `selection.tailwind`) → `configureBranding` (always) → `configureShadcn` (only if
-   `selection.shadcn`) → `configureRegistry` (only if `selection.registry`) →
-   `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
+   `selection.shadcn`) → `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
    (optional, always) → `configureBiome` (only if `selection.biome`) → `configureTesting`
    (only if `selection.testing`) → `configureVscode` (only if `selection.vscode`) →
    `configureNode` + `configureEditorconfig` (always) → **`configureGitHooks(selection)`**
@@ -125,9 +122,8 @@ prompt (prompts/*.ts, Clack + validation.ts)
   → writes via filesystem.ts / executes via exec.ts
 ```
 
-- **Tech selection**: option metadata + `TechSelection` + `resolveTechSelection()` +
-  `applyPrivateAccess()` (forces `registry: false` without registry access) live in
-  `src/config/tech.ts` (pure). `runtimeDependencies()`, `devDependencies()`, `patchPackageJson()`,
+- **Tech selection**: option metadata + `TechSelection` + `resolveTechSelection()`
+  live in `src/config/tech.ts` (pure). `runtimeDependencies()`, `devDependencies()`, `patchPackageJson()`,
   `installDependencies()`, `pinnedPackages()` take an optional `selection` (defaults to
   `FULL_TECH_SELECTION`, so existing callers/tests are unaffected). Empty `pnpm add` calls are
   skipped (a bare `add` with no packages fails). `huskyPreCommit(selection)` adapts the hook
@@ -165,10 +161,6 @@ prompt (prompts/*.ts, Clack + validation.ts)
   (before that, pnpm would reject recent versions); `refreshPnpmWorkspaceExcludes` merges
   `pinnedPackages()` + the whole lockfile via `pnpm list --json` (`collectLockedPackages`) with
   fallback to pins on failure, preserving existing entries (`mergePnpmWorkspaceYaml`).
-- pnpm ≥11.5.3 **does not expand `${GH_TOKEN}` in the project-level `.npmrc`** (`Ignored
-  project-level auth setting` warning); the registry mapping still applies. The real token goes at
-  user level (`pnpm config set //npm.pkg.github.com/:_authToken "$GH_TOKEN"`). Generated `.npmrc`
-  files never contain real tokens. Documented in README.
 - Biome 2.5.14: `organizeImports` lives in `assist.actions.source` (not top-level); `dist`/`.next`
   are ignored; `noSvgWithoutTitle`/`noAmbiguousAnchorText` are `off` (templates ship demo assets
   that trigger them).
@@ -182,8 +174,6 @@ prompt (prompts/*.ts, Clack + validation.ts)
 - Testing: `vitest.config.ts` (`environment: jsdom`) + `src/test/smoke.test.tsx` (Testing
   Library). Requires `jsdom`. Note: the generated `test` script is `vitest` (watch); E2E
   verifies with `vitest run` / `CI=true` so it does not hang.
-- `@raulmoracode/icons@1.1.0` is private on GitHub Packages: pinned by spec, not verifiable
-  without a token (E2E filters it out of `pnpm add`).
 
 ## 7. Tests
 

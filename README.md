@@ -13,7 +13,6 @@ Professional CLI to scaffold modern React projects. Built with Node.js, TypeScri
 - npm
 - [Git](https://git-scm.com/downloads) with a configured identity (`user.name` and `user.email`)
 - A GitHub account and an existing empty repository for the new project
-- `GH_TOKEN` (optional): only needed to install the private `@raulmoracode/icons` package. Without registry access, the project is generated without `.npmrc` and without icons — everything else is identical.
 - [VS Code](https://code.visualstudio.com) (optional, used to open the project at the end)
 
 ## Install globally
@@ -62,8 +61,7 @@ raulmoracode-create --version   # show the installed version
 - Installs dependencies with **pnpm** and pins exact versions (no `^` or `~`).
 - Configures **Tailwind CSS 4.3.3** (CSS-first configuration, `@tailwindcss/vite` for Vite and `@tailwindcss/postcss` for Next.js).
 - Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry) and the `cn()` helper (`src/lib/utils.ts`). No components are preinstalled; add them later with `pnpm dlx shadcn@latest add <component>`.
-- Configures the private **`@raulmoracode` registry** in `.npmrc` using `${GH_TOKEN}` (never a real token) — but only when registry access is detected; otherwise `.npmrc` and `@raulmoracode/icons` are skipped.
-- Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5**, **TanStack Query 5.104.0** and **@raulmoracode/icons 1.1.0**, and wires the TanStack Query provider.
+- Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5** and **TanStack Query 5.104.0**, and wires the TanStack Query provider.
 - Configures **Biome 2.5.14** (formatter, linter and organize imports) and removes the ESLint/Oxlint leftovers from the official templates.
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
 - Configures **VS Code** (`.vscode/settings.json` and `.vscode/extensions.json`).
@@ -82,7 +80,6 @@ Every generated project includes:
 - React + Vite or Next.js (official structure)
 - Tailwind CSS 4
 - shadcn ready (`components.json` with the `@raulmoracode` registry and the `cn()` helper)
-- `@raulmoracode` registry in `.npmrc` (`${GH_TOKEN}`, only with registry access)
 - Zustand
 - React Hook Form + Zod
 - TanStack Query (provider included)
@@ -107,7 +104,7 @@ pnpm format
 pnpm lint
 ```
 
-Add shadcn components (including the private registry):
+Add shadcn components:
 
 ```bash
 pnpm dlx shadcn@latest add card
@@ -130,21 +127,6 @@ The CLI runs `git push -u origin main`, so Git must be authenticated against Git
 
 - [GitHub CLI](https://cli.github.com): `gh auth login`
 - A credential manager / SSH key configured for `github.com`
-- A `GH_TOKEN` / `GITHUB_TOKEN` environment variable together with a credential helper
-
-### Note on `GH_TOKEN` and pnpm >= 11.5.3
-
-The generated `.npmrc` references `${GH_TOKEN}` as mandated. However, since **pnpm 11.5.3** environment variables are **not** expanded in project-level `.npmrc` credential values (a security fix for [GHSA-3qhv-2rgh-x77r](https://github.com/pnpm/security/advisories/GHSA-3qhv-2rgh-x77r)): pnpm prints a warning and ignores that line, while the registry mapping (`@raulmoracode:registry=...`) still applies. To authenticate installs from GitHub Packages, keep your token in a **user-level** location where expansion works:
-
-```bash
-pnpm config set //npm.pkg.github.com/:_authToken "$GH_TOKEN"
-```
-
-or in `~/.npmrc`:
-
-```ini
-//npm.pkg.github.com/:_authToken=${GH_TOKEN}
-```
 
 ## npm
 

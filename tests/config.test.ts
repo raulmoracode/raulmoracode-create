@@ -11,7 +11,6 @@ import {
 } from "../src/config/components.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
-import { npmrcContent } from "../src/config/npmrc.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
 import {
   collectLockedPackages,
@@ -26,7 +25,6 @@ import {
   viteTailwindConfig,
 } from "../src/config/tailwind.js";
 import {
-  applyPrivateAccess,
   FULL_TECH_SELECTION,
   resolveTechSelection,
   TECH_IDS,
@@ -38,17 +36,6 @@ describe(".nvmrc", () => {
   it("pins Node 24", () => {
     expect(nvmrcContent()).toBe("24\n");
     expect(NODE_VERSION).toBe("24");
-  });
-});
-
-describe(".npmrc", () => {
-  it("configures the @raulmoracode registry without tokens", () => {
-    const content = npmrcContent();
-    expect(content).toBe(
-      `@raulmoracode:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=\${GH_TOKEN}\n`,
-    );
-    expect(content).not.toMatch(/ghp_/);
-    expect(content).not.toMatch(/github_pat_/);
   });
 });
 
@@ -341,7 +328,7 @@ describe("Husky hooks", () => {
 
 describe("Tech preset", () => {
   it("full preset selects every technology", () => {
-    expect(TECH_IDS).toHaveLength(10);
+    expect(TECH_IDS).toHaveLength(9);
     for (const id of TECH_IDS) {
       expect(FULL_TECH_SELECTION[id]).toBe(true);
     }
@@ -373,22 +360,6 @@ describe("Tech preset", () => {
     const { selection, notes } = resolveTechSelection(none);
     expect(selection.tailwind).toBe(false);
     expect(notes).toEqual([]);
-  });
-
-  it("keeps the selection untouched with private access", () => {
-    expect(applyPrivateAccess(FULL_TECH_SELECTION, true)).toEqual(
-      FULL_TECH_SELECTION,
-    );
-  });
-
-  it("drops only the registry without private access", () => {
-    const selection = applyPrivateAccess(FULL_TECH_SELECTION, false);
-    expect(selection.registry).toBe(false);
-    for (const id of TECH_IDS) {
-      if (id !== "registry") {
-        expect(selection[id]).toBe(true);
-      }
-    }
   });
 });
 
