@@ -582,9 +582,7 @@ describe("Generated README", () => {
 
   it("documents the namespaced registry workflow with shadcn", () => {
     const content = readmeMd(viteOptions());
-    expect(content).toContain(
-      "pnpm dlx shadcn@latest add @raulmoracode/<component>",
-    );
+    expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);
     expect(content).toContain("https://registry.raulmoracode.com");
     expect(content).toContain("`pre-commit` runs `pnpm check` and `pnpm test`");
     expect(content).toContain("src/main.tsx");
