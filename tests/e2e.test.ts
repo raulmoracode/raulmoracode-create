@@ -275,6 +275,10 @@ describe("end-to-end project creation", () => {
     }
     const agentsGuide = await readFile(join(projectDir, "AGENTS.md"), "utf8");
     expect(agentsGuide).toContain("## Git hooks and commits");
+    const readme = await readFile(join(projectDir, "README.md"), "utf8");
+    expect(readme).toContain("# my-project");
+    expect(readme).toContain("project generated with");
+    expect(readme).toContain("github.com/raulmoracode/my-project");
     expect(
       existsSync(join(projectDir, ".oxlintrc.json")),
       ".oxlintrc.json",

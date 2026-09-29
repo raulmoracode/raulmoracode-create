@@ -25,6 +25,7 @@ import {
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
 import { refreshPnpmWorkspaceExcludes } from "../src/generators/configure-project.js";
+import { configureReadme } from "../src/generators/configure-readme.js";
 import { configureShadcn } from "../src/generators/configure-shadcn.js";
 import { configureTesting } from "../src/generators/configure-testing.js";
 import {
@@ -474,6 +475,78 @@ describe("configureShadcn", () => {
     await configureShadcn(dir, viteFramework);
     const content = await readFromFile(dir, "components.json");
     expect(content).toContain("@raulmoracode");
+  });
+});
+
+describe("configureReadme", () => {
+  it("overwrites the scaffold README with the project name and final scripts", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "my-project",
+        scripts: {
+          dev: "vite",
+          build: "vite build",
+          check: "biome check .",
+          test: "vitest",
+          prepare: "husky",
+        },
+      }),
+    );
+    await writeTextFile(join(dir, "README.md"), "# Vite template\n");
+
+    await configureReadme(
+      dir,
+      viteFramework,
+      "my-project",
+      "https://github.com/raulmoracode/my-project",
+    );
+
+    const content = await readFromFile(dir, "README.md");
+    expect(content).toContain("# my-project");
+    expect(content).toContain("**React + Vite** project generated with");
+    expect(content).toContain("| `pnpm dev` | Start the development server |");
+    expect(content).toContain("**React 19.3.0 + Vite 8.3.1");
+    expect(content).not.toContain("Vite template");
+    expect(content).not.toContain("pnpm prepare");
+    expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("adapts sections to the selected techs", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "my-app",
+        scripts: { dev: "next dev", build: "next build" },
+      }),
+    );
+
+    await configureReadme(
+      dir,
+      nextFramework,
+      "my-app",
+      "https://github.com/raulmoracode/my-app",
+      {
+        tailwind: false,
+        shadcn: false,
+        "tanstack-query": false,
+        zustand: false,
+        forms: false,
+        biome: false,
+        testing: false,
+        husky: false,
+        vscode: false,
+      },
+    );
+
+    const content = await readFromFile(dir, "README.md");
+    expect(content).toContain("# my-app");
+    expect(content).toContain("**Next.js** project generated with");
+    expect(content).not.toContain("shadcn components");
+    expect(content).not.toContain("components.json");
+    expect(content).not.toContain("Git workflow");
   });
 });
 

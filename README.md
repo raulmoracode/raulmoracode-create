@@ -71,6 +71,7 @@ raulmoracode-create --version   # show the installed version
 - Ships a minimal **starter** for React + Vite: `public/` and `src/assets/` are emptied, `App.tsx` renders a simple hello and `App.css` starts empty.
 - Ships a minimal **starter** for Next.js: `public/` is emptied and `page.tsx` renders a simple hello (its orphaned `page.module.css` is removed). `AGENTS.md` is kept and `CLAUDE.md` is removed.
 - Fills in **project metadata** in `package.json`: `author` (Raul Mora, https://raulmoracode.com), `homepage` and `repository` with the GitHub URL you enter at the start.
+- Writes a project **`README.md`** (overwriting the scaffolder default): title with the project name, requirements, a scripts table matching the final `package.json`, the selected tech stack with exact versions, the shadcn registry workflow (only with shadcn), Git workflow (only with Husky) and a per-framework structure overview.
 - Writes **`pnpm-workspace.yaml`** with `minimumReleaseAge: 10080` plus `minimumReleaseAgeExclude` entries for every locked package, so installs keep working (pnpm enforces the policy against the whole lockfile, not just direct dependencies). When shadcn is selected, the `@raulmoracode/*` scope is also excluded so `shadcn add @raulmoracode/<component>` can install freshly published packages from your registry.
 - Initializes Git on `main`, adds the remote, creates the commit `chore: initial project setup` and pushes with `git push -u origin main` (never `--force`). If the remote already contains commits that do not exist locally, the process stops with a clear message instead of overwriting anything.
 
@@ -89,6 +90,7 @@ Every generated project includes:
 - Vitest + Testing Library
 - VS Code settings
 - Branding (`raulmoracode` tab title and CDN favicon)
+- `README.md` (overview, scripts, tech stack, registry workflow)
 - `pnpm-workspace.yaml` with `minimumReleaseAge: 10080`
 - Node.js 24 (`.nvmrc`)
 - pnpm (`pnpm-lock.yaml`, no `package-lock.json` or `yarn.lock`)
