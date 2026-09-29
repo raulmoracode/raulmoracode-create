@@ -1,7 +1,4 @@
-import {
-  REGISTRY_THEME_SPEC,
-  SHADCN_VERSION,
-} from "../config/components.js";
+import { REGISTRY_THEME_SPEC, SHADCN_VERSION } from "../config/components.js";
 import type { ProjectFramework } from "../frameworks/types.js";
 import { exec } from "../utils/exec.js";
 import {
