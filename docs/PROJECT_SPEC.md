@@ -169,7 +169,7 @@ Internal functions:
 - `showIntro(): void` — `intro("Raulmoracode Create")`.
 - `showError(message: string): void` — `log.error(message)`.
 - `showWarning(message: string): void` — `log.warn(message)`.
-- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@latest add @raulmoracode/<component>` hint when `shadcn` is true.
+- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` hint when `shadcn` is true.
 - `showFarewell(): void` — `outro("Proyecto creado correctamente.\n¡Hasta pronto!")`.
 - Note: `run.ts` uses `intro`/`log` directly for the intro and errors; from this module it consumes `showSummary`, `showWarning` and `showFarewell`.
 
