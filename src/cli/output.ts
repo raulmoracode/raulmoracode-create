@@ -1,4 +1,5 @@
 import { intro, log, outro } from "@clack/prompts";
+import { RAULMORACODE_REGISTRY_ADD_EXAMPLE } from "../config/components.js";
 
 export function showIntro(): void {
   intro("Raulmoracode Create");
@@ -24,9 +25,7 @@ export function showSummary(params: {
   log.message(`Local:     ./${projectName}`);
   log.message(`GitHub:    ${githubUrl}`);
   if (shadcn) {
-    log.message(
-      "shadcn registry ready: pnpm dlx shadcn@latest add @raulmoracode/<component>",
-    );
+    log.message(`shadcn registry ready: ${RAULMORACODE_REGISTRY_ADD_EXAMPLE}`);
   }
 }
 

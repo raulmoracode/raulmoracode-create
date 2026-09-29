@@ -1,3 +1,5 @@
+import { RAULMORACODE_REGISTRY_ADD_EXAMPLE } from "./components.js";
+
 export function agentsMd(): string {
   return [
     "# AGENTS.md",
@@ -59,7 +61,7 @@ export function agentsMd(): string {
     "UI components come from shadcn. Add new components with:",
     "",
     "```bash",
-    "pnpm dlx shadcn@latest add @raulmoracode/<component>",
+    RAULMORACODE_REGISTRY_ADD_EXAMPLE,
     "```",
     "",
     "Browse the catalogue at https://registry.raulmoracode.com.",

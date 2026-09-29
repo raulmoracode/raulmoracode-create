@@ -96,6 +96,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
+├── .github/workflows/ci.yml     # check/lint/test/build + Next E2E on main pushes and PRs
 ├── package.json, tsconfig.json, vitest.config.ts, biome.json
 ├── .nvmrc (24), .gitignore, README.md, LICENSE
 └── dist/                         # compiled output (generated, not versioned)
@@ -169,7 +170,7 @@ Internal functions:
 - `showIntro(): void` — `intro("Raulmoracode Create")`.
 - `showError(message: string): void` — `log.error(message)`.
 - `showWarning(message: string): void` — `log.warn(message)`.
-- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@latest add @raulmoracode/<component>` hint when `shadcn` is true.
+- `showSummary({ projectName, githubUrl, frameworkLabel, shadcn? }): void` — `log.success("Project created successfully!")` + `Framework:`, `Local: ./<name>`, `GitHub: <url>` lines, plus the `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` hint when `shadcn` is true.
 - `showFarewell(): void` — `outro("Proyecto creado correctamente.\n¡Hasta pronto!")`.
 - Note: `run.ts` uses `intro`/`log` directly for the intro and errors; from this module it consumes `showSummary`, `showWarning` and `showFarewell`.
 
@@ -205,7 +206,7 @@ Internal functions:
 - `projectScripts(framework, selection)` (private) — `framework.scripts()` minus `check/format/lint` without Biome, minus `test` without testing, plus `prepare: husky` with Husky.
 - `patchPackageJson(projectDir, framework, projectName, githubUrl, selection = FULL_TECH_SELECTION): Promise<void>` — reads the scaffold's `package.json` and sets `name`, `version: "0.1.0"`, `private: true`, `type: "module"`, `author` (Raul Mora), `homepage` (GitHub URL), `repository: { type: "git", url }`, computed `scripts`, `engines: { node: ">=24" }`, `packageManager: pnpm@12.6.0`; applies framework pins; adds Husky/Commitlint devDeps only with Husky (so the first `pnpm install` can run `prepare`); removes lint dependencies from the template per `removedDependencyPatterns()`; strips remaining `^`/`~`; rewrites the object in conventional order (metadata → scripts → engines → deps) preserving unknown template keys. No trace of deselected techs.
 - `removeToolingConfig(projectDir, relativePaths)` — deletes the given list.
-- `installDependencies(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — `pnpm install`, `pnpm add <runtime>` (skipped when empty — a bare `add` would fail), `pnpm add -D <dev>` (skipped when empty).
+- `installDependencies(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — `pnpm install --no-frozen-lockfile` (never frozen: the scaffold lockfile is stale by design after `patchPackageJson`, and pnpm 12 freezes installs when `CI=true`), `pnpm add <runtime>` (skipped when empty — a bare `add` would fail), `pnpm add -D <dev>` (skipped when empty).
 - `pinnedPackages(framework, selection = FULL_TECH_SELECTION): string[]` — deduplicated `name@version` list of framework pins + runtime + dev (for excludes).
 - `pnpmListJsonArgs(): string[]` → `["list", "--depth", "Infinity", "--json"]`.
 - `refreshPnpmWorkspaceExcludes(projectDir, framework, verbose, selection = FULL_TECH_SELECTION)` — runs `pnpm list --json`, extracts with `collectLockedPackages` every locked `name@version` (direct + transitive), merges them with `pinnedPackages` and `registryScopeExcludes(selection)` (`@raulmoracode/*`, only with shadcn) and rewrites `pnpm-workspace.yaml` with `mergePnpmWorkspaceYaml` (preserves existing template entries). On `pnpm list` failure, falls back to direct pins only.
@@ -351,6 +352,7 @@ Internal functions:
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.
 - **`.nvmrc`**: `24`. **`.gitignore`**: `node_modules`, `dist`, `.env`, `.env.*`, `*.tgz`.
 - **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` permission: checkout, pnpm 12, Node 24 (npmjs registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish --access public` with `NPM_TOKEN`.
+- **`.github/workflows/ci.yml`**: on `main` pushes and pull requests, with `contents:read` permission: `validate` job (checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `check`, `lint`, `test` incl. the Vite E2E, `build`) plus an `e2e-next` job with `E2E_FRAMEWORK=next`.
 - **`README.md`**: global install (npmjs, no auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth, publish, development, architecture, verified adjustments, packaging.
 - **`LICENSE`**: MIT.
 
