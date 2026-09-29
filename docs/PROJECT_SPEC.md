@@ -256,7 +256,7 @@ Internal functions:
 - Pins: `react`/`react-dom` `19.3.0`; dev `typescript 7.0.2`, `vite 8.3.1`, `@vitejs/plugin-react 6.1.1`. Removal patterns: `/eslint/i`, `/oxlint/i`, `/^globals$/`.
 - `componentsJsonOptions()`: `{ rsc: false, tailwindCssPath: "src/index.css" }`.
 - `VITE_MAIN_TSX` (private): rewritten `main.tsx` with `QueryClientProvider` + guard without non-null assertion (`if (!rootElement) throw …`).
-- `ensurePathAlias(projectDir)` (private): adds `baseUrl: "."` and merges `paths: { "@/*": ["./src/*"] }` into `tsconfig.app.json` **and** the root `tsconfig.json` (the latter is what the shadcn CLI reads; both parsed as JSONC). Merges instead of replacing so the registry aliases written earlier by `configureShadcn` survive. Skips missing files.
+- `ensurePathAlias(projectDir)` (private): merges `paths: { "@/*": ["./src/*"] }` into `tsconfig.app.json` **and** the root `tsconfig.json` (the latter is what the shadcn CLI reads; both parsed as JSONC). Never writes `baseUrl` (TypeScript 7 removed the option, TS5102). Merges instead of replacing so the registry aliases written earlier by `configureShadcn` survive. Skips missing files.
 - `VITE_APP_TSX` (private): minimal `App.tsx` (`import "./App.css"`, `return <div>hello</div>`).
 - `configureTailwind`: rewrites `vite.config.ts` (`react()` + `tailwindcss()` plugins, `@` → `./src` alias via `fileURLToPath`) and `src/index.css` (`@import "tailwindcss";`).
 - `configureTanStackQuery`: writes `src/lib/query-client.ts` and `main.tsx`.
@@ -384,7 +384,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 
 ### 14.3 Vite specifics
 
-`index.html` (`raulmoracode` title, CDN favicon), `vite.config.ts` (react + tailwind + `@` alias), `src/index.css`, `src/main.tsx` (provider), minimal `src/App.tsx` + empty `App.css`, emptied `public/` and `src/assets/`, `tsconfig.app.json` and root `tsconfig.json` with `baseUrl`+`paths @/*`.
+`index.html` (`raulmoracode` title, CDN favicon), `vite.config.ts` (react + tailwind + `@` alias), `src/index.css`, `src/main.tsx` (provider), minimal `src/App.tsx` + empty `App.css`, emptied `public/` and `src/assets/`, `tsconfig.app.json` and root `tsconfig.json` with `paths @/*` (no `baseUrl`: removed in TypeScript 7).
 
 ### 14.4 Next.js specifics
 

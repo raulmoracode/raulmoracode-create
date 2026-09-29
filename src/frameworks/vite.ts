@@ -53,9 +53,10 @@ async function ensurePathAlias(projectDir: string): Promise<void> {
       compilerOptions?: Record<string, unknown>;
     }>(raw);
     const compilerOptions = tsconfig.compilerOptions ?? {};
-    compilerOptions.baseUrl = ".";
-    // Merge instead of replacing: configureShadcn may have already written
-    // the @raulmoracode registry aliases and they must be preserved.
+    // No baseUrl: TypeScript 7 removed the option (TS5102), and `paths`
+    // resolve fine without it. Merge instead of replacing: configureShadcn
+    // may have already written the @raulmoracode registry aliases and they
+    // must be preserved.
     const existingPaths = (compilerOptions.paths ?? {}) as Record<
       string,
       string[]
