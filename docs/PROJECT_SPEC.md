@@ -96,6 +96,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
+├── .github/workflows/ci.yml     # check/lint/test/build + Next E2E on main pushes and PRs
 ├── package.json, tsconfig.json, vitest.config.ts, biome.json
 ├── .nvmrc (24), .gitignore, README.md, LICENSE
 └── dist/                         # compiled output (generated, not versioned)
@@ -351,6 +352,7 @@ Internal functions:
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.
 - **`.nvmrc`**: `24`. **`.gitignore`**: `node_modules`, `dist`, `.env`, `.env.*`, `*.tgz`.
 - **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` permission: checkout, pnpm 12, Node 24 (npmjs registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish --access public` with `NPM_TOKEN`.
+- **`.github/workflows/ci.yml`**: on `main` pushes and pull requests, with `contents:read` permission: `validate` job (checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `check`, `lint`, `test` incl. the Vite E2E, `build`) plus an `e2e-next` job with `E2E_FRAMEWORK=next`.
 - **`README.md`**: global install (npmjs, no auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth, publish, development, architecture, verified adjustments, packaging.
 - **`LICENSE`**: MIT.
 
