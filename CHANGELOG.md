@@ -7,7 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- CI workflow template for generated projects: every scaffolded project now
+  ships `.github/workflows/ci.yml`, running `pnpm install`, `pnpm check`,
+  `pnpm test` and `pnpm build` on every push and pull request. No deployments,
+  no external services: validation only, so generated projects are not tied to
+  any hosting provider.
+- `CHANGELOG.md` in generated projects (Keep a Changelog format with an
+  `[Unreleased]` section), plus a `Changelog` section in the generated
+  `AGENTS.md` instructing coding agents to keep it updated with every notable
+  change.
+- Expanded the generated `AGENTS.md` with the context an agent needs to work
+  on the project: annotated project structure, exact-version dependency
+  policy (`pnpm add <pkg>@<version>`, no `^`/`~`), Conventional Commits format
+  with types and style rules, watch vs single-run tests (`CI=true pnpm test`),
+  environment variables (`.env.example`, `VITE_*` vs `NEXT_PUBLIC_*`) and
+  manual, provider-agnostic deployment.
+- Dedicated `e2e-vite` job in this repository's CI, symmetric to `e2e-next`, so
+  each framework's end-to-end coverage has its own isolated signal instead of
+  Vite's running implicitly inside the `validate` job.
+- `Continuous integration` section and completed structure tree in the
+  generated `README.md`: `.github/workflows/`, `CHANGELOG.md`,
+  `src/config/site.ts`, Next.js `error.tsx`/`not-found.tsx`, conditional
+  Husky/Biome/Vitest/VS Code files and `LICENSE`.
 
 ## [1.0.5] - 2026-10-06
 
