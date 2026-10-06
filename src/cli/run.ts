@@ -4,6 +4,7 @@ import {
   configureBiome,
   formatProject,
 } from "../generators/configure-biome.js";
+import { configureCi } from "../generators/configure-ci.js";
 import { configureGitHooks } from "../generators/configure-git-hooks.js";
 import {
   augmentGitignore,
@@ -257,6 +258,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
           message("Writing LICENSE");
           await writeProjectLicense(projectDir, new Date().getFullYear());
           await augmentGitignore(projectDir);
+          message("Configuring CI");
+          await configureCi(projectDir);
           return "Project created";
         },
       },
