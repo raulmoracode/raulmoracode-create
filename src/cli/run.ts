@@ -4,6 +4,7 @@ import {
   configureBiome,
   formatProject,
 } from "../generators/configure-biome.js";
+import { configureChangelog } from "../generators/configure-changelog.js";
 import { configureGitHooks } from "../generators/configure-git-hooks.js";
 import {
   augmentGitignore,
@@ -256,6 +257,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
           );
           message("Writing LICENSE");
           await writeProjectLicense(projectDir, new Date().getFullYear());
+          message("Writing CHANGELOG");
+          await configureChangelog(projectDir);
           await augmentGitignore(projectDir);
           return "Project created";
         },
