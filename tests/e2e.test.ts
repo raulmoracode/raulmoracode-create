@@ -242,6 +242,8 @@ describe("end-to-end project creation", () => {
       ".husky/pre-commit",
       ".husky/commit-msg",
       "commitlint.config.ts",
+      ".github/workflows/ci.yml",
+      "CHANGELOG.md",
     ]) {
       expect(existsSync(join(projectDir, file)), file).toBe(true);
     }
@@ -281,6 +283,17 @@ describe("end-to-end project creation", () => {
     );
     expect(commitlintConfig).toContain("@commitlint/config-conventional");
     expect(commitlintConfig).toContain("extends");
+    const ciWorkflow = await readFile(
+      join(projectDir, ".github", "workflows", "ci.yml"),
+      "utf8",
+    );
+    expect(ciWorkflow).toContain("name: CI");
+    expect(ciWorkflow).toContain("pnpm check");
+    expect(ciWorkflow).toContain("pnpm test");
+    expect(ciWorkflow).toContain("pnpm build");
+    const changelog = await readFile(join(projectDir, "CHANGELOG.md"), "utf8");
+    expect(changelog).toContain("# Changelog");
+    expect(changelog).toContain("## [Unreleased]");
     if (process.platform !== "win32") {
       const { stat } = await import("node:fs/promises");
       for (const hook of ["pre-commit", "commit-msg"]) {
