@@ -295,6 +295,7 @@ describe("end-to-end project creation", () => {
     expect(siteConfig).toContain('name: "my-project",');
     expect(siteConfig).toContain('title: "my-project",');
     expect(siteConfig).toContain('twitter: "@raulmoracode",');
+    expect(siteConfig).toContain('description: "",');
 
     const isNext = process.env.E2E_FRAMEWORK === "next";
     const headOwner = await readFile(
@@ -360,7 +361,9 @@ describe("end-to-end project creation", () => {
       );
       expect(layout).toContain('import { site } from "@/config/site";');
       expect(layout).toContain("title: site.title,");
-      expect(layout).toContain("icons: { icon: site.favicon },");
+      expect(layout).toContain(
+        "...(site.favicon ? { icons: { icon: site.favicon } } : {}),",
+      );
       expect(
         existsSync(join(projectDir, "src", "app", "favicon.ico")),
         "default favicon.ico",
@@ -433,8 +436,10 @@ describe("end-to-end project creation", () => {
       expect(builtHtml).toContain('<meta name="twitter:card"');
       expect(builtHtml).toContain("summary_large_image");
       expect(builtHtml).toContain("<title>my-project</title>");
-      expect(builtHtml).toContain('name="description"');
+      expect(builtHtml).toContain('name="og:image"');
       expect(builtHtml).toContain('rel="icon"');
+      // description is empty by default, so no blank description meta is emitted
+      expect(builtHtml).not.toContain('name="description"');
     }
 
     const remoteRefs = await runCommand(

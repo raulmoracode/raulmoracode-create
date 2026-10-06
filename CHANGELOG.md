@@ -20,7 +20,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Next.js the `metadata` export reads the same object. Changing the title,
   description, favicon or preview image later is a one-file edit.
   Defaults use the project name and the real pinned stack, read from
-  `package.json`.
+  `package.json`. `description` is empty on purpose and empty values are never
+  rendered, so the HTML never carries a blank meta tag.
 
 ## [1.0.4] - 2026-10-06
 

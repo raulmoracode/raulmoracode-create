@@ -293,11 +293,14 @@ describe("configureBranding (next)", () => {
     const branded = await readFromFile(dir, "src", "app", "layout.tsx");
     expect(branded).toContain('import { site } from "@/config/site";');
     expect(branded).toContain("title: site.title,");
-    expect(branded).toContain("description: site.description,");
     expect(branded).toContain("openGraph: {");
     expect(branded).toContain("twitter: {");
     expect(branded).toContain(
-      "images: [{ url: site.socialImage, alt: site.socialImageAlt }],",
+      "images: [{ url: site.socialImage, alt: site.socialImageAlt }]",
+    );
+    // Empty values are spread away so no blank meta tag is ever emitted.
+    expect(branded).toContain(
+      "...(site.description ? { description: site.description } : {}),",
     );
     expect(branded).not.toContain('title: "Create Next App"');
     expect(branded).not.toContain('title: "raulmoracode"');

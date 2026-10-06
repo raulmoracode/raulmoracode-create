@@ -330,10 +330,14 @@ export function readmeMd(options: ReadmeOptions): string {
     "`src/config/site.ts` is the single place to change how this site presents itself:",
     "",
     "- `title` — the browser tab title",
-    "- `description` — the meta description and the social preview text",
+    "- `description` — empty by default; filling it adds the meta description and the preview text",
     "- `favicon` — the icon in the tab",
     "- `socialImage` and `socialImageAlt` — the image shown when the link is shared",
     "- `author`, `twitter`, `locale`, `themeColor` and `url` (the canonical URL once deployed)",
+    "",
+    "Empty values are never rendered: no blank meta tag is emitted. Social preview",
+    "images must be absolute URLs for crawlers to load them, so use a full URL or set",
+    "`url` so a local path can be resolved against it.",
     "",
     frameworkId === "next"
       ? "The `metadata` export in `src/app/layout.tsx` reads those values."
