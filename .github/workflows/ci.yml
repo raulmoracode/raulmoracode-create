@@ -62,3 +62,26 @@ jobs:
         run: pnpm test --run tests/e2e.test.ts
         env:
           E2E_FRAMEWORK: next
+
+  e2e-vite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: E2E (Vite)
+        run: pnpm test --run tests/e2e.test.ts
+        env:
+          E2E_FRAMEWORK: vite
