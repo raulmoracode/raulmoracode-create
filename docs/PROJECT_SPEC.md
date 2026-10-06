@@ -63,7 +63,9 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── configure-testing.ts  # vitest.config.ts + smoke test
 │   │   ├── configure-git-hooks.ts# .husky/ + commitlint.config.ts
 │   │   ├── configure-node.ts     # .nvmrc, .editorconfig, .gitignore
-│   │   └── configure-site.ts     # src/config/site.ts (site identity)
+│   │   ├── configure-site.ts     # src/config/site.ts (site identity)
+│   │   ├── configure-changelog.ts# CHANGELOG.md
+│   │   └── configure-ci.ts       # .github/workflows/ci.yml
 │   ├── frameworks/
 │   │   ├── types.ts              # PackageJson, ProjectFramework
 │   │   ├── index.ts              # { vite, next } registry, getFramework()
@@ -78,6 +80,8 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── agents.ts             # AGENTS.md content
 │   │   ├── biome.ts              # biome.json content
 │   │   ├── branding.ts           # title and favicon (constants)
+│   │   ├── changelog.ts          # CHANGELOG.md content
+│   │   ├── ci.ts                 # .github/workflows/ci.yml content
 │   │   ├── components.ts         # components.json + utils.ts (cn)
 │   │   ├── commitlint.ts         # commitlint.config.ts content
 │   │   ├── editorconfig.ts       # .editorconfig content
@@ -93,11 +97,11 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │       ├── exec.ts               # safe process execution (spawn)
 │       ├── filesystem.ts         # file helpers and JSON/JSONC
 │       └── validation.ts         # name, URL and framework validation
-├── tests/                        # Vitest suite (12 files, ~160 tests)
+├── tests/                        # Vitest suite (14 files, ~215 tests)
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
-├── .github/workflows/ci.yml     # check/lint/test/build + Next E2E on main pushes and PRs
+├── .github/workflows/ci.yml     # check/lint/test/build + one E2E job per framework on main pushes and PRs
 ├── package.json, tsconfig.json, vitest.config.ts, biome.json
 ├── .nvmrc (24), .gitignore, README.md, LICENSE
 └── dist/                         # compiled output (generated, not versioned)
@@ -237,6 +241,8 @@ Internal functions:
 - `configure-testing.ts` — `configureTesting(projectDir)`: writes `vitest.config.ts` and `src/test/smoke.test.tsx`.
 - `configure-vscode.ts` — `configureVscode(projectDir)`: writes `.vscode/settings.json` and `.vscode/extensions.json`.
 - `configure-git-hooks.ts` — `configureGitHooks(projectDir, selection = FULL_TECH_SELECTION)`: writes `.husky/pre-commit` (`huskyPreCommit(selection)`), `.husky/commit-msg`, marks both executable, and writes `commitlint.config.ts`.
+- `configure-changelog.ts` — `configureChangelog(projectDir)`: writes `CHANGELOG.md` (`changelogMd()`).
+- `configure-ci.ts` — `configureCi(projectDir)`: writes `.github/workflows/ci.yml` (`ciWorkflowYaml()`).
 
 ---
 
@@ -296,11 +302,13 @@ Internal functions:
 
 | File | Export(s) | Generates |
 |---|---|---|
-| `agents.ts` | `agentsMd()` | `AGENTS.md`: guidelines (source of truth, principles, dependencies, style, shadcn, architecture, validation `pnpm check/test/build`, non-destructive Git, security, dependencies, working code, final response) + `Project tooling` section (pnpm exclusively, script map, shadcn workflow) + `Git hooks and commits` section (Husky, Commitlint, Conventional Commits) |
+| `agents.ts` | `agentsMd()` | `AGENTS.md`: guidelines (source of truth, principles, dependencies, style, shadcn, architecture, validation `pnpm check/test/build`, non-destructive Git, security, dependencies, working code, final response) + `Project tooling` section (pnpm exclusively, script map, shadcn workflow) + `Git hooks and commits` section (Husky, Commitlint, Conventional Commits with types and style rules) + `Changelog` section (keep `CHANGELOG.md` updated) + `Project structure` tree + `Adding dependencies` (exact versions) + `Environment variables` + `Deployment` (manual, provider-agnostic) |
 | `args.ts` (in `cli/`, not pure-template) | `VERSION`, `parseArgs()`, `helpText()`, `printHelp()` | `--help` / `--version` output |
 | `biome.ts` | `biomeConfig()` | `biome.json`: local `$schema`, `files.includes` (`**`, `!dist`, `!.next`), 2-space formatter, `assist.actions.source.organizeImports: "on"`, linter on with `noSvgWithoutTitle`/`noAmbiguousAnchorText` `off`, `overrides` disabling formatter/linter/assist for the Tailwind entry files (`src/index.css`, `src/app/globals.css`, whose v4 directives Biome cannot parse) |
 | `branding.ts` | `SITE_TITLE = "raulmoracode"`, `FAVICON_URL = "https://cdn.raulmoracode.com/icons/favicon.ico"`, `TWITTER_CARD = "summary_large_image"`, `TWITTER_SITE_HANDLE`/`TWITTER_CREATOR_HANDLE`, `SOCIAL_IMAGE_URL`, `SOCIAL_DESCRIPTION_LIMIT = 200` | — |
 | `commitlint.ts` | `commitlintConfig()` | `commitlint.config.ts` (`{ extends: ["@commitlint/config-conventional"] }`) |
+| `changelog.ts` | `changelogMd()` | `CHANGELOG.md` (Keep a Changelog: header + `[Unreleased]` with `Added`/`Changed`/`Fixed`) |
+| `ci.ts` | `ciWorkflowYaml()` | `.github/workflows/ci.yml` (validate-only CI: `install`/`check`/`test`/`build` on push and PR, no deploys) |
 | `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `REGISTRY_THEME_SPEC`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn) |
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
@@ -311,7 +319,7 @@ Internal functions:
 | `site.ts` | `SiteValues`, `SITE_CONFIG_PATH = "src/config/site.ts"`, `SITE_HEAD_COMMENT`, `describeStack(packageJson)`, `siteValues({projectName, packageJson})`, `siteConfigTs(values)`, `viteSiteHeadImport()`, `viteSiteHeadPlugin()`, `nextSiteMetadata()` | `src/config/site.ts` (the only file a generated project has to edit for its identity: name, title, description, url, favicon, socialImage, socialImageAlt, author, twitter, locale, themeColor), the `siteHead()` Vite plugin that injects the head tags, and the Next `metadata` export built from the same object. `siteValues` seeds the defaults from the project name and the pinned stack (`description` is empty on purpose: an empty value is never rendered, so no blank meta tag is emitted). `favicon` and `socialImage` accept a full URL or a local path under `public/`; nothing is generated, the project provides the file. The Vite plugin resolves a local `socialImage` against `site.url` when it is set, because crawlers cannot resolve relative URLs (Next does it natively via `metadataBase`) |
 | `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + sorted, single-quoted `minimumReleaseAgeExclude`; existing entries are merged after stripping any quoting, so entries another tool (the shadcn CLI) already quoted are never double-quoted) |
 | `query.ts` | `queryClientConfig()` | `query-client.ts` (`staleTime` 60s, `gcTime` 5min, `retry: false`) |
-| `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), site identity section pointing at `src/config/site.ts`, gated per-framework structure tree, links |
+| `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), Continuous integration section (CI steps + manual deploy), site identity section pointing at `src/config/site.ts`, gated per-framework structure tree (CI entry, `CHANGELOG.md`, Husky/Biome/Vitest/VS Code files, `LICENSE`, `src/config/site.ts`, Next error pages), links |
 | `tailwind.ts` | `tailwindCss()`, `viteTailwindConfig()`, `nextPostcssConfig()` | `@import "tailwindcss";`, `vite.config.ts` (react + tailwind + `@` alias), `postcss.config.mjs` |
 | `tech.ts` | `TECH_IDS`, `TechId`, `TechSelection`, `TECH_OPTIONS`, `FULL_TECH_SELECTION`, `resolveTechSelection()` | tech preset multiselect options; `resolveTechSelection` forces shadcn back on with the theme and Tailwind back on with shadcn (plus notes) |
 | `testing.ts` | `vitestConfig()`, `smokeTest()` | `vitest.config.ts` (`environment: jsdom`) and `src/test/smoke.test.tsx` (Testing Library render) |
@@ -333,14 +341,14 @@ Internal functions:
 
 ---
 
-## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, ~160)
+## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, ~215)
 
 | File | What it covers |
 |---|---|
 | `validation.test.ts` | Names (valid/invalid, length, reserved), GitHub URLs (protocol, host, credentials, format), `isFramework`/`validateFramework`, `satisfiesNodeVersion` |
-| `config.test.ts` | `.nvmrc`, `components.json` + `cn()` + registry aliases/merge/add example, generated `README.md` (title, scripts table, gated stack/sections, per-framework variants), `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (namespaced shadcn example + Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION` incl. theme, `resolveTechSelection` cascades), adaptive Husky hooks, Commitlint config |
+| `config.test.ts` | `.nvmrc`, `components.json` + `cn()` + registry aliases/merge/add example, generated `README.md` (title, scripts table, gated stack/sections, per-framework variants), `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (namespaced shadcn example + Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION` incl. theme, `resolveTechSelection` cascades), adaptive Husky hooks, Commitlint config, CI workflow template (install/check/test/build steps, no deploys), CHANGELOG template (Keep a Changelog + `[Unreleased]`) |
 | `frameworks.test.ts` | Framework registration, exact pins per framework, scripts, removal patterns, runtime/dev lists (no `lucide-react`, `tw-animate-css` only with theme), pnpm constructors, `patchPackageJson` and `normalizePackageJson` against temp `package.json` (incl. author/homepage/repository, `prepare: husky`), no-trace patch with deselected techs, dependency filtering |
-| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter (vite starter preserves registry aliases), workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn (registry + `cn()` + tsconfig aliases incl. merge/preservation/missing-file skip), readme overwrite (name, final scripts, tech gating per framework), theme (exact dlx args, junk cleanup per framework, alias restore; mocked `exec`), biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit) |
+| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter (vite starter preserves registry aliases), workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn (registry + `cn()` + tsconfig aliases incl. merge/preservation/missing-file skip), readme overwrite (name, final scripts, tech gating per framework), theme (exact dlx args, junk cleanup per framework, alias restore; mocked `exec`), biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit), ci (`.github/workflows/ci.yml` steps), changelog (`CHANGELOG.md` structure) |
 | `install.test.ts` | `installDependencies` with mocked `exec`: order `install` → `add` (exact runtime) → `add -D` (incl. tailwind/biome/vitest/testing-library/clsx/cva/husky/commitlint), `cwd` correctness, empty-add skipping with deselected techs, PostCSS variant on Next, `ExecError` propagation |
 | `git.test.ts` | Constructors (`init`, `branch -M main`, `remote add`, `add .`, `commit`, `push` without force) + integration with real Git in temp dirs: init on `main`, remote, initial commit, push to a bare repo |
 | `exec.test.ts` | Real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
@@ -348,7 +356,7 @@ Internal functions:
 | `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, npmjs registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
 | `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
-| `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
+| `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`, `.github/workflows/ci.yml`, `CHANGELOG.md`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
 ---
 
@@ -360,7 +368,7 @@ Internal functions:
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.
 - **`.nvmrc`**: `24`. **`.gitignore`**: `node_modules`, `dist`, `.env`, `.env.*`, `*.tgz`.
 - **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` permission: checkout, pnpm 12, Node 24 (npmjs registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish --access public` with `NPM_TOKEN`.
-- **`.github/workflows/ci.yml`**: on `main` pushes and pull requests, with `contents:read` permission: `validate` job (checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `check`, `lint`, `test` incl. the Vite E2E, `build`) plus an `e2e-next` job with `E2E_FRAMEWORK=next`.
+- **`.github/workflows/ci.yml`**: on `main` pushes and pull requests, with `contents:read` permission: `validate` job (checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `check`, `lint`, `test` incl. the Vite E2E, `build`) plus one E2E job per framework (`e2e-vite` with `E2E_FRAMEWORK=vite`, `e2e-next` with `E2E_FRAMEWORK=next`).
 - **`README.md`**: global install (npmjs, no auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth, publish, development, architecture, verified adjustments, packaging.
 - **`LICENSE`**: MIT.
 
@@ -388,7 +396,7 @@ Internal functions:
 
 ### 14.2 Generated files (full preset)
 
-`package.json` (name, `0.1.0`, `private`, `type module`, `author` Raul Mora, `homepage`+`repository` with the entered URL, `prepare: husky`, framework scripts, `engines`, `packageManager`), `pnpm-lock.yaml` (no `package-lock.json`/`yarn.lock`), `.nvmrc`, `.editorconfig`, augmented `.gitignore`, `biome.json`, `commitlint.config.ts`, `.husky/pre-commit` + `.husky/commit-msg` (executable), `components.json`, `vitest.config.ts`, `src/test/smoke.test.tsx`, `src/lib/query-client.ts`, `src/lib/utils.ts` (`cn`), `.vscode/settings.json` + `extensions.json`, `pnpm-workspace.yaml` (`minimumReleaseAge: 10080` + excludes for the whole lockfile), `AGENTS.md`, official generator structure, Git repo on `main` with remote/initial commit/push.
+`package.json` (name, `0.1.0`, `private`, `type module`, `author` Raul Mora, `homepage`+`repository` with the entered URL, `prepare: husky`, framework scripts, `engines`, `packageManager`), `pnpm-lock.yaml` (no `package-lock.json`/`yarn.lock`), `.nvmrc`, `.editorconfig`, augmented `.gitignore`, `biome.json`, `commitlint.config.ts`, `.husky/pre-commit` + `.husky/commit-msg` (executable), `components.json`, `vitest.config.ts`, `src/test/smoke.test.tsx`, `src/lib/query-client.ts`, `src/lib/utils.ts` (`cn`), `.vscode/settings.json` + `extensions.json`, `pnpm-workspace.yaml` (`minimumReleaseAge: 10080` + excludes for the whole lockfile), `.github/workflows/ci.yml` (install/check/test/build on push/PR), `CHANGELOG.md` (Keep a Changelog + `[Unreleased]`), `AGENTS.md`, official generator structure, Git repo on `main` with remote/initial commit/push.
 
 Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scripts: `dev: vite`, `build: vite build`, `check/format/lint` (biome, only with Biome), `test: vitest` (only with testing). Next scripts: `dev: next dev`, `build: next build`, `start: next start` + the same biome/test scripts when selected.
 

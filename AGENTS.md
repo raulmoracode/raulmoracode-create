@@ -99,7 +99,9 @@ failures → `PreflightError`.
    `pnpm test` only with testing) → `patchPackageJson(..., selection)` (drops
    `check/format/lint` scripts without Biome, `test` without testing, `prepare` and
    Husky/Commitlint devDeps without Husky) → `configureReadme(...)` (always, after the
-   patch so the scripts table matches the final `package.json`) → `augmentGitignore` (always).
+   patch so the scripts table matches the final `package.json`) → `writeProjectLicense(...)`
+   (always, current year from `run.ts`) → `configureChangelog(...)` (always) →
+   `augmentGitignore` (always) → `configureCi(...)` (always, `.github/workflows/ci.yml`).
 2. `Installing dependencies`: `installDependencies` (`pnpm install --no-frozen-lockfile` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
    `formatProject` (`pnpm exec biome check --write .`) → `refreshPnpmWorkspaceExcludes`.

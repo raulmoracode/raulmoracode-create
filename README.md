@@ -164,7 +164,7 @@ npm publish --access public
 
 Create the `NPM_TOKEN` (granular, read+write on `@raulmoracode/create`) at `npmjs.com > Access Tokens` and save it as `Settings > Secrets > Actions > NPM_TOKEN`.
 
-The repository also ships a GitHub Actions workflow (`.github/workflows/publish.yml`) that builds, tests and publishes the package to npmjs on every `v*` tag using `NPM_TOKEN`, plus a CI workflow (`.github/workflows/ci.yml`) that runs check, lint, tests (including the Vite E2E) and build on every `main` push and pull request, with the Next.js E2E as a separate job.
+The repository also ships a GitHub Actions workflow (`.github/workflows/publish.yml`) that builds, tests and publishes the package to npmjs on every `v*` tag using `NPM_TOKEN`, plus a CI workflow (`.github/workflows/ci.yml`) that runs check, lint, tests (including the Vite E2E) and build on every `main` push and pull request, with each framework E2E (`e2e-vite`, `e2e-next`) as a separate job.
 
 ## Development
 
