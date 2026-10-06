@@ -16,7 +16,7 @@ describe("ci workflow", () => {
     );
   });
 
-  it("runs every validation step in order across both jobs", () => {
+  it("runs every validation step in order across all jobs", () => {
     expect(stepNames).toEqual([
       "Checkout",
       "Setup pnpm",
@@ -31,6 +31,11 @@ describe("ci workflow", () => {
       "Setup Node.js",
       "Install dependencies",
       "E2E (Next.js)",
+      "Checkout",
+      "Setup pnpm",
+      "Setup Node.js",
+      "Install dependencies",
+      "E2E (Vite)",
     ]);
   });
 
@@ -49,10 +54,13 @@ describe("ci workflow", () => {
     expect(yaml).toContain("run: pnpm install --frozen-lockfile");
   });
 
-  it("covers the Vite E2E through the full suite and Next.js separately", () => {
+  it("covers each framework E2E in its own job", () => {
     expect(yaml).toContain("run: pnpm test");
     expect(yaml).toContain("run: pnpm test --run tests/e2e.test.ts");
+    expect(yaml).toContain("E2E (Next.js)");
     expect(yaml).toContain("E2E_FRAMEWORK: next");
+    expect(yaml).toContain("E2E (Vite)");
+    expect(yaml).toContain("E2E_FRAMEWORK: vite");
   });
 
   it("never force-pushes or rewrites history", () => {
