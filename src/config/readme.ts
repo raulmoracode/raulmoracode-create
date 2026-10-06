@@ -238,6 +238,10 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
       comment: "tab title + favicon (raulmoracode branding)",
     });
   }
+  root.push({
+    name: ".github/workflows/",
+    comment: "CI (install, check, test, build)",
+  });
   root.push({ name: "src/", children: srcChildren(frameworkId, selection) });
   if (selection.shadcn) {
     root.push({
@@ -245,11 +249,21 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
       comment: "shadcn config (includes the @raulmoracode registry)",
     });
   }
+  if (selection.husky) {
+    root.push(
+      { name: ".husky/", comment: "Git hooks" },
+      {
+        name: "commitlint.config.ts",
+        comment: "commit message validation",
+      },
+    );
+  }
   root.push(
     {
       name: "pnpm-workspace.yaml",
       comment: "minimumReleaseAge policy + excludes",
     },
+    { name: "CHANGELOG.md", comment: "project changelog" },
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },
   );
   return ["```text", ...renderTree(root), "```"];
@@ -323,6 +337,19 @@ export function readmeMd(options: ReadmeOptions): string {
       "```",
     );
   }
+  lines.push(
+    "",
+    "## Continuous integration",
+    "",
+    "`.github/workflows/ci.yml` runs on every push and pull request:",
+    "",
+    "- `pnpm install` — dependencies resolve correctly",
+    "- `pnpm check` — code is formatted and linted",
+    "- `pnpm test` — tests pass",
+    "- `pnpm build` — production build succeeds",
+    "",
+    "Deployment is manual: once CI passes, deploy to your preferred hosting provider.",
+  );
   lines.push(
     "",
     "## Site identity",

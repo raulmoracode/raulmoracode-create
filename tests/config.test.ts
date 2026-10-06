@@ -702,6 +702,28 @@ describe("Generated README", () => {
     expect(content).toContain("**Husky 9.1.7 + Commitlint**");
   });
 
+  it("documents CI, changelog and generated root files", () => {
+    const content = readmeMd(viteOptions());
+    expect(content).toContain("## Continuous integration");
+    expect(content).toContain(".github/workflows/ci.yml");
+    expect(content).toContain("Deployment is manual");
+    expect(content).toContain("CHANGELOG.md");
+    expect(content).toContain(".husky/");
+    expect(content).toContain("commitlint.config.ts");
+  });
+
+  it("keeps CI and changelog without Husky, omitting hook files", () => {
+    const content = readmeMd({
+      ...viteOptions(),
+      selection: { ...FULL_TECH_SELECTION, husky: false },
+    });
+    expect(content).toContain("## Continuous integration");
+    expect(content).toContain("CHANGELOG.md");
+    expect(content).not.toContain(".husky/");
+    expect(content).not.toContain("commitlint.config.ts");
+    expect(content).not.toContain("Git workflow");
+  });
+
   it("documents the namespaced registry workflow with shadcn", () => {
     const content = readmeMd(viteOptions());
     expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);
