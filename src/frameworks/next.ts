@@ -1,7 +1,7 @@
 import { agentsMd } from "../config/agents.js";
-import { FAVICON_URL, SITE_TITLE } from "../config/branding.js";
 import { nextErrorPage, nextNotFoundPage } from "../config/error-pages.js";
 import { queryClientConfig } from "../config/query.js";
+import { nextSiteMetadata } from "../config/site.js";
 import { nextPostcssConfig, tailwindCss } from "../config/tailwind.js";
 import { exec } from "../utils/exec.js";
 import {
@@ -123,16 +123,22 @@ export const nextFramework: ProjectFramework = {
   async configureBranding(projectDir) {
     const layoutPath = joinPath(projectDir, "src", "app", "layout.tsx");
     const layout = await readTextFile(layoutPath);
+    const anchor = /(export const metadata: Metadata = \{)[\s\S]*?\n\};/;
+    if (!anchor.test(layout)) {
+      throw new Error(
+        'No se encontró "export const metadata: Metadata = {...}" en el layout de Next.js.',
+      );
+    }
     const branded = layout.replace(
-      /title:\s*"[^"]*",?/,
-      `title: "${SITE_TITLE}",\n  icons: {\n    icon: "${FAVICON_URL}",\n  },`,
+      anchor,
+      `import { site } from "@/config/site";\n\n${nextSiteMetadata()}`,
     );
     if (
-      !branded.includes(`title: "${SITE_TITLE}"`) ||
-      !branded.includes(FAVICON_URL)
+      !branded.includes('import { site } from "@/config/site";') ||
+      !branded.includes("description: site.description")
     ) {
       throw new Error(
-        "No se pudo configurar el layout de Next.js (título o favicon).",
+        "No se pudo configurar el layout de Next.js (metadatos del sitio).",
       );
     }
     await writeTextFile(layoutPath, branded);

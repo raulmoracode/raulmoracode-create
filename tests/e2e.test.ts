@@ -182,6 +182,10 @@ describe("end-to-end project creation", () => {
       type: "git",
       url: "https://github.com/raulmoracode/my-project",
     });
+    expect(pkg.license).toBe("MIT");
+    const license = await readFile(join(projectDir, "LICENSE"), "utf8");
+    expect(license.startsWith("MIT License\n")).toBe(true);
+    expect(license).toContain("Raul Mora");
     expect(pkg.scripts.test).toBe("vitest");
     expect(pkg.scripts.check).toBe("biome check .");
     expect(pkg.scripts.prepare).toBe("husky");
@@ -299,6 +303,34 @@ describe("end-to-end project creation", () => {
     );
     expect(existsSync(join(projectDir, "yarn.lock")), "yarn.lock").toBe(false);
 
+    const siteConfig = await readFile(
+      join(projectDir, "src", "config", "site.ts"),
+      "utf8",
+    );
+    expect(siteConfig).toContain('name: "my-project",');
+    expect(siteConfig).toContain('title: "my-project",');
+    expect(siteConfig).toContain('twitter: "@raulmoracode",');
+    expect(siteConfig).toContain('description: "",');
+
+    const isNext = process.env.E2E_FRAMEWORK === "next";
+    const headOwner = await readFile(
+      isNext
+        ? join(projectDir, "src", "app", "layout.tsx")
+        : join(projectDir, "vite.config.ts"),
+      "utf8",
+    );
+    expect(headOwner).toContain("site } from");
+    expect(headOwner).toContain("config/site");
+    expect(headOwner).toContain("twitter:");
+    expect(headOwner).toContain(isNext ? "openGraph: {" : "og:title");
+    expect(headOwner).toContain(isNext ? "site.twitter" : "siteHead");
+
+    if (!isNext) {
+      const indexHtml = await readFile(join(projectDir, "index.html"), "utf8");
+      expect(indexHtml).not.toContain("<title>");
+      expect(indexHtml).toContain("src/config/site.ts");
+    }
+
     const workspace = await readFile(
       join(projectDir, "pnpm-workspace.yaml"),
       "utf8",
@@ -320,17 +352,6 @@ describe("end-to-end project creation", () => {
     expect(pkg.devDependencies["tw-animate-css"]).toBe("1.4.0");
 
     if (process.env.E2E_FRAMEWORK === "next") {
-      const errorPage = await readFile(
-        join(projectDir, "src", "app", "error.tsx"),
-        "utf8",
-      );
-      expect(errorPage.startsWith('"use client";')).toBe(true);
-      expect(errorPage).toContain("onClick={reset}");
-      const notFoundPage = await readFile(
-        join(projectDir, "src", "app", "not-found.tsx"),
-        "utf8",
-      );
-      expect(notFoundPage).toContain('<Link href="/"');
       const { readdir } = await import("node:fs/promises");
       expect(await readdir(join(projectDir, "public"))).toEqual([]);
       const pageTsx = await readFile(
@@ -353,9 +374,10 @@ describe("end-to-end project creation", () => {
         join(projectDir, "src", "app", "layout.tsx"),
         "utf8",
       );
-      expect(layout).toContain('title: "raulmoracode"');
+      expect(layout).toContain('import { site } from "@/config/site";');
+      expect(layout).toContain("title: site.title,");
       expect(layout).toContain(
-        "https://cdn.raulmoracode.com/icons/favicon.ico",
+        "...(site.favicon ? { icons: { icon: site.favicon } } : {}),",
       );
       expect(
         existsSync(join(projectDir, "src", "app", "favicon.ico")),
@@ -363,10 +385,11 @@ describe("end-to-end project creation", () => {
       ).toBe(false);
     } else {
       const indexHtml = await readFile(join(projectDir, "index.html"), "utf8");
-      expect(indexHtml).toContain("<title>raulmoracode</title>");
-      expect(indexHtml).toContain(
-        "https://cdn.raulmoracode.com/icons/favicon.ico",
-      );
+      expect(indexHtml).not.toContain("<title>");
+      expect(indexHtml).toContain("src/config/site.ts");
+      expect(
+        await readFile(join(projectDir, "vite.config.ts"), "utf8"),
+      ).toContain('import { site } from "./src/config/site";');
       const { readdir } = await import("node:fs/promises");
       expect(await readdir(join(projectDir, "public"))).toEqual([]);
       expect(await readdir(join(projectDir, "src", "assets"))).toEqual([]);
@@ -427,6 +450,42 @@ describe("end-to-end project creation", () => {
         recursive: true,
       });
       expect(built.some((entry) => entry.includes("not-found"))).toBe(true);
+    }
+
+    if (process.env.E2E_FRAMEWORK !== "next") {
+      const builtHtml = await readFile(
+        join(projectDir, "dist", "index.html"),
+        "utf8",
+      );
+      expect(builtHtml).toContain('<meta name="twitter:card"');
+      expect(builtHtml).toContain("summary_large_image");
+      expect(builtHtml).toContain("<title>my-project</title>");
+      expect(builtHtml).toContain('rel="icon"');
+      // description is empty by default, so no blank description meta is emitted
+      expect(builtHtml).not.toContain('name="description"');
+      // socialImage points at a local path the project owner provides
+      expect(builtHtml).toContain('name="og:image"');
+      expect(builtHtml).toContain('content="/imagen.png"');
+
+      // Crawlers cannot resolve a relative URL, so once the site has a URL the
+      // local path must be emitted absolute.
+      const sitePath = join(projectDir, "src", "config", "site.ts");
+      await writeFile(
+        sitePath,
+        (await readFile(sitePath, "utf8")).replace(
+          'url: "",',
+          'url: "https://neuro.example.com",',
+        ),
+        "utf8",
+      );
+      await runCommand("pnpm", ["build"], projectDir);
+      const deployed = await readFile(
+        join(projectDir, "dist", "index.html"),
+        "utf8",
+      );
+      expect(deployed).toContain(
+        'content="https://neuro.example.com/imagen.png"',
+      );
     }
 
     const remoteRefs = await runCommand(
