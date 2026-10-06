@@ -10,7 +10,7 @@ Complete reference document for the scaffolder: identity, architecture, what eac
 |---|---|
 | Repository | `raulmoracode/create` (`github.com/raulmoracode/raulmoracode-create`) |
 | npm package | `@raulmoracode/create` |
-| Current version | `1.0.3` |
+| Current version | `1.0.4` |
 | Global command (only one) | `raulmoracode-create` |
 | Compiled entry point | `./dist/index.js` (with `#!/usr/bin/env node` shebang) |
 | Publish registry | `https://registry.npmjs.org/` (npmjs) |
@@ -161,7 +161,7 @@ Internal functions:
 
 ### 5.2 `src/cli/args.ts` — flags
 
-- `VERSION = "1.0.3"` — single source of truth for `--version`; pinned to `package.json` by a test.
+- `VERSION = "1.0.4"` — single source of truth for `--version`; pinned to `package.json` by a test.
 - `parseArgs(argv): CliArgs` — `{ help, version, verbose }` (`-h`/`--help`, `-V`/`--version`, `--verbose`; unknown flags are ignored).
 - `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
@@ -304,7 +304,7 @@ Internal functions:
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
-| `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + quoted `minimumReleaseAgeExclude`, merging existing entries without duplicating) |
+| `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + sorted, single-quoted `minimumReleaseAgeExclude`; existing entries are merged after stripping any quoting, so entries another tool (the shadcn CLI) already quoted are never double-quoted) |
 | `query.ts` | `queryClientConfig()` | `query-client.ts` (`staleTime` 60s, `gcTime` 5min, `retry: false`) |
 | `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), gated per-framework structure tree, links |
 | `tailwind.ts` | `tailwindCss()`, `viteTailwindConfig()`, `nextPostcssConfig()` | `@import "tailwindcss";`, `vite.config.ts` (react + tailwind + `@` alias), `postcss.config.mjs` |
@@ -349,7 +349,7 @@ Internal functions:
 
 ## 13. Root config files
 
-- **`package.json`**: `name @raulmoracode/create`, `version 1.0.3`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
+- **`package.json`**: `name @raulmoracode/create`, `version 1.0.4`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
 - **`tsconfig.json`**: `target ES2022`, `module/moduleResolution NodeNext` (imports with `.js` extension), `outDir dist`, `rootDir src`, `strict` + `noUncheckedIndexedAccess`, `types: [node]`, `include: [src]`.
 - **`vitest.config.ts`**: `node` environment, `include tests/**/*.test.ts`.
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.

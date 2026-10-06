@@ -9,6 +9,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Nothing pending yet.
 
+## [1.0.4] - 2026-10-06
+
+### Fixed
+
+- `pnpm-workspace.yaml` is no longer written with double-quoted
+  `minimumReleaseAgeExclude` entries, which made it invalid YAML and aborted the
+  run at `Initializing Git` with `invalid trailing content after single-quoted
+  scalar` when `pnpm exec husky` loaded the configuration. Entries that already
+  arrive quoted (the shadcn CLI writes its own exclude block when the registry
+  theme is applied) are now unquoted before merging and re-quoted exactly once;
+  exclusions are also sorted for a deterministic output.
+
 ## [1.0.3] - 2026-09-29
 
 ### Added
@@ -93,7 +105,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/raulmoracode/raulmoracode-create/compare/2af3311...v1.0.2
 [1.0.1]: https://github.com/raulmoracode/raulmoracode-create/tree/c7b1301
