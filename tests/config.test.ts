@@ -724,6 +724,41 @@ describe("Generated README", () => {
     expect(content).not.toContain("Git workflow");
   });
 
+  it("completes the tree with site config, error pages and tooling files", () => {
+    const vite = readmeMd(viteOptions());
+    expect(vite).toContain("site.ts");
+    expect(vite).toContain("LICENSE");
+    expect(vite).toContain("biome.json");
+    expect(vite).toContain("vitest.config.ts");
+    expect(vite).toContain(".vscode/");
+    const next = readmeMd({
+      ...viteOptions(),
+      frameworkId: "next",
+      frameworkLabel: "Next.js",
+    });
+    expect(next).toContain("site.ts");
+    expect(next).toContain("error.tsx");
+    expect(next).toContain("not-found.tsx");
+    expect(next).toContain("LICENSE");
+  });
+
+  it("omits deselected tooling files from the tree", () => {
+    const content = readmeMd({
+      ...viteOptions(),
+      selection: {
+        ...FULL_TECH_SELECTION,
+        biome: false,
+        testing: false,
+        vscode: false,
+      },
+    });
+    expect(content).not.toContain("biome.json");
+    expect(content).not.toContain("vitest.config.ts");
+    expect(content).not.toContain(".vscode/");
+    expect(content).toContain("site.ts");
+    expect(content).toContain("LICENSE");
+  });
+
   it("documents the namespaced registry workflow with shadcn", () => {
     const content = readmeMd(viteOptions());
     expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);

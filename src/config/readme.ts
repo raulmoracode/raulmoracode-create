@@ -189,6 +189,8 @@ function srcChildren(
               ...(selection["tanstack-query"]
                 ? [{ name: "providers.tsx", comment: "QueryClientProvider" }]
                 : []),
+              { name: "error.tsx", comment: "error page" },
+              { name: "not-found.tsx", comment: "404 page" },
               {
                 name: "globals.css",
                 comment: selection.tailwind
@@ -224,6 +226,10 @@ function srcChildren(
   if (lib !== null) {
     children.push({ name: "lib/", comment: lib });
   }
+  children.push({
+    name: "config/",
+    children: [{ name: "site.ts", comment: "site identity" }],
+  });
   if (selection.testing) {
     children.push({ name: "test/", comment: "smoke test" });
   }
@@ -258,11 +264,21 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
       },
     );
   }
+  if (selection.biome) {
+    root.push({ name: "biome.json", comment: "formatter + linter config" });
+  }
+  if (selection.testing) {
+    root.push({ name: "vitest.config.ts", comment: "test config" });
+  }
+  if (selection.vscode) {
+    root.push({ name: ".vscode/", comment: "VS Code settings + extensions" });
+  }
   root.push(
     {
       name: "pnpm-workspace.yaml",
       comment: "minimumReleaseAge policy + excludes",
     },
+    { name: "LICENSE", comment: "MIT license" },
     { name: "CHANGELOG.md", comment: "project changelog" },
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },
   );
