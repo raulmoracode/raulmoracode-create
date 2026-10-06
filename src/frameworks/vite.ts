@@ -1,6 +1,10 @@
 import { agentsMd } from "../config/agents.js";
 import { FAVICON_URL, SITE_TITLE } from "../config/branding.js";
 import { queryClientConfig } from "../config/query.js";
+import {
+  socialMetaOptions,
+  withViteSocialMeta,
+} from "../config/social-meta.js";
 import { tailwindCss, viteTailwindConfig } from "../config/tailwind.js";
 import { exec } from "../utils/exec.js";
 import {
@@ -8,11 +12,12 @@ import {
   joinPath,
   listDirEntries,
   parseJsonc,
+  readJsonFile,
   readTextFile,
   removeIfExists,
   writeTextFile,
 } from "../utils/filesystem.js";
-import type { ProjectFramework } from "./types.js";
+import type { PackageJson, ProjectFramework } from "./types.js";
 
 const CREATE_VITE_VERSION = "9.2.1";
 
@@ -182,6 +187,18 @@ export const viteFramework: ProjectFramework = {
         "No se pudo configurar el index.html del proyecto Vite (título o favicon).",
       );
     }
-    await writeTextFile(indexPath, branded);
+    const packageJson = await readJsonFile<PackageJson>(
+      joinPath(projectDir, "package.json"),
+    );
+    const withMeta = withViteSocialMeta(
+      branded,
+      socialMetaOptions(packageJson.name ?? SITE_TITLE, packageJson),
+    );
+    if (withMeta === null) {
+      throw new Error(
+        "No se encontró </head> en el index.html del proyecto Vite (metadatos sociales).",
+      );
+    }
+    await writeTextFile(indexPath, withMeta);
   },
 };

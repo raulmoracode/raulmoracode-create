@@ -110,6 +110,15 @@ describe("configureBranding (vite)", () => {
       ].join("\n"),
       "utf8",
     );
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "my-project",
+        dependencies: { react: "19.3.0" },
+        devDependencies: { vite: "8.3.1", typescript: "7.0.2" },
+      }),
+      "utf8",
+    );
     await viteFramework.configureBranding(dir);
     const branded = await readFromFile(dir, "index.html");
     expect(branded).toContain("<title>raulmoracode</title>");
@@ -117,6 +126,45 @@ describe("configureBranding (vite)", () => {
       'href="https://cdn.raulmoracode.com/icons/favicon.ico"',
     );
     expect(branded).not.toContain("/vite.svg");
+  });
+
+  it("adds the social meta tags inside head", async () => {
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "my-project",
+        dependencies: { react: "19.3.0" },
+        devDependencies: { vite: "8.3.1", typescript: "7.0.2" },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "index.html"),
+      [
+        "<!doctype html>",
+        "<html>",
+        "  <head>",
+        '    <link rel="icon" type="image/svg+xml" href="/vite.svg" />',
+        "    <title>vite-react-typescript-starter</title>",
+        "  </head>",
+        "</html>",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+    await viteFramework.configureBranding(dir);
+    const branded = await readFromFile(dir, "index.html");
+    expect(branded).toContain(
+      '<meta name="twitter:card" content="summary_large_image" />',
+    );
+    expect(branded).toContain(
+      '<meta name="twitter:title" content="my-project" />',
+    );
+    expect(branded).toContain("React 19 + Vite 8 + TypeScript 7");
+    expect(branded.indexOf("twitter:card")).toBeLessThan(
+      branded.indexOf("</head>"),
+    );
   });
 
   it("fails clearly when index.html has no title or icon", async () => {
@@ -232,6 +280,15 @@ describe("configureStarter (vite)", () => {
 });
 
 describe("configureBranding (next)", () => {
+  const nextPackageJson = JSON.stringify(
+    {
+      name: "my-project",
+      dependencies: { next: "16.3.6", react: "19.3.0" },
+      devDependencies: { typescript: "7.0.2" },
+    },
+    null,
+    2,
+  );
   const layout = [
     'import type { Metadata } from "next";',
     'import "./globals.css";',
@@ -245,6 +302,7 @@ describe("configureBranding (next)", () => {
 
   it("sets the tab title and CDN favicon in the layout", async () => {
     const dir = await makeTempDir();
+    await writeTextFile(join(dir, "package.json"), nextPackageJson);
     await writeTextFile(join(dir, "src", "app", "layout.tsx"), layout);
     await writeTextFile(join(dir, "src", "app", "favicon.ico"), "fake-icon");
     await nextFramework.configureBranding(dir);
@@ -254,6 +312,21 @@ describe("configureBranding (next)", () => {
     await expect(
       readFile(join(dir, "src", "app", "favicon.ico")),
     ).rejects.toThrow();
+  });
+
+  it("adds the twitter and openGraph fields to the metadata", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "package.json"), nextPackageJson);
+    await writeTextFile(join(dir, "src", "app", "layout.tsx"), layout);
+    await nextFramework.configureBranding(dir);
+    const branded = await readFromFile(dir, "src", "app", "layout.tsx");
+    expect(branded).toContain("twitter: {");
+    expect(branded).toContain("openGraph: {");
+    expect(branded).toContain('card: "summary_large_image",');
+    expect(branded).toContain('title: "my-project",');
+    expect(branded.indexOf("twitter: {")).toBeLessThan(
+      branded.indexOf('title: "raulmoracode"'),
+    );
   });
 
   it("fails clearly when the layout has no title", async () => {

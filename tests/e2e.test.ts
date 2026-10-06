@@ -288,6 +288,21 @@ describe("end-to-end project creation", () => {
     );
     expect(existsSync(join(projectDir, "yarn.lock")), "yarn.lock").toBe(false);
 
+    const isNext = process.env.E2E_FRAMEWORK === "next";
+    const socialContent = await readFile(
+      isNext
+        ? join(projectDir, "src", "app", "layout.tsx")
+        : join(projectDir, "index.html"),
+      "utf8",
+    );
+    expect(socialContent).toContain(
+      isNext ? "twitter: {" : '<meta name="twitter:card"',
+    );
+    expect(socialContent).toContain("summary_large_image");
+    expect(socialContent).toContain(isNext ? "openGraph: {" : "twitter:image");
+    expect(socialContent).toContain("@raulmoracode");
+    expect(socialContent).toContain("my-project");
+
     const workspace = await readFile(
       join(projectDir, "pnpm-workspace.yaml"),
       "utf8",
