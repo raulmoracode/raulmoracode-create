@@ -136,6 +136,9 @@ prompt (prompts/*.ts, Clack + validation.ts)
   exact content, ending in `\n`) + `src/generators/configure-<x>.ts`
   (uses `joinPath`/`writeTextFile` from `filesystem.ts`) + call it from `run.ts` in step 1
   + tests in `config.test.ts` and `generators.test.ts` (temporary directories).
+- **Next.js error pages** (`config/error-pages.ts`) are file conventions: never wire them
+  manually. Name the error component `ErrorPage`, not `Error`, or Biome fails in the
+  generated project with `noShadowRestrictedNames`. They must not depend on theme tokens.
 - **Adding a dependency to generated projects**: define the exact version as a constant in
   `generators/configure-project.ts` (`HUSKY_VERSION`, …), use it in `devDependencies()` (or
   `runtimeDependencies()`), and if it carries a lifecycle script (`prepare: husky`), ALSO add it

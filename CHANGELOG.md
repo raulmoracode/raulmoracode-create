@@ -7,7 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- `src/app/error.tsx` and `src/app/not-found.tsx` in generated Next.js
+  projects. Both are Next.js file conventions, so they are picked up with no
+  wiring: the error boundary with its `reset` callback and a real 404 page.
+  They use only Tailwind utilities that exist in every project rather than theme
+  tokens, and the error component is named `ErrorPage` because Biome's
+  `noShadowRestrictedNames` rejects a function called `Error` in the generated
+  project.
 
 ## [1.0.4] - 2026-10-06
 

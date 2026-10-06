@@ -304,6 +304,7 @@ Internal functions:
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
+| `error-pages.ts` | `nextErrorPage()`, `nextNotFoundPage()` | Next.js only: `src/app/error.tsx` (Client Component with `reset`, exported as `ErrorPage` because Biome rejects a function named `Error`) and `src/app/not-found.tsx`. File conventions, no wiring; only Tailwind utilities that exist everywhere, never theme tokens |
 | `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + sorted, single-quoted `minimumReleaseAgeExclude`; existing entries are merged after stripping any quoting, so entries another tool (the shadcn CLI) already quoted are never double-quoted) |
 | `query.ts` | `queryClientConfig()` | `query-client.ts` (`staleTime` 60s, `gcTime` 5min, `retry: false`) |
 | `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), gated per-framework structure tree, links |
@@ -393,7 +394,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 
 ### 14.4 Next.js specifics
 
-`src/app/{layout.tsx` (title+icons CDN, wrapped in `Providers`), minimal `page.tsx`, `providers.tsx`, `globals.css`, `postcss.config.mjs}`; deleted default `page.module.css`, `favicon.ico` and `CLAUDE.md`; the template's `AGENTS.md` kept and overwritten with our own.
+`src/app/{layout.tsx` (title+icons CDN, wrapped in `Providers`), minimal `page.tsx`, `providers.tsx`, `globals.css`, `postcss.config.mjs`, `error.tsx`, `not-found.tsx`}; deleted default `page.module.css`, `favicon.ico` and `CLAUDE.md`; the template's `AGENTS.md` kept and overwritten with our own.
 
 ---
 

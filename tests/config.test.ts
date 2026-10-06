@@ -17,6 +17,7 @@ import {
   withRegistryAliases,
 } from "../src/config/components.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
+import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
 import {
@@ -199,6 +200,37 @@ describe("components.json (shadcn)", () => {
     expect(
       registryScopeExcludes({ ...FULL_TECH_SELECTION, shadcn: false }),
     ).toEqual([]);
+  });
+});
+
+describe("Next.js error pages", () => {
+  it("error.tsx is a client component with reset, using no theme tokens", () => {
+    const page = nextErrorPage();
+    expect(page.startsWith('"use client";\n')).toBe(true);
+    expect(page).toContain("export default function ErrorPage({");
+    expect(page).not.toContain("function Error(");
+    expect(page).toContain("reset: () => void;");
+    expect(page).toContain("onClick={reset}");
+    expect(page).toContain("Try again");
+    expect(page.endsWith("\n")).toBe(true);
+    expect(page).not.toContain("text-foreground");
+    expect(page).not.toContain("bg-background");
+  });
+
+  it("not-found.tsx links back home", () => {
+    const page = nextNotFoundPage();
+    expect(page).toContain('import Link from "next/link";');
+    expect(page).toContain('<Link href="/"');
+    expect(page).toContain("404");
+    expect(page.endsWith("\n")).toBe(true);
+    expect(page).not.toContain("use client");
+  });
+
+  it("carries no tokens or machine paths", () => {
+    for (const page of [nextErrorPage(), nextNotFoundPage()]) {
+      expect(page).not.toContain("/Users/");
+      expect(page).not.toContain("{{");
+    }
   });
 });
 

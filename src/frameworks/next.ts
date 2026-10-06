@@ -1,5 +1,6 @@
 import { agentsMd } from "../config/agents.js";
 import { FAVICON_URL, SITE_TITLE } from "../config/branding.js";
+import { nextErrorPage, nextNotFoundPage } from "../config/error-pages.js";
 import { queryClientConfig } from "../config/query.js";
 import { nextPostcssConfig, tailwindCss } from "../config/tailwind.js";
 import { exec } from "../utils/exec.js";
@@ -107,6 +108,14 @@ export const nextFramework: ProjectFramework = {
       NEXT_PAGE_TSX,
     );
     await removeIfExists(joinPath(projectDir, "src", "app", "page.module.css"));
+    await writeTextFile(
+      joinPath(projectDir, "src", "app", "error.tsx"),
+      nextErrorPage(),
+    );
+    await writeTextFile(
+      joinPath(projectDir, "src", "app", "not-found.tsx"),
+      nextNotFoundPage(),
+    );
     await removeIfExists(joinPath(projectDir, "CLAUDE.md"));
     await writeTextFile(joinPath(projectDir, "AGENTS.md"), agentsMd());
   },
