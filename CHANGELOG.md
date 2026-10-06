@@ -19,7 +19,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `vite.config.ts` injects the head tags through `transformIndexHtml`; on
   Next.js the `metadata` export reads the same object. Changing the title,
   description, favicon or preview image later is a one-file edit.
-  Defaults use the project name and the real pinned stack, read from
+  `favicon` and `socialImage` accept either a full URL or a local path under
+  `public/`; the CLI generates no image, the project provides it. Local paths are
+  resolved against `url` when it is set, since social crawlers cannot resolve
+  relative URLs. Defaults use the project name and the real pinned stack, read from
   `package.json`. `description` is empty on purpose and empty values are never
   rendered, so the HTML never carries a blank meta tag.
 

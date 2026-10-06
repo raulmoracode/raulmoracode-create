@@ -798,6 +798,10 @@ describe("configureSite", () => {
     expect(site).toContain('twitter: "@raulmoracode",');
     expect(site).toContain('url: "",');
     expect(site).toContain("} as const;");
+    expect(site).toContain('socialImage: "/imagen.png",');
+    expect(site).toContain(
+      'favicon: "https://cdn.raulmoracode.com/icons/favicon.ico",',
+    );
     expect(site.endsWith("\n")).toBe(true);
   });
 

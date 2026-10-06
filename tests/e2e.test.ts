@@ -436,10 +436,32 @@ describe("end-to-end project creation", () => {
       expect(builtHtml).toContain('<meta name="twitter:card"');
       expect(builtHtml).toContain("summary_large_image");
       expect(builtHtml).toContain("<title>my-project</title>");
-      expect(builtHtml).toContain('name="og:image"');
       expect(builtHtml).toContain('rel="icon"');
       // description is empty by default, so no blank description meta is emitted
       expect(builtHtml).not.toContain('name="description"');
+      // socialImage points at a local path the project owner provides
+      expect(builtHtml).toContain('name="og:image"');
+      expect(builtHtml).toContain('content="/imagen.png"');
+
+      // Crawlers cannot resolve a relative URL, so once the site has a URL the
+      // local path must be emitted absolute.
+      const sitePath = join(projectDir, "src", "config", "site.ts");
+      await writeFile(
+        sitePath,
+        (await readFile(sitePath, "utf8")).replace(
+          'url: "",',
+          'url: "https://neuro.example.com",',
+        ),
+        "utf8",
+      );
+      await runCommand("pnpm", ["build"], projectDir);
+      const deployed = await readFile(
+        join(projectDir, "dist", "index.html"),
+        "utf8",
+      );
+      expect(deployed).toContain(
+        'content="https://neuro.example.com/imagen.png"',
+      );
     }
 
     const remoteRefs = await runCommand(

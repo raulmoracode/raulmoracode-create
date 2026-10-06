@@ -76,6 +76,8 @@ raulmoracode-create --version   # show the installed version
 - Writes **`src/config/site.ts`**, the single place a project declares how it presents itself: tab title, description, favicon, social preview image and alt text, author, X handle, locale and theme color. Both frameworks read it, so nothing has to be repeated per framework:
   - React + Vite: a small `siteHead()` plugin in `vite.config.ts` injects the tags into `index.html` through `transformIndexHtml`, at dev and build time. The template's own `<title>` and favicon link are removed, so there is exactly one of each.
   - Next.js: the `metadata` export in `src/app/layout.tsx` is built from `site`, and Next resolves the `twitter` and `openGraph` fields natively.
+
+  `favicon` and `socialImage` accept **either** a full URL or a local path served from `public/` (`/favicon.svg`, `/imagen.png`). The CLI does not generate any image: you provide it. Local paths are emitted as they are, and once `url` is set they are resolved against it, because social crawlers cannot resolve relative URLs.
   The result is a proper preview when a link is shared on X, WhatsApp, Slack or LinkedIn, and changing the title, description or favicon later is a one-file edit. Defaults come from the project name and the real pinned stack read from `package.json`; `description` is empty on purpose and empty values are never rendered, so the HTML never carries a blank meta tag.
 - Initializes Git on `main`, adds the remote, creates the commit `chore: initial project setup` and pushes with `git push -u origin main` (never `--force`). If the remote already contains commits that do not exist locally, the process stops with a clear message instead of overwriting anything.
 

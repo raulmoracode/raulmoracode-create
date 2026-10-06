@@ -134,7 +134,10 @@ prompt (prompts/*.ts, Clack + validation.ts)
 
 - **`src/config/site.ts` is the single source of truth for the site identity** in generated
   projects (title, description, favicon, social preview image, author, X handle, locale,
-  theme color). Both frameworks read it: the Vite `siteHead()` plugin injects the head tags
+  theme color). `favicon` and `socialImage` take **either** a full URL or a local path under
+  `public/`; the CLI generates no image assets. Empty values are never rendered. A local
+  `socialImage` must be resolved against `site.url` before it reaches the HTML, because
+  social crawlers cannot resolve relative URLs. Both frameworks read it: the Vite `siteHead()` plugin injects the head tags
   through `transformIndexHtml`, and the Next `metadata` export is built from the same object.
   Never hardcode those values in `index.html`, `layout.tsx`, `vite.config.ts` or the README
   template: adding a value means adding it to `SiteValues` and to the two consumers, so the
