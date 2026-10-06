@@ -67,6 +67,7 @@ raulmoracode-create --version   # show the installed version
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
 - Configures **VS Code** (`.vscode/settings.json` and `.vscode/extensions.json`).
 - Pins **Node.js 24** via `.nvmrc` and writes `.editorconfig`.
+- Writes the **MIT `LICENSE`** with the project author and the current year, and sets `license: "MIT"` in `package.json`, so the project is publishable as it comes out.
 - Applies **branding**: tab title `raulmoracode` and favicon `https://cdn.raulmoracode.com/icons/favicon.ico` (in `index.html` for Vite, in the root layout metadata for Next.js).
 - Ships a minimal **starter** for React + Vite: `public/` and `src/assets/` are emptied, `App.tsx` renders a simple hello and `App.css` starts empty.
 - Ships a minimal **starter** for Next.js: `public/` is emptied and `page.tsx` renders a simple hello (its orphaned `page.module.css` is removed). `AGENTS.md` is kept and `CLAUDE.md` is removed.

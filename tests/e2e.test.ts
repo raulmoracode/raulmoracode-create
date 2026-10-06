@@ -182,6 +182,10 @@ describe("end-to-end project creation", () => {
       type: "git",
       url: "https://github.com/raulmoracode/my-project",
     });
+    expect(pkg.license).toBe("MIT");
+    const license = await readFile(join(projectDir, "LICENSE"), "utf8");
+    expect(license.startsWith("MIT License\n")).toBe(true);
+    expect(license).toContain("Raul Mora");
     expect(pkg.scripts.test).toBe("vitest");
     expect(pkg.scripts.check).toBe("biome check .");
     expect(pkg.scripts.prepare).toBe("husky");

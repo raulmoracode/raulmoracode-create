@@ -1,5 +1,10 @@
 import { registryScopeExcludes } from "../config/components.js";
 import {
+  LICENSE_HOLDER,
+  LICENSE_TYPE,
+  licenseText,
+} from "../config/license.js";
+import {
   collectLockedPackages,
   mergePnpmWorkspaceYaml,
 } from "../config/pnpm-workspace.js";
@@ -203,6 +208,7 @@ export async function patchPackageJson(
     private: true,
     type: "module",
     author: { ...PROJECT_AUTHOR },
+    license: LICENSE_TYPE,
     homepage: githubUrl,
     repository: { type: "git", url: githubUrl },
     scripts: projectScripts(framework, selection),
@@ -301,6 +307,16 @@ export async function refreshPnpmWorkspaceExcludes(
   await writeTextFile(
     workspacePath,
     mergePnpmWorkspaceYaml(existing, excludes),
+  );
+}
+
+export async function writeProjectLicense(
+  projectDir: string,
+  year: number,
+): Promise<void> {
+  await writeTextFile(
+    joinPath(projectDir, "LICENSE"),
+    licenseText({ holder: LICENSE_HOLDER, year }),
   );
 }
 

@@ -136,6 +136,10 @@ prompt (prompts/*.ts, Clack + validation.ts)
   exact content, ending in `\n`) + `src/generators/configure-<x>.ts`
   (uses `joinPath`/`writeTextFile` from `filesystem.ts`) + call it from `run.ts` in step 1
   + tests in `config.test.ts` and `generators.test.ts` (temporary directories).
+- **The MIT `LICENSE`** is written by `writeProjectLicense(projectDir, year)` with
+  `LICENSE_HOLDER` (the same author it writes to `package.json`) and the current year,
+  passed in from `run.ts` so the template stays pure and the tests stay year-independent.
+  `patchPackageJson` also sets `license: "MIT"`; the two must agree.
 - **Adding a dependency to generated projects**: define the exact version as a constant in
   `generators/configure-project.ts` (`HUSKY_VERSION`, …), use it in `devDependencies()` (or
   `runtimeDependencies()`), and if it carries a lifecycle script (`prepare: husky`), ALSO add it

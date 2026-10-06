@@ -24,7 +24,11 @@ import {
   configureNode,
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
-import { refreshPnpmWorkspaceExcludes } from "../src/generators/configure-project.js";
+import {
+  PROJECT_AUTHOR,
+  refreshPnpmWorkspaceExcludes,
+  writeProjectLicense,
+} from "../src/generators/configure-project.js";
 import { configureReadme } from "../src/generators/configure-readme.js";
 import { configureShadcn } from "../src/generators/configure-shadcn.js";
 import { configureTesting } from "../src/generators/configure-testing.js";
@@ -715,5 +719,16 @@ describe("configureGitHooks", () => {
       const mode = (await stat(join(dir, ".husky", hook))).mode;
       expect(mode & 0o111).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("writeProjectLicense", () => {
+  it("writes the MIT license with the project author and the given year", async () => {
+    const dir = await makeTempDir();
+    await writeProjectLicense(dir, 2026);
+    const text = await readFromFile(dir, "LICENSE");
+    expect(text.startsWith("MIT License\n")).toBe(true);
+    expect(text).toContain(`Copyright (c) 2026 ${PROJECT_AUTHOR.name}`);
+    expect(text.endsWith("\n")).toBe(true);
   });
 });

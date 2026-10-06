@@ -7,7 +7,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- Generated projects include the **MIT `LICENSE`** (with the project author and
+  the current year) and `"license": "MIT"` in `package.json`, so a new project is
+  publishable without having to add either by hand.
 
 ## [1.0.4] - 2026-10-06
 
