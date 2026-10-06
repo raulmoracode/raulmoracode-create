@@ -7,6 +7,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+Nothing pending yet.
+
+## [1.0.6] - 2026-10-06
+
 ### Added
 
 - CI workflow template for generated projects: every scaffolded project now
@@ -161,7 +165,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.2...v1.0.3
