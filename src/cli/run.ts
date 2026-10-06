@@ -15,6 +15,7 @@ import {
   normalizePackageJson,
   patchPackageJson,
   refreshPnpmWorkspaceExcludes,
+  writeProjectMarker,
 } from "../generators/configure-project.js";
 import { configureReadme } from "../generators/configure-readme.js";
 import { configureShadcn } from "../generators/configure-shadcn.js";
@@ -41,6 +42,7 @@ import {
   resolvePath,
 } from "../utils/filesystem.js";
 import { satisfiesNodeVersion } from "../utils/validation.js";
+import { VERSION } from "./args.js";
 import { showFarewell, showSummary, showWarning } from "./output.js";
 
 const MINIMUM_NODE_MAJOR = 24;
@@ -251,6 +253,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
             selection,
           );
           await augmentGitignore(projectDir);
+          message("Writing project marker");
+          await writeProjectMarker(projectDir, VERSION);
           return "Project created";
         },
       },

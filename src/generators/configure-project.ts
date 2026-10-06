@@ -3,8 +3,13 @@ import {
   collectLockedPackages,
   mergePnpmWorkspaceYaml,
 } from "../config/pnpm-workspace.js";
+import {
+  PROJECT_MARKER_FILE,
+  projectMarker,
+} from "../config/project-marker.js";
 import { FULL_TECH_SELECTION, type TechSelection } from "../config/tech.js";
 import type { PackageJson, ProjectFramework } from "../frameworks/types.js";
+import { MIGRATION_IDS } from "../migrations/index.js";
 import { exec } from "../utils/exec.js";
 import {
   joinPath,
@@ -301,6 +306,16 @@ export async function refreshPnpmWorkspaceExcludes(
   await writeTextFile(
     workspacePath,
     mergePnpmWorkspaceYaml(existing, excludes),
+  );
+}
+
+export async function writeProjectMarker(
+  projectDir: string,
+  cliVersion: string,
+): Promise<void> {
+  await writeTextFile(
+    joinPath(projectDir, PROJECT_MARKER_FILE),
+    projectMarker({ createdBy: cliVersion, migrations: MIGRATION_IDS }),
   );
 }
 

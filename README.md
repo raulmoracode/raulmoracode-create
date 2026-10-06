@@ -53,6 +53,29 @@ raulmoracode-create --help      # show help
 raulmoracode-create --version   # show the installed version
 ```
 
+### Updating projects created by an older CLI
+
+Every generated project gets a `raulmoracode.json` file recording the CLI version
+that created it and the template migrations already applied. To bring an existing
+project up to date, run the `migrate` command inside it:
+
+```bash
+cd ~/code/my-old-project
+pnpm dlx @raulmoracode/create@latest migrate --dry-run   # report only, writes nothing
+pnpm dlx @raulmoracode/create@latest migrate             # apply what is missing
+```
+
+`migrate` is deliberately boring and predictable:
+
+- It never prompts and never commits: review the result with `git diff`.
+- It inspects the project instead of trusting versions, so it does not matter
+  which CLI created it. A project without `raulmoracode.json` is treated as
+  pre-marker and gets every migration.
+- It is idempotent: running it twice leaves exactly the same result.
+- When a file has drifted too much to be patched safely, it refuses to touch it,
+  reports the conflict and prints the snippet to add by hand.
+- It runs Biome over the files it modified when the project has it installed.
+
 ## What the CLI does
 
 - Scaffolds with the **official generators** (never a hand-written template):
@@ -73,6 +96,8 @@ raulmoracode-create --version   # show the installed version
 - Fills in **project metadata** in `package.json`: `author` (Raul Mora, https://raulmoracode.com), `homepage` and `repository` with the GitHub URL you enter at the start.
 - Writes a project **`README.md`** (overwriting the scaffolder default): title with the project name, requirements, a scripts table matching the final `package.json`, the selected tech stack with exact versions, the shadcn registry workflow (only with shadcn), Git workflow (only with Husky) and a per-framework structure overview.
 - Writes **`pnpm-workspace.yaml`** with `minimumReleaseAge: 10080` plus `minimumReleaseAgeExclude` entries for every locked package, so installs keep working (pnpm enforces the policy against the whole lockfile, not just direct dependencies). When shadcn is selected, the `@raulmoracode/*` scope is also excluded so `shadcn add @raulmoracode/<component>` can install freshly published packages from your registry.
+- Adds the social preview metadata: `twitter:card` + `twitter:site`/`twitter:creator`/`twitter:title`/`twitter:description`/`twitter:image`/`twitter:image:alt` and the matching `og:` tags in `index.html` (Vite) or the `twitter`/`openGraph` fields of the `Metadata` object (Next.js), so links shared on X, WhatsApp, Slack or LinkedIn render a proper preview. Titles use the project name and descriptions the real stack.
+- Writes **`raulmoracode.json`** recording the CLI version that created the project and the template migrations already applied, so `raulmoracode-create migrate` can update it later.
 - Initializes Git on `main`, adds the remote, creates the commit `chore: initial project setup` and pushes with `git push -u origin main` (never `--force`). If the remote already contains commits that do not exist locally, the process stops with a clear message instead of overwriting anything.
 
 ## Generated projects
@@ -180,10 +205,11 @@ pnpm lint     # biome lint .
 ```text
 src/
 ├── index.ts               # entry point (shebang)
-├── cli/                   # orchestration and Clack output
+├── cli/                   # orchestration and Clack output (run, migrate)
 ├── prompts/               # user interaction (Clack)
 ├── generators/            # project configuration steps
 ├── frameworks/            # vite / next specific logic
+├── migrations/            # template migrations for projects that already exist
 ├── git/                   # git command builders and wrappers
 ├── config/                # configuration file templates
 └── utils/                 # exec, filesystem, validation
@@ -191,6 +217,8 @@ tests/                     # vitest suite (external commands are mocked)
 ```
 
 External commands are always executed with argument arrays through `utils/exec.ts` (never string interpolation), and every user input is validated before use.
+
+`migrations/` mirrors `generators/` for the other direction in time: `generators/` builds a project from nothing, `migrations/` patches a project that already exists. Both keep I/O in `utils/filesystem.ts` and the templates in `config/`, so the exact same social-meta text is used when scaffolding and when migrating, never a second copy.
 
 ### Verified adjustments
 

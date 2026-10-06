@@ -45,6 +45,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   ├── index.ts                  # entry point (shebang + flags + run)
 │   ├── cli/
 │   │   ├── run.ts                # full flow orchestration
+│   │   ├── migrate.ts            # migrate command orchestration
 │   │   ├── args.ts               # VERSION, parseArgs, help text
 │   │   └── output.ts             # Clack output helpers
 │   ├── prompts/
@@ -68,6 +69,10 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── index.ts              # { vite, next } registry, getFramework()
 │   │   ├── vite.ts               # React + Vite specific logic
 │   │   └── next.ts               # Next.js specific logic
+│   ├── migrations/
+│   │   ├── types.ts              # ProjectFacts, Migration contract
+│   │   ├── index.ts              # ordered MIGRATIONS registry
+│   │   └── social-meta.ts        # social preview metadata migration
 │   ├── git/
 │   │   ├── init.ts               # git init + branch -M main
 │   │   ├── remote.ts             # remote add / ls-remote
@@ -76,7 +81,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   ├── config/
 │   │   ├── agents.ts             # AGENTS.md content
 │   │   ├── biome.ts              # biome.json content
-│   │   ├── branding.ts           # title and favicon (constants)
+│   │   ├── branding.ts           # title, favicon and social handles (constants)
 │   │   ├── components.ts         # components.json + utils.ts (cn)
 │   │   ├── commitlint.ts         # commitlint.config.ts content
 │   │   ├── editorconfig.ts       # .editorconfig content
@@ -111,14 +116,18 @@ Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` config
 ```ts
 #!/usr/bin/env node
 import { parseArgs, printHelp, VERSION } from "./cli/args.js";
+import { migrate } from "./cli/migrate.js";
 import { run } from "./cli/run.js";
 // --help/-h prints help and exits 0; --version/-V prints VERSION and exits 0.
-run({ verbose: parseArgs(process.argv.slice(2)).verbose }).catch(...);
+// The `migrate` positional dispatches to migrate(), everything else to run().
 ```
 
 - The shebang is preserved in `dist/index.js` after compiling with `tsc`.
 - Flags: `--verbose` (prints stdout/stderr of every external command in real time),
-  `-h`/`--help` (help, exit 0 without entering the flow), `-V`/`--version` (prints `VERSION`, exit 0).
+  `-h`/`--help` (help, exit 0 without entering the flow), `-V`/`--version` (prints `VERSION`, exit 0),
+  `--dry-run` (only with `migrate`).
+- `parseArgs` also returns `command` (`create` | `migrate`): the first non-flag argument,
+  when it is `migrate`, selects the migrations flow. Unknown positionals stay on `create`.
 - `VERSION` lives in `src/cli/args.ts` and a test pins it to `package.json` (never read the JSON at runtime).
 - Works from any working directory.
 
@@ -298,12 +307,14 @@ Internal functions:
 | `agents.ts` | `agentsMd()` | `AGENTS.md`: guidelines (source of truth, principles, dependencies, style, shadcn, architecture, validation `pnpm check/test/build`, non-destructive Git, security, dependencies, working code, final response) + `Project tooling` section (pnpm exclusively, script map, shadcn workflow) + `Git hooks and commits` section (Husky, Commitlint, Conventional Commits) |
 | `args.ts` (in `cli/`, not pure-template) | `VERSION`, `parseArgs()`, `helpText()`, `printHelp()` | `--help` / `--version` output |
 | `biome.ts` | `biomeConfig()` | `biome.json`: local `$schema`, `files.includes` (`**`, `!dist`, `!.next`), 2-space formatter, `assist.actions.source.organizeImports: "on"`, linter on with `noSvgWithoutTitle`/`noAmbiguousAnchorText` `off`, `overrides` disabling formatter/linter/assist for the Tailwind entry files (`src/index.css`, `src/app/globals.css`, whose v4 directives Biome cannot parse) |
-| `branding.ts` | `SITE_TITLE = "raulmoracode"`, `FAVICON_URL = "https://cdn.raulmoracode.com/icons/favicon.ico"` | — |
+| `branding.ts` | `SITE_TITLE = "raulmoracode"`, `FAVICON_URL`, `TWITTER_CARD = "summary_large_image"`, `TWITTER_SITE_HANDLE`/`TWITTER_CREATOR_HANDLE`, `SOCIAL_IMAGE_URL`, `SOCIAL_DESCRIPTION_LIMIT = 200` | — |
 | `commitlint.ts` | `commitlintConfig()` | `commitlint.config.ts` (`{ extends: ["@commitlint/config-conventional"] }`) |
 | `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `REGISTRY_THEME_SPEC`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn) |
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
+| `project-marker.ts` | `ProjectMarker`, `PROJECT_MARKER_FILE = "raulmoracode.json"`, `projectMarker({createdBy, migratedBy?, migrations})`, `parseProjectMarker(raw)` | `raulmoracode.json` in the project root: the CLI version that created it plus the migrations already applied (sorted, deduped) |
+| `social-meta.ts` | `SocialMetaOptions`, `describeStack(packageJson)`, `socialMetaOptions(name, packageJson)`, `viteSocialMetaTags(options, indent)`, `nextSocialMetaFields(options, indent)`, `hasViteSocialMeta`, `hasNextSocialMeta`, `withViteSocialMeta(html, options)`, `withNextSocialMeta(layout, options)` | social preview metadata: raw `<meta>` block for Vite, `twitter` + `openGraph` fields for the Next `Metadata` object. Titles use the project name, descriptions the real stack from `package.json` (truncated to 200 chars). The two `with*` helpers are idempotent and return a `conflict` with the manual snippet when the anchor is missing. Shared by `configureBranding` and the `social-meta` migration |
 | `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + sorted, single-quoted `minimumReleaseAgeExclude`; existing entries are merged after stripping any quoting, so entries another tool (the shadcn CLI) already quoted are never double-quoted) |
 | `query.ts` | `queryClientConfig()` | `query-client.ts` (`staleTime` 60s, `gcTime` 5min, `retry: false`) |
 | `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), gated per-framework structure tree, links |
@@ -341,7 +352,8 @@ Internal functions:
 | `exec.test.ts` | Real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
 | `error-handling.test.ts` | Mocked `exec` (`importOriginal` + override): missing pnpm/git, non-zero exits, `remoteHasDivergentCommits` (diverge/ancestor/no-branch/same), `PreflightError`, invalid URLs, `REMOTE_CONFLICT_MESSAGE` |
 | `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, npmjs registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
-| `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
+| `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version, `migrate` subcommand, `--dry-run`, unknown positional stays on `create`), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
+| `migrations.test.ts` | Social meta templates (stack summary, truncation, escaping, indentation, conflicts), `social-meta` migration (Vite + Next insertion, **idempotence across three runs**, conflict leaves the file untouched, undetected framework), marker writer, and the whole `migrate` command against temp projects: `--dry-run` writes nothing, legacy project gets `createdBy: "unknown"`, second run is a no-op, exit 1 on conflict, Biome invoked only when installed, plus a test asserting the scaffold and the migration emit the same block |
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
 | `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
@@ -404,7 +416,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 3. Prompts: framework → tech preset → name → GitHub URL (normalized without trailing `/` or `.git`).
 4. Destination: `<cwd>/<name>` (empty→reused and removed; with content→error, never deletes).
 5. `git ls-remote <url>` (access to the already-existing remote).
-6. Tasks: scaffold gated by selection → `package.json` → `.gitignore` → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
+6. Tasks: scaffold gated by selection (branding also writes the social preview metadata) → `package.json` → `.gitignore` → `README.md` → `raulmarcode.json` marker → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
 7. Summary (framework, `./<name>`, URL) → `¿Quieres abrir el proyecto ahora?` → `code .` (tolerant) → farewell.
 8. Errors: `failedStep` recorded per task; cleanup when everything was CLI-created (never on push failure; empty-dir restore on pre-task failures) + actionable hint → exit 1 (130 on SIGINT/SIGTERM); Clack cancellation → clean exit 0.
 
@@ -421,3 +433,44 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 - shadcn on Vite needs the `@/*` alias in `vite.config.ts` **and** both tsconfigs (the CLI only reads the root one; without it a literal `@/` folder is created).
 - VS Code deprecated `typescript.tsdk` in favor of `js/ts.tsdk.path` (unified `js/ts.*` namespace); generated settings use the new key.
 - `prepare: husky` requires Husky to already be listed in `patchPackageJson`; otherwise the first `pnpm install` fails with exit 127. `pnpm exec husky` must run after `git init` (the install-time `prepare` runs without `.git` and only warns).
+
+---
+
+## 17. Migrations layer — `src/migrations/`
+
+Projects generated by an older CLI cannot be updated by re-running the scaffolder (`checkDestination`
+refuses a non-empty directory). `raulmoracode-create migrate` patches an existing project instead.
+
+**`src/config/project-marker.ts`** (pure): `ProjectMarker`, `PROJECT_MARKER_FILE = "raulmoracode.json"`,
+`projectMarker({createdBy, migratedBy?, migrations})` (sorted, deduped JSON + `\n`),
+`parseProjectMarker(raw)` (tolerant: missing fields become `createdBy: "unknown"`, `migrations: []`).
+
+**`src/migrations/types.ts`**: `ProjectFacts` (`root`, `framework`, `projectName`, `packageJson`,
+`marker`, `hasBiome`), `MigrationStatus` (`applied|pending|skipped|conflict|failed`), `MigrationOutcome`
+and the `Migration` contract (`id`, `target()`, `isApplied()`, `apply()`).
+
+**`src/migrations/index.ts`**: the ordered `MIGRATIONS` registry and `MIGRATION_IDS`. Ids are written to
+the marker, so they are permanent.
+
+**Rules every migration must obey** (enforced by tests):
+
+1. **Inspect, never diff.** A migration ensures something is present; it never needs to know which CLI
+   version created the project. `createdBy` is informational and never drives decisions.
+2. **Idempotent.** Running it repeatedly produces byte-identical output; detection lives inside the
+   shared template (`hasViteSocialMeta` / `hasNextSocialMeta`) so both the scaffolder and the migration
+   are covered by the same guard.
+3. **Verify the anchor before writing.** When the file has drifted past recognition, the migration
+   returns `conflict` with the manual snippet and leaves the file untouched.
+4. **Never destructive.** It only inserts; user content is preserved.
+5. **Format if possible.** `migrate` runs `pnpm exec biome check --write` over the touched
+   formatable files, only when `node_modules/.bin/biome` exists, and warns if it fails.
+
+**`src/migrations/social-meta.ts`** (`id: "social-meta"`): inserts the social preview metadata —
+`index.html` (Vite) or the `Metadata` object (Next.js). It calls the same pure helpers in
+`config/social-meta.ts` used by `configureBranding`, so scaffolded and migrated projects are identical.
+
+**`src/cli/migrate.ts`**: reads `package.json` (`MigrationError` outside a project), detects the
+framework from the files, reads the marker, runs every migration, reports each outcome through Clack
+(`success`/`info`/`step`/`error` + manual snippet), writes the marker with `createdBy` preserved and
+`migratedBy: VERSION`, then a summary. `--dry-run` reports and writes nothing (not even the marker).
+Exit code 1 when any migration ended in `conflict`/`failed`. No prompts, no commits.

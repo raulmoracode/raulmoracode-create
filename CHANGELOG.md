@@ -7,7 +7,28 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- `migrate` command: brings a project created by an older CLI up to date with the current
+  template, without re-scaffolding it. `pnpm dlx @raulmoracode/create@latest migrate`
+  (add `--dry-run` to only report). It never prompts, never commits, inspects the project
+  instead of trusting versions, is idempotent, and when a file has drifted past recognition
+  it refuses to touch it and prints the snippet to add by hand.
+- `raulmoracode.json` in every generated project: the CLI version that created it plus the
+  template migrations already applied. Projects created before this release are marked
+  `createdBy: "unknown"` when migrated, which is exactly why `migrate` never relies on it.
+- Social preview metadata in generated projects: `twitter:card`, `twitter:site`,
+  `twitter:creator`, `twitter:title`, `twitter:description`, `twitter:image`,
+  `twitter:image:alt` and the matching `og:` tags in `index.html` (Vite), or the
+  `twitter` / `openGraph` fields of the `Metadata` object (Next.js). Titles use the
+  project name and descriptions the real stack, so links shared on X, WhatsApp, Slack or
+  LinkedIn render a proper preview.
+
+### Changed
+
+- `src/migrations/` is a new layer for template changes that also apply to existing
+  projects. It shares the exact templates used while scaffolding (`config/social-meta.ts`)
+  instead of duplicating them.
 
 ## [1.0.4] - 2026-10-06
 

@@ -47,6 +47,7 @@ src/
 ├── prompts/            # ALL user interaction lives here (Clack)
 ├── generators/         # steps that modify the generated project
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
+├── migrations/         # template migrations for projects that ALREADY exist
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
 ├── config/             # PURE templates: functions returning strings, no I/O
 └── utils/
@@ -68,6 +69,14 @@ Rules:
   `exec` resolves `.cmd` on win32. `ExecError` carries `command/args/code/signal/stdout/stderr/spawnError`.
 - **`git/` contains no Husky or Commitlint logic** (git only). Husky activation
   (`pnpm exec husky` after `git init`) is orchestrated from `cli/run.ts`, not from `git/`.
+- **`migrations/` mirrors `generators/` for the other direction in time**: `generators/` builds a
+  project from nothing, `migrations/` patches a project that already exists. Same rules (I/O only via
+  `filesystem.ts`, templates only in `config/`, no Clack). A migration is an "ensure this is present"
+  operation, never a diff between template versions, so it must be **idempotent**, must **verify its
+  anchor before writing**, and must return a `conflict` with the manual snippet instead of writing to a
+  file it does not recognize. Ids are written to `raulmoracode.json` and are therefore permanent.
+  Scaffolding and migrating must share the same pure template (e.g. `config/social-meta.ts`), never a
+  second copy.
 - **CLI messages are in Spanish** (preflights, prompts, errors). Keep the language.
 
 ## 4. Execution flow (`src/cli/run.ts` — the orchestrator, read it first)
@@ -143,6 +152,10 @@ prompt (prompts/*.ts, Clack + validation.ts)
   script exists but the binary is not installed yet). `pinnedPackages()` picks it up
   automatically for workspace excludes. Update `install.test.ts`,
   `frameworks.test.ts` and `package-metadata.test.ts`.
+- **The `migrate` command** (`cli/migrate.ts`) is the only entry point that touches projects that
+  already exist. It never prompts, never commits, and reads the project's own `package.json` +
+  `raulmoracode.json` instead of asking. Add new migrations to `MIGRATIONS` (ordered) and keep their
+  ids stable; new projects record every id at scaffold time via `writeProjectMarker`.
 - **Vite/Next differences**: live in `frameworks/vite.ts|next.ts` behind the
   `ProjectFramework` interface (`types.ts`): `scripts()`, `pinnedDependencies/DevDependencies()`,
   `removedDependencyPatterns()`, `componentsJsonOptions()`, `configureTailwind/TanStackQuery/
@@ -190,6 +203,7 @@ prompt (prompts/*.ts, Clack + validation.ts)
 | File | What it covers |
 |---|---|
 | `validation.test.ts` | names, GitHub URLs, `isFramework`, `satisfiesNodeVersion` |
+| `migrations.test.ts` | social meta templates, `social-meta` (Vite + Next, idempotence, conflicts), marker writer, and the `migrate` command end to end against temp projects |
 | `config.test.ts` | each pure template (exact content + trailing `\n` + no tokens/machine paths) |
 | `frameworks.test.ts` | registration, exact pins, scripts, removal patterns, `patch/normalize` against temp `package.json` |
 | `generators.test.ts` | each `configure*` against temp dirs (+ executable bit except win32) |

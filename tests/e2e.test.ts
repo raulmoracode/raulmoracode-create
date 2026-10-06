@@ -92,6 +92,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
   return { ...actual, exec: execMock };
 });
 
+import { VERSION } from "../src/cli/args.js";
 import { run } from "../src/cli/run.js";
 
 function makeExecImplementation() {
@@ -287,6 +288,27 @@ describe("end-to-end project creation", () => {
       true,
     );
     expect(existsSync(join(projectDir, "yarn.lock")), "yarn.lock").toBe(false);
+
+    const marker = JSON.parse(
+      await readFile(join(projectDir, "raulmoracode.json"), "utf8"),
+    ) as { createdBy: string; migrations: string[] };
+    expect(marker.createdBy).toBe(VERSION);
+    expect(marker.migrations).toEqual(["social-meta"]);
+
+    const isNext = process.env.E2E_FRAMEWORK === "next";
+    const socialContent = await readFile(
+      isNext
+        ? join(projectDir, "src", "app", "layout.tsx")
+        : join(projectDir, "index.html"),
+      "utf8",
+    );
+    expect(socialContent).toContain(
+      isNext ? "twitter: {" : '<meta name="twitter:card"',
+    );
+    expect(socialContent).toContain("summary_large_image");
+    expect(socialContent).toContain(isNext ? "openGraph: {" : "twitter:image");
+    expect(socialContent).toContain("@raulmoracode");
+    expect(socialContent).toContain("my-project");
 
     const workspace = await readFile(
       join(projectDir, "pnpm-workspace.yaml"),

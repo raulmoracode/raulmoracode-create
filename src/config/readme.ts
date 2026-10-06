@@ -325,6 +325,20 @@ export function readmeMd(options: ReadmeOptions): string {
   }
   lines.push(
     "",
+    "## Keeping the template up to date",
+    "",
+    "`raulmoracode.json` records the CLI version that created this project and the template",
+    "migrations already applied. To bring a project created by an older CLI up to date:",
+    "",
+    "```bash",
+    "pnpm dlx @raulmoracode/create@latest migrate --dry-run   # report only",
+    "pnpm dlx @raulmoracode/create@latest migrate             # apply what is missing",
+    "```",
+    "",
+    "It never prompts and never commits: review the result with `git diff`.",
+  );
+  lines.push(
+    "",
     "## Project structure",
     "",
     ...structure(frameworkId, selection),

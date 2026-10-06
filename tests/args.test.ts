@@ -16,6 +16,8 @@ describe("parseArgs", () => {
       help: false,
       version: false,
       verbose: false,
+      dryRun: false,
+      command: "create",
     });
   });
 
@@ -39,7 +41,29 @@ describe("parseArgs", () => {
       help: true,
       version: false,
       verbose: true,
+      dryRun: false,
+      command: "create",
     });
+  });
+
+  it("detects the migrate subcommand", () => {
+    expect(parseArgs(["migrate"]).command).toBe("migrate");
+    expect(parseArgs(["migrate", "--dry-run", "--verbose"])).toEqual({
+      help: false,
+      version: false,
+      verbose: true,
+      dryRun: true,
+      command: "migrate",
+    });
+  });
+
+  it("detects --dry-run", () => {
+    expect(parseArgs(["--dry-run"]).dryRun).toBe(true);
+    expect(parseArgs(["migrate", "--dry-run"]).dryRun).toBe(true);
+  });
+
+  it("treats unknown positional arguments as an interactive run", () => {
+    expect(parseArgs(["whatever"]).command).toBe("create");
   });
 
   it("ignores unknown flags", () => {
@@ -47,6 +71,8 @@ describe("parseArgs", () => {
       help: false,
       version: false,
       verbose: false,
+      dryRun: false,
+      command: "create",
     });
   });
 });
@@ -63,6 +89,8 @@ describe("help and version output", () => {
     const text = helpText();
     expect(text).toContain("Usage:");
     expect(text).toContain("raulmoracode-create [options]");
+    expect(text).toContain("raulmoracode-create migrate");
+    expect(text).toContain("--dry-run");
     expect(text).toContain("--verbose");
     expect(text).toContain("--help");
     expect(text).toContain("--version");
