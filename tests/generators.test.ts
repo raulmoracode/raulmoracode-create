@@ -11,6 +11,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 });
 
 import { SHADCN_VERSION } from "../src/config/components.js";
+import { SITE_HEAD_COMMENT } from "../src/config/site.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
 import {
@@ -27,6 +28,7 @@ import {
 import { refreshPnpmWorkspaceExcludes } from "../src/generators/configure-project.js";
 import { configureReadme } from "../src/generators/configure-readme.js";
 import { configureShadcn } from "../src/generators/configure-shadcn.js";
+import { configureSite } from "../src/generators/configure-site.js";
 import { configureTesting } from "../src/generators/configure-testing.js";
 import {
   applyRegistryTheme,
@@ -94,14 +96,20 @@ describe("configureNode", () => {
 });
 
 describe("configureBranding (vite)", () => {
-  it("sets the tab title and CDN favicon in index.html", async () => {
+  it("leaves a single head placeholder and removes the template title and icon", async () => {
     const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "package.json"),
+      JSON.stringify({ name: "my-project" }),
+      "utf8",
+    );
     await writeFile(
       join(dir, "index.html"),
       [
         "<!doctype html>",
         "<html>",
         "  <head>",
+        '    <meta charset="UTF-8" />',
         '    <link rel="icon" type="image/svg+xml" href="/vite.svg" />',
         "    <title>vite-react-typescript-starter</title>",
         "  </head>",
@@ -110,61 +118,27 @@ describe("configureBranding (vite)", () => {
       ].join("\n"),
       "utf8",
     );
-    await writeFile(
-      join(dir, "package.json"),
-      JSON.stringify({
-        name: "my-project",
-        dependencies: { react: "19.3.0" },
-        devDependencies: { vite: "8.3.1", typescript: "7.0.2" },
-      }),
-      "utf8",
-    );
     await viteFramework.configureBranding(dir);
     const branded = await readFromFile(dir, "index.html");
-    expect(branded).toContain("<title>raulmoracode</title>");
-    expect(branded).toContain(
-      'href="https://cdn.raulmoracode.com/icons/favicon.ico"',
-    );
+    expect(branded).toContain(SITE_HEAD_COMMENT);
+    expect(branded).not.toContain("<title>");
     expect(branded).not.toContain("/vite.svg");
-  });
-
-  it("adds the social meta tags inside head", async () => {
-    const dir = await makeTempDir();
-    await writeFile(
-      join(dir, "package.json"),
-      JSON.stringify({
-        name: "my-project",
-        dependencies: { react: "19.3.0" },
-        devDependencies: { vite: "8.3.1", typescript: "7.0.2" },
-      }),
-      "utf8",
-    );
-    await writeFile(
-      join(dir, "index.html"),
-      [
-        "<!doctype html>",
-        "<html>",
-        "  <head>",
-        '    <link rel="icon" type="image/svg+xml" href="/vite.svg" />',
-        "    <title>vite-react-typescript-starter</title>",
-        "  </head>",
-        "</html>",
-        "",
-      ].join("\n"),
-      "utf8",
-    );
-    await viteFramework.configureBranding(dir);
-    const branded = await readFromFile(dir, "index.html");
-    expect(branded).toContain(
-      '<meta name="twitter:card" content="summary_large_image" />',
-    );
-    expect(branded).toContain(
-      '<meta name="twitter:title" content="my-project" />',
-    );
-    expect(branded).toContain("React 19 + Vite 8 + TypeScript 7");
-    expect(branded.indexOf("twitter:card")).toBeLessThan(
+    expect(branded).toContain('<meta charset="UTF-8" />');
+    expect(branded.match(SITE_HEAD_COMMENT)).toHaveLength(1);
+    expect(branded.indexOf(SITE_HEAD_COMMENT)).toBeLessThan(
       branded.indexOf("</head>"),
     );
+  });
+
+  it("fails clearly when index.html has no head to patch", async () => {
+    const dir = await makeTempDir();
+    await writeFile(join(dir, "package.json"), '{"name":"my-project"}', "utf8");
+    await writeFile(
+      join(dir, "index.html"),
+      "<html><body></body></html>",
+      "utf8",
+    );
+    await expect(viteFramework.configureBranding(dir)).rejects.toThrow();
   });
 
   it("fails clearly when index.html has no title or icon", async () => {
@@ -300,33 +274,46 @@ describe("configureBranding (next)", () => {
     "",
   ].join("\n");
 
-  it("sets the tab title and CDN favicon in the layout", async () => {
+  it("removes the template favicon file", async () => {
     const dir = await makeTempDir();
     await writeTextFile(join(dir, "package.json"), nextPackageJson);
     await writeTextFile(join(dir, "src", "app", "layout.tsx"), layout);
     await writeTextFile(join(dir, "src", "app", "favicon.ico"), "fake-icon");
     await nextFramework.configureBranding(dir);
-    const branded = await readFromFile(dir, "src", "app", "layout.tsx");
-    expect(branded).toContain('title: "raulmoracode"');
-    expect(branded).toContain("https://cdn.raulmoracode.com/icons/favicon.ico");
     await expect(
       readFile(join(dir, "src", "app", "favicon.ico")),
     ).rejects.toThrow();
   });
 
-  it("adds the twitter and openGraph fields to the metadata", async () => {
+  it("replaces the metadata export with one driven by the site config", async () => {
     const dir = await makeTempDir();
     await writeTextFile(join(dir, "package.json"), nextPackageJson);
     await writeTextFile(join(dir, "src", "app", "layout.tsx"), layout);
     await nextFramework.configureBranding(dir);
     const branded = await readFromFile(dir, "src", "app", "layout.tsx");
-    expect(branded).toContain("twitter: {");
+    expect(branded).toContain('import { site } from "@/config/site";');
+    expect(branded).toContain("title: site.title,");
     expect(branded).toContain("openGraph: {");
-    expect(branded).toContain('card: "summary_large_image",');
-    expect(branded).toContain('title: "my-project",');
-    expect(branded.indexOf("twitter: {")).toBeLessThan(
-      branded.indexOf('title: "raulmoracode"'),
+    expect(branded).toContain("twitter: {");
+    expect(branded).toContain(
+      "images: [{ url: site.socialImage, alt: site.socialImageAlt }]",
     );
+    // Empty values are spread away so no blank meta tag is ever emitted.
+    expect(branded).toContain(
+      "...(site.description ? { description: site.description } : {}),",
+    );
+    expect(branded).not.toContain('title: "Create Next App"');
+    expect(branded).not.toContain('title: "raulmoracode"');
+    expect(branded).not.toContain("cdn.raulmoracode.com/icons/favicon.ico");
+  });
+
+  it("fails clearly when the layout has no metadata export", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "src", "app", "layout.tsx"),
+      "export default function Layout() {\n  return null;\n}\n",
+    );
+    await expect(nextFramework.configureBranding(dir)).rejects.toThrow();
   });
 
   it("fails clearly when the layout has no title", async () => {
@@ -788,5 +775,42 @@ describe("configureGitHooks", () => {
       const mode = (await stat(join(dir, ".husky", hook))).mode;
       expect(mode & 0o111).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("configureSite", () => {
+  it("writes src/config/site.ts with the project identity", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "my-project",
+        dependencies: { react: "19.3.0" },
+        devDependencies: { vite: "8.3.1", typescript: "7.0.2" },
+      }),
+    );
+    await configureSite(dir, "my-project");
+    const site = await readFromFile(dir, "src", "config", "site.ts");
+    expect(site).toContain('name: "my-project",');
+    expect(site).toContain('title: "my-project",');
+    expect(site).toContain("React 19 + Vite 8 + TypeScript 7");
+    expect(site).toContain("https://cdn.raulmoracode.com/icons/favicon.ico");
+    expect(site).toContain('twitter: "@raulmoracode",');
+    expect(site).toContain('url: "",');
+    expect(site).toContain("} as const;");
+    expect(site).toContain('socialImage: "/imagen.png",');
+    expect(site).toContain(
+      'favicon: "https://cdn.raulmoracode.com/icons/favicon.ico",',
+    );
+    expect(site.endsWith("\n")).toBe(true);
+  });
+
+  it("falls back to the brand name when there is no project name", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "package.json"), "{}");
+    await configureSite(dir, "   ");
+    const site = await readFromFile(dir, "src", "config", "site.ts");
+    expect(site).toContain('name: "raulmoracode",');
+    expect(site).not.toContain("+ TypeScript");
   });
 });
