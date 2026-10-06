@@ -18,6 +18,11 @@ import {
 } from "../src/config/components.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
+import {
+  LICENSE_HOLDER,
+  LICENSE_TYPE,
+  licenseText,
+} from "../src/config/license.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
 import {
   collectLockedPackages,
@@ -199,6 +204,54 @@ describe("components.json (shadcn)", () => {
     expect(
       registryScopeExcludes({ ...FULL_TECH_SELECTION, shadcn: false }),
     ).toEqual([]);
+  });
+});
+
+describe("LICENSE", () => {
+  it("is the MIT license with the given holder and year", () => {
+    const text = licenseText({ holder: "Raul Mora", year: 2026 });
+    expect(text).toBe(
+      [
+        "MIT License",
+        "",
+        "Copyright (c) 2026 Raul Mora",
+        "",
+        "Permission is hereby granted, free of charge, to any person obtaining a copy",
+        'of this software and associated documentation files (the "Software"), to deal',
+        "in the Software without restriction, including without limitation the rights",
+        "to use, copy, modify, merge, publish, distribute, sublicense, and/or sell",
+        "copies of the Software, and to permit persons to whom the Software is",
+        "furnished to do so, subject to the following conditions:",
+        "",
+        "The above copyright notice and this permission notice shall be included in all",
+        "copies or substantial portions of the Software.",
+        "",
+        'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR',
+        "IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,",
+        "FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE",
+        "AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER",
+        "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,",
+        "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE",
+        "SOFTWARE.",
+        "",
+      ].join("\n"),
+    );
+    expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("names a holder and reflects the year it is given", () => {
+    expect(LICENSE_TYPE).toBe("MIT");
+    expect(LICENSE_HOLDER).not.toBe("");
+    expect(
+      licenseText({ holder: LICENSE_HOLDER, year: new Date().getFullYear() }),
+    ).toContain(`Copyright (c) ${new Date().getFullYear()} ${LICENSE_HOLDER}`);
+  });
+
+  it("carries no tokens or machine paths", () => {
+    const text = licenseText({ holder: LICENSE_HOLDER, year: 2026 });
+    expect(text).not.toContain("/Users/");
+    expect(text).not.toContain("{{");
+    expect(text).not.toContain("$");
   });
 });
 

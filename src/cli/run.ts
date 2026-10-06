@@ -15,6 +15,7 @@ import {
   normalizePackageJson,
   patchPackageJson,
   refreshPnpmWorkspaceExcludes,
+  writeProjectLicense,
 } from "../generators/configure-project.js";
 import { configureReadme } from "../generators/configure-readme.js";
 import { configureShadcn } from "../generators/configure-shadcn.js";
@@ -253,6 +254,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
             githubUrl,
             selection,
           );
+          message("Writing LICENSE");
+          await writeProjectLicense(projectDir, new Date().getFullYear());
           await augmentGitignore(projectDir);
           return "Project created";
         },

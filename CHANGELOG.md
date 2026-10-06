@@ -26,6 +26,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `package.json`. `description` is empty on purpose and empty values are never
   rendered, so the HTML never carries a blank meta tag.
 
+- Generated projects include the **MIT `LICENSE`** (with the project author and
+  the current year) and `"license": "MIT"` in `package.json`, so a new project is
+  publishable without having to add either by hand.
+
 ## [1.0.4] - 2026-10-06
 
 ### Fixed
