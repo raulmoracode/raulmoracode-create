@@ -9,6 +9,23 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- `src/config/site.ts` in generated projects: one user-owned file with the site
+  `name`, `title`, `description`, `url`, `favicon`, `socialImage`,
+  `socialImageAlt`, `author`, `twitter`, `locale` and `themeColor`. Both
+  frameworks read it, so the tab title, the favicon and the social preview
+  (`twitter:*` and `og:*`, for X, WhatsApp, Slack or LinkedIn) are defined in a
+  single place instead of being duplicated in `index.html` and
+  `src/app/layout.tsx`. On React + Vite a `siteHead()` plugin in
+  `vite.config.ts` injects the head tags through `transformIndexHtml`; on
+  Next.js the `metadata` export reads the same object. Changing the title,
+  description, favicon or preview image later is a one-file edit.
+  `favicon` and `socialImage` accept either a full URL or a local path under
+  `public/`; the CLI generates no image, the project provides it. Local paths are
+  resolved against `url` when it is set, since social crawlers cannot resolve
+  relative URLs. Defaults use the project name and the real pinned stack, read from
+  `package.json`. `description` is empty on purpose and empty values are never
+  rendered, so the HTML never carries a blank meta tag.
+
 - Generated projects include the **MIT `LICENSE`** (with the project author and
   the current year) and `"license": "MIT"` in `package.json`, so a new project is
   publishable without having to add either by hand.

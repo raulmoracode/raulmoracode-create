@@ -325,6 +325,35 @@ export function readmeMd(options: ReadmeOptions): string {
   }
   lines.push(
     "",
+    "## Site identity",
+    "",
+    "`src/config/site.ts` is the single place to change how this site presents itself:",
+    "",
+    "- `title` — the browser tab title",
+    "- `description` — empty by default; filling it adds the meta description and the preview text",
+    "- `favicon` — the icon in the tab",
+    "- `socialImage` and `socialImageAlt` — the image shown when the link is shared",
+    "  (`socialImage` accepts either a local path such as `/imagen.png`, served from `public/`,",
+    "  or a full URL)",
+    "- `author`, `twitter`, `locale`, `themeColor` and `url` (the canonical URL once deployed)",
+    "",
+    "Empty values are never rendered: no blank meta tag is emitted.",
+    "",
+    "`favicon` also accepts a local path such as `/favicon.svg` in `public/`, or a full URL.",
+    "",
+    "Crawlers cannot resolve relative URLs, so once the site is deployed set `url` and any",
+    "local `socialImage` is emitted absolute. The preview image has to be a 1200x630 PNG or",
+    "JPG (SVG is ignored by X, WhatsApp and Facebook); put it in `public/` and point",
+    "`socialImage` at it.",
+    "",
+    frameworkId === "next"
+      ? "The `metadata` export in `src/app/layout.tsx` reads those values."
+      : "The `siteHead()` plugin in `vite.config.ts` injects the tags into `index.html` at build time.",
+    "",
+    "Change it there and both follow: nothing has to be edited in `index.html` or `layout.tsx`.",
+  );
+  lines.push(
+    "",
     "## Project structure",
     "",
     ...structure(frameworkId, selection),

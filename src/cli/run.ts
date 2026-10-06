@@ -19,6 +19,7 @@ import {
 } from "../generators/configure-project.js";
 import { configureReadme } from "../generators/configure-readme.js";
 import { configureShadcn } from "../generators/configure-shadcn.js";
+import { configureSite } from "../generators/configure-site.js";
 import { configureTesting } from "../generators/configure-testing.js";
 import { applyRegistryTheme } from "../generators/configure-theme.js";
 import { configureVscode } from "../generators/configure-vscode.js";
@@ -199,6 +200,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
             message("Configuring Tailwind CSS");
             await framework.configureTailwind(projectDir);
           }
+          message("Configuring site config");
+          await configureSite(projectDir, projectName);
           message("Configuring branding");
           await framework.configureBranding(projectDir);
           if (selection.shadcn) {

@@ -1,6 +1,6 @@
 import { agentsMd } from "../config/agents.js";
-import { FAVICON_URL, SITE_TITLE } from "../config/branding.js";
 import { queryClientConfig } from "../config/query.js";
+import { SITE_HEAD_COMMENT } from "../config/site.js";
 import { tailwindCss, viteTailwindConfig } from "../config/tailwind.js";
 import { exec } from "../utils/exec.js";
 import {
@@ -168,18 +168,16 @@ export const viteFramework: ProjectFramework = {
   async configureBranding(projectDir) {
     const indexPath = joinPath(projectDir, "index.html");
     const html = await readTextFile(indexPath);
+    // The title, favicon and social tags are injected by the siteHead() plugin
+    // from src/config/site.ts, so the template ones are removed instead of
+    // being replaced: two <title> tags would be invalid.
     const branded = html
-      .replace(/<title>.*?<\/title>/, `<title>${SITE_TITLE}</title>`)
-      .replace(
-        /<link[^>]*rel="icon"[^>]*>/,
-        `<link rel="icon" type="image/x-icon" href="${FAVICON_URL}" />`,
-      );
-    if (
-      !branded.includes(`<title>${SITE_TITLE}</title>`) ||
-      !branded.includes(FAVICON_URL)
-    ) {
+      .replace(/[ \t]*<title>.*?<\/title>\r?\n/, "")
+      .replace(/[ \t]*<link[^>]*rel="icon"[^>]*>\r?\n/, "")
+      .replace(/([ \t]*)<\/head>/, `$1  ${SITE_HEAD_COMMENT}\n$1</head>`);
+    if (!branded.includes(SITE_HEAD_COMMENT) || branded.includes("<title>")) {
       throw new Error(
-        "No se pudo configurar el index.html del proyecto Vite (título o favicon).",
+        "No se pudo configurar el index.html del proyecto Vite (cabecera).",
       );
     }
     await writeTextFile(indexPath, branded);
