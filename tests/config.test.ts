@@ -420,6 +420,22 @@ describe("agents guide", () => {
     expect(content).toContain("--no-verify");
     expect(content).toContain("pnpm build");
   });
+
+  it("documents project structure, dependencies, tests, env vars and deployment", () => {
+    const content = agentsMd();
+    expect(content).toContain("## Project structure");
+    expect(content).toContain("components/");
+    expect(content).toContain("hooks/");
+    expect(content).toContain("site.ts");
+    expect(content).toContain("## Adding dependencies");
+    expect(content).toContain("pnpm add package-name@1.2.3");
+    expect(content).toContain("exact versions");
+    expect(content).toContain("CI=true pnpm test");
+    expect(content).toContain("## Environment variables");
+    expect(content).toContain(".env.example");
+    expect(content).toContain("## Deployment");
+    expect(content).toContain(".github/workflows/ci.yml");
+  });
 });
 
 describe("Tailwind configuration", () => {
