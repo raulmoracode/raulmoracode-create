@@ -4,6 +4,23 @@ export function pnpmWorkspaceYaml(): string {
   return `minimumReleaseAge: ${PNPM_MINIMUM_RELEASE_AGE}\n`;
 }
 
+/**
+ * Strips the YAML quoting tools such as the shadcn CLI add around entries when
+ * they write `minimumReleaseAgeExclude` themselves. Without this, re-merging an
+ * existing file would double-quote the entries and produce invalid YAML.
+ */
+function unquote(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.length >= 2) {
+    const first = trimmed[0];
+    const last = trimmed[trimmed.length - 1];
+    if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
+      return trimmed.slice(1, -1).replaceAll("''", "'");
+    }
+  }
+  return trimmed;
+}
+
 const DEPENDENCY_SECTIONS = [
   "dependencies",
   "devDependencies",
@@ -72,7 +89,10 @@ export function mergePnpmWorkspaceYaml(
     if (inExcludeBlock) {
       const item = /^\s*-\s*(.+?)\s*$/.exec(line);
       if (item?.[1]) {
-        existingExcludes.push(item[1]);
+        const value = unquote(item[1]);
+        if (value.length > 0) {
+          existingExcludes.push(value);
+        }
         continue;
       }
       if (line.trim() === "") {
@@ -83,12 +103,18 @@ export function mergePnpmWorkspaceYaml(
     preserved.push(line);
   }
 
-  const excludes = [...new Set([...existingExcludes, ...excludePackages])];
+  const excludes = [
+    ...new Set(
+      [...existingExcludes, ...excludePackages]
+        .map((pkg) => unquote(pkg))
+        .filter((pkg) => pkg.length > 0),
+    ),
+  ].sort();
   const out = [releaseLine, ...preserved];
   if (excludes.length > 0) {
     out.push("minimumReleaseAgeExclude:");
     for (const pkg of excludes) {
-      out.push(`  - '${pkg}'`);
+      out.push(`  - '${pkg.replaceAll("'", "''")}'`);
     }
   }
   return `${out.join("\n")}\n`;

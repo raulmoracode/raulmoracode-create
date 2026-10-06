@@ -238,6 +238,25 @@ describe("pnpm-workspace.yaml", () => {
     expect(merged).toContain("'@tanstack/react-query@5.104.0'");
   });
 
+  it("does not double-quote entries already quoted by another tool", () => {
+    const existing = [
+      "minimumReleaseAgeExclude:",
+      "  - '@radix-ui/react-accessible-icon@1.1.16'",
+      "  - '@radix-ui/react-accordion@1.2.21'",
+      "",
+    ].join("\n");
+    const merged = mergePnpmWorkspaceYaml(existing, ["react@19.3.0"]);
+    expect(merged).toContain("  - '@radix-ui/react-accessible-icon@1.1.16'");
+    expect(merged).toContain("  - '@radix-ui/react-accordion@1.2.21'");
+    expect(merged).toContain("  - 'react@19.3.0'");
+    expect(merged).not.toContain("''");
+  });
+
+  it("escapes single quotes when writing an exclusion", () => {
+    const merged = mergePnpmWorkspaceYaml(null, ["weird'name@1.0.0"]);
+    expect(merged).toContain("  - 'weird''name@1.0.0'");
+  });
+
   it("collects every locked package from pnpm list --json", () => {
     const tree = [
       {
