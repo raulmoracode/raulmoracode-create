@@ -132,6 +132,13 @@ prompt (prompts/*.ts, Clack + validation.ts)
   skipped (a bare `add` with no packages fails). `huskyPreCommit(selection)` adapts the hook
   lines the same way.
 
+- **`src/config/site.ts` is the single source of truth for the site identity** in generated
+  projects (title, description, favicon, social preview image, author, X handle, locale,
+  theme color). Both frameworks read it: the Vite `siteHead()` plugin injects the head tags
+  through `transformIndexHtml`, and the Next `metadata` export is built from the same object.
+  Never hardcode those values in `index.html`, `layout.tsx`, `vite.config.ts` or the README
+  template: adding a value means adding it to `SiteValues` and to the two consumers, so the
+  project never has to duplicate it.
 - **Adding a new generated file**: create `src/config/<x>.ts` (pure function returning the
   exact content, ending in `\n`) + `src/generators/configure-<x>.ts`
   (uses `joinPath`/`writeTextFile` from `filesystem.ts`) + call it from `run.ts` in step 1

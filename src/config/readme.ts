@@ -325,6 +325,24 @@ export function readmeMd(options: ReadmeOptions): string {
   }
   lines.push(
     "",
+    "## Site identity",
+    "",
+    "`src/config/site.ts` is the single place to change how this site presents itself:",
+    "",
+    "- `title` — the browser tab title",
+    "- `description` — the meta description and the social preview text",
+    "- `favicon` — the icon in the tab",
+    "- `socialImage` and `socialImageAlt` — the image shown when the link is shared",
+    "- `author`, `twitter`, `locale`, `themeColor` and `url` (the canonical URL once deployed)",
+    "",
+    frameworkId === "next"
+      ? "The `metadata` export in `src/app/layout.tsx` reads those values."
+      : "The `siteHead()` plugin in `vite.config.ts` injects the tags into `index.html` at build time.",
+    "",
+    "Change it there and both follow: nothing has to be edited in `index.html` or `layout.tsx`.",
+  );
+  lines.push(
+    "",
     "## Project structure",
     "",
     ...structure(frameworkId, selection),

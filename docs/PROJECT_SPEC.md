@@ -62,7 +62,8 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── configure-vscode.ts   # .vscode/
 │   │   ├── configure-testing.ts  # vitest.config.ts + smoke test
 │   │   ├── configure-git-hooks.ts# .husky/ + commitlint.config.ts
-│   │   └── configure-node.ts     # .nvmrc, .editorconfig, .gitignore
+│   │   ├── configure-node.ts     # .nvmrc, .editorconfig, .gitignore
+│   │   └── configure-site.ts     # src/config/site.ts (site identity)
 │   ├── frameworks/
 │   │   ├── types.ts              # PackageJson, ProjectFramework
 │   │   ├── index.ts              # { vite, next } registry, getFramework()
@@ -304,10 +305,10 @@ Internal functions:
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
-| `social-meta.ts` | `SocialMetaOptions`, `describeStack(packageJson)`, `socialMetaOptions(name, packageJson)`, `viteSocialMetaTags(options, indent)`, `nextSocialMetaFields(options, indent)`, `withViteSocialMeta(html, options)`, `withNextSocialMeta(layout, options)` | social preview metadata: raw `<meta>` block for Vite, `twitter` + `openGraph` fields for the Next `Metadata` object. `with*` return `null` when the anchor is missing so the framework fails loudly instead of writing a broken file |
+| `site.ts` | `SiteValues`, `SITE_CONFIG_PATH = "src/config/site.ts"`, `SITE_HEAD_COMMENT`, `describeStack(packageJson)`, `siteValues({projectName, packageJson})`, `siteConfigTs(values)`, `viteSiteHeadImport()`, `viteSiteHeadPlugin()`, `nextSiteMetadata()` | `src/config/site.ts` (the only file a generated project has to edit for its identity: name, title, description, url, favicon, socialImage, socialImageAlt, author, twitter, locale, themeColor), the `siteHead()` Vite plugin that injects the head tags, and the Next `metadata` export built from the same object. `siteValues` seeds the defaults from the project name and the pinned stack, truncating the description to 200 characters |
 | `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + sorted, single-quoted `minimumReleaseAgeExclude`; existing entries are merged after stripping any quoting, so entries another tool (the shadcn CLI) already quoted are never double-quoted) |
 | `query.ts` | `queryClientConfig()` | `query-client.ts` (`staleTime` 60s, `gcTime` 5min, `retry: false`) |
-| `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), gated per-framework structure tree, links |
+| `readme.ts` | `CREATE_REPO_URL`, `SITE_URL`, `ReadmeOptions`, `readmeMd(options)` | project `README.md`: name title, framework credit, requirements (Node 24, pinned pnpm), scripts table (final scripts only, canonical order, lifecycle skipped), selected stack with exact versions, shadcn registry section (only with shadcn), Git workflow (only with Husky), site identity section pointing at `src/config/site.ts`, gated per-framework structure tree, links |
 | `tailwind.ts` | `tailwindCss()`, `viteTailwindConfig()`, `nextPostcssConfig()` | `@import "tailwindcss";`, `vite.config.ts` (react + tailwind + `@` alias), `postcss.config.mjs` |
 | `tech.ts` | `TECH_IDS`, `TechId`, `TechSelection`, `TECH_OPTIONS`, `FULL_TECH_SELECTION`, `resolveTechSelection()` | tech preset multiselect options; `resolveTechSelection` forces shadcn back on with the theme and Tailwind back on with shadcn (plus notes) |
 | `testing.ts` | `vitestConfig()`, `smokeTest()` | `vitest.config.ts` (`environment: jsdom`) and `src/test/smoke.test.tsx` (Testing Library render) |

@@ -345,7 +345,9 @@ describe("Tailwind configuration", () => {
   it("vite config wires the official Vite plugin", () => {
     const content = viteTailwindConfig();
     expect(content).toContain('import tailwindcss from "@tailwindcss/vite"');
-    expect(content).toContain("plugins: [react(), tailwindcss()]");
+    expect(content).toContain("plugins: [react(), tailwindcss(), siteHead()]");
+    expect(content).toContain('import { site } from "./src/config/site";');
+    expect(content).toContain("transformIndexHtml");
   });
 
   it("vite config maps the @ path alias to src", () => {

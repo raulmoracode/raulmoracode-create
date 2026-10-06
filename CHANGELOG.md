@@ -9,13 +9,18 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- Social preview metadata in generated projects: `twitter:card`, `twitter:site`,
-  `twitter:creator`, `twitter:title`, `twitter:description`, `twitter:image`,
-  `twitter:image:alt` and the matching `og:` tags in `index.html` (React + Vite),
-  or the `twitter` / `openGraph` fields of the `Metadata` object (Next.js), so
-  links shared on X, WhatsApp, Slack or LinkedIn render a proper preview.
-  Titles use the project name and descriptions the real stack, read from
-  `package.json` and truncated to 200 characters.
+- `src/config/site.ts` in generated projects: one user-owned file with the site
+  `name`, `title`, `description`, `url`, `favicon`, `socialImage`,
+  `socialImageAlt`, `author`, `twitter`, `locale` and `themeColor`. Both
+  frameworks read it, so the tab title, the favicon and the social preview
+  (`twitter:*` and `og:*`, for X, WhatsApp, Slack or LinkedIn) are defined in a
+  single place instead of being duplicated in `index.html` and
+  `src/app/layout.tsx`. On React + Vite a `siteHead()` plugin in
+  `vite.config.ts` injects the head tags through `transformIndexHtml`; on
+  Next.js the `metadata` export reads the same object. Changing the title,
+  description, favicon or preview image later is a one-file edit.
+  Defaults use the project name and the real pinned stack, read from
+  `package.json`.
 
 ## [1.0.4] - 2026-10-06
 
