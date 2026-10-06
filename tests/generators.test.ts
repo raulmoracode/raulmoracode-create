@@ -19,6 +19,8 @@ import {
   configureBiome,
   TOOLING_CONFIG_FILES,
 } from "../src/generators/configure-biome.js";
+import { configureChangelog } from "../src/generators/configure-changelog.js";
+import { configureCi } from "../src/generators/configure-ci.js";
 import { configureGitHooks } from "../src/generators/configure-git-hooks.js";
 import {
   augmentGitignore,
@@ -839,5 +841,31 @@ describe("configureSite", () => {
     const site = await readFromFile(dir, "src", "config", "site.ts");
     expect(site).toContain('name: "raulmoracode",');
     expect(site).not.toContain("+ TypeScript");
+  });
+});
+
+describe("configureCi", () => {
+  it("writes .github/workflows/ci.yml with the validation steps", async () => {
+    const dir = await makeTempDir();
+    await configureCi(dir);
+    const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
+    expect(workflow).toContain("name: CI");
+    expect(workflow).toContain("pnpm install --no-frozen-lockfile");
+    expect(workflow).toContain("pnpm check");
+    expect(workflow).toContain("pnpm test");
+    expect(workflow).toContain("pnpm build");
+    expect(workflow.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("configureChangelog", () => {
+  it("writes CHANGELOG.md following Keep a Changelog", async () => {
+    const dir = await makeTempDir();
+    await configureChangelog(dir);
+    const changelog = await readFromFile(dir, "CHANGELOG.md");
+    expect(changelog).toContain("# Changelog");
+    expect(changelog).toContain("## [Unreleased]");
+    expect(changelog).toContain("### Added");
+    expect(changelog.endsWith("\n")).toBe(true);
   });
 });

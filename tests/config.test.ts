@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { agentsMd } from "../src/config/agents.js";
 import { biomeConfig } from "../src/config/biome.js";
 import { FAVICON_URL, SITE_TITLE } from "../src/config/branding.js";
+import { changelogMd } from "../src/config/changelog.js";
+import { ciWorkflowYaml } from "../src/config/ci.js";
 import { commitlintConfig } from "../src/config/commitlint.js";
 import {
   componentsJson,
@@ -608,6 +610,33 @@ describe("Commitlint configuration", () => {
     expect(content).not.toMatch(/\/Users\//);
     expect(content).not.toMatch(/\/home\//);
     expect(content).not.toMatch(/[A-Z]:\\/);
+  });
+});
+
+describe("CI workflow template", () => {
+  it("generates ci.yml with install, check, test and build steps", () => {
+    const content = ciWorkflowYaml();
+    expect(content).toContain("name: CI");
+    expect(content).toContain("pull_request:");
+    expect(content).toContain("pnpm install --no-frozen-lockfile");
+    expect(content).toContain("pnpm check");
+    expect(content).toContain("pnpm test");
+    expect(content).toContain("pnpm build");
+    expect(content).not.toContain("deploy");
+    expect(content.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("CHANGELOG template", () => {
+  it("generates CHANGELOG.md following Keep a Changelog", () => {
+    const content = changelogMd();
+    expect(content).toContain("# Changelog");
+    expect(content).toContain("keepachangelog.com");
+    expect(content).toContain("## [Unreleased]");
+    expect(content).toContain("### Added");
+    expect(content).toContain("### Changed");
+    expect(content).toContain("### Fixed");
+    expect(content.endsWith("\n")).toBe(true);
   });
 });
 
