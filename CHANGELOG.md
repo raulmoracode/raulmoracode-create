@@ -7,7 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- Social preview metadata in generated projects: `twitter:card`, `twitter:site`,
+  `twitter:creator`, `twitter:title`, `twitter:description`, `twitter:image`,
+  `twitter:image:alt` and the matching `og:` tags in `index.html` (React + Vite),
+  or the `twitter` / `openGraph` fields of the `Metadata` object (Next.js), so
+  links shared on X, WhatsApp, Slack or LinkedIn render a proper preview.
+  Titles use the project name and descriptions the real stack, read from
+  `package.json` and truncated to 200 characters.
 
 ## [1.0.4] - 2026-10-06
 

@@ -1,17 +1,22 @@
 import { agentsMd } from "../config/agents.js";
 import { FAVICON_URL, SITE_TITLE } from "../config/branding.js";
 import { queryClientConfig } from "../config/query.js";
+import {
+  socialMetaOptions,
+  withNextSocialMeta,
+} from "../config/social-meta.js";
 import { nextPostcssConfig, tailwindCss } from "../config/tailwind.js";
 import { exec } from "../utils/exec.js";
 import {
   isDirectory,
   joinPath,
   listDirEntries,
+  readJsonFile,
   readTextFile,
   removeIfExists,
   writeTextFile,
 } from "../utils/filesystem.js";
-import type { ProjectFramework } from "./types.js";
+import type { PackageJson, ProjectFramework } from "./types.js";
 
 const CREATE_NEXT_APP_VERSION = "16.3.6";
 
@@ -126,7 +131,19 @@ export const nextFramework: ProjectFramework = {
         "No se pudo configurar el layout de Next.js (título o favicon).",
       );
     }
-    await writeTextFile(layoutPath, branded);
+    const packageJson = await readJsonFile<PackageJson>(
+      joinPath(projectDir, "package.json"),
+    );
+    const withMeta = withNextSocialMeta(
+      branded,
+      socialMetaOptions(packageJson.name ?? SITE_TITLE, packageJson),
+    );
+    if (withMeta === null) {
+      throw new Error(
+        'No se encontró "export const metadata: Metadata = {" en el layout de Next.js (metadatos sociales).',
+      );
+    }
+    await writeTextFile(layoutPath, withMeta);
     await removeIfExists(joinPath(projectDir, "src", "app", "favicon.ico"));
   },
 
