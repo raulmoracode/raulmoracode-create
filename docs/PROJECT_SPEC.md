@@ -305,6 +305,8 @@ Internal functions:
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
+| `error-pages.ts` | `nextErrorPage()`, `nextNotFoundPage()` | Next.js only: `src/app/error.tsx` (Client Component with `reset`, exported as `ErrorPage` because Biome rejects a function named `Error`) and `src/app/not-found.tsx`. File conventions, no wiring; only Tailwind utilities that exist everywhere, never theme tokens |
+
 | `license.ts` | `LICENSE_TYPE = "MIT"`, `LICENSE_HOLDER = "Raul Mora"`, `licenseText({holder, year})` | the `LICENSE` file in the project root: MIT with the project author (the same one written to `package.json`) and the year it was generated, so it never goes stale |
 | `site.ts` | `SiteValues`, `SITE_CONFIG_PATH = "src/config/site.ts"`, `SITE_HEAD_COMMENT`, `describeStack(packageJson)`, `siteValues({projectName, packageJson})`, `siteConfigTs(values)`, `viteSiteHeadImport()`, `viteSiteHeadPlugin()`, `nextSiteMetadata()` | `src/config/site.ts` (the only file a generated project has to edit for its identity: name, title, description, url, favicon, socialImage, socialImageAlt, author, twitter, locale, themeColor), the `siteHead()` Vite plugin that injects the head tags, and the Next `metadata` export built from the same object. `siteValues` seeds the defaults from the project name and the pinned stack (`description` is empty on purpose: an empty value is never rendered, so no blank meta tag is emitted). `favicon` and `socialImage` accept a full URL or a local path under `public/`; nothing is generated, the project provides the file. The Vite plugin resolves a local `socialImage` against `site.url` when it is set, because crawlers cannot resolve relative URLs (Next does it natively via `metadataBase`) |
 | `pnpm-workspace.ts` | `PNPM_MINIMUM_RELEASE_AGE = 10080`, `pnpmWorkspaceYaml()`, `collectLockedPackages(tree)`, `mergePnpmWorkspaceYaml(existing, excludes)` | `pnpm-workspace.yaml` (`minimumReleaseAge` + sorted, single-quoted `minimumReleaseAgeExclude`; existing entries are merged after stripping any quoting, so entries another tool (the shadcn CLI) already quoted are never double-quoted) |
@@ -396,7 +398,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 
 ### 14.4 Next.js specifics
 
-`src/app/{layout.tsx` (title+icons CDN, wrapped in `Providers`), minimal `page.tsx`, `providers.tsx`, `globals.css`, `postcss.config.mjs}`; deleted default `page.module.css`, `favicon.ico` and `CLAUDE.md`; the template's `AGENTS.md` kept and overwritten with our own.
+`src/app/{layout.tsx` (title+icons CDN, wrapped in `Providers`), minimal `page.tsx`, `providers.tsx`, `globals.css`, `postcss.config.mjs`, `error.tsx`, `not-found.tsx`}; deleted default `page.module.css`, `favicon.ico` and `CLAUDE.md`; the template's `AGENTS.md` kept and overwritten with our own.
 
 ---
 

@@ -11,6 +11,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 });
 
 import { SHADCN_VERSION } from "../src/config/components.js";
+import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
@@ -361,6 +362,17 @@ describe("configureStarter (next)", () => {
     expect(await readFromFile(dir, "src", "app", "page.tsx")).toContain(
       "return <div>hello</div>;",
     );
+  });
+
+  it("writes the error and not-found pages", async () => {
+    const dir = await makeTempDir();
+    await writeTextFile(join(dir, "src", "app", "layout.tsx"), "layout");
+    await writeTextFile(join(dir, "package.json"), "{}");
+    await nextFramework.configureStarter(dir);
+    const errorPage = await readFromFile(dir, "src", "app", "error.tsx");
+    const notFound = await readFromFile(dir, "src", "app", "not-found.tsx");
+    expect(errorPage).toBe(nextErrorPage());
+    expect(notFound).toBe(nextNotFoundPage());
   });
 });
 

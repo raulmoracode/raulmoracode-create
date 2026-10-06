@@ -146,6 +146,10 @@ prompt (prompts/*.ts, Clack + validation.ts)
   exact content, ending in `\n`) + `src/generators/configure-<x>.ts`
   (uses `joinPath`/`writeTextFile` from `filesystem.ts`) + call it from `run.ts` in step 1
   + tests in `config.test.ts` and `generators.test.ts` (temporary directories).
+- **Next.js error pages** (`config/error-pages.ts`) are file conventions: never wire them
+  manually. Name the error component `ErrorPage`, not `Error`, or Biome fails in the
+  generated project with `noShadowRestrictedNames`. They must not depend on theme tokens.
+
 - **The MIT `LICENSE`** is written by `writeProjectLicense(projectDir, year)` with
   `LICENSE_HOLDER` (the same author it writes to `package.json`) and the current year,
   passed in from `run.ts` so the template stays pure and the tests stay year-independent.

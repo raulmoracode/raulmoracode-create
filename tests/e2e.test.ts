@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -209,6 +209,17 @@ describe("end-to-end project creation", () => {
     expect(pkg.engines.node).toBe(">=24");
 
     if (process.env.E2E_FRAMEWORK === "next") {
+      const errorPage = await readFile(
+        join(projectDir, "src", "app", "error.tsx"),
+        "utf8",
+      );
+      expect(errorPage.startsWith('"use client";')).toBe(true);
+      expect(errorPage).toContain("onClick={reset}");
+      const notFoundPage = await readFile(
+        join(projectDir, "src", "app", "not-found.tsx"),
+        "utf8",
+      );
+      expect(notFoundPage).toContain('<Link href="/"');
       expect(pkg.scripts.dev).toBe("next dev");
       expect(pkg.dependencies.next).toBe("16.3.6");
       expect(pkg.devDependencies["@tailwindcss/postcss"]).toBe("4.3.3");
@@ -431,6 +442,15 @@ describe("end-to-end project creation", () => {
       CI: "true",
     });
     await runCommand("pnpm", ["build"], projectDir);
+
+    if (process.env.E2E_FRAMEWORK === "next") {
+      // Next picks both files up by convention, so the 404 route has to be part
+      // of the real build output.
+      const built = await readdir(join(projectDir, ".next"), {
+        recursive: true,
+      });
+      expect(built.some((entry) => entry.includes("not-found"))).toBe(true);
+    }
 
     if (process.env.E2E_FRAMEWORK !== "next") {
       const builtHtml = await readFile(
