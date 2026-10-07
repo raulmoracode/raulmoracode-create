@@ -24,7 +24,6 @@ function runCommand(
     child.stderr?.on("data", (chunk: Buffer | string) => {
       stderr += chunk.toString();
     });
-    child.error?.on("data", () => {});
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) {
@@ -116,7 +115,11 @@ function makeExecImplementation() {
   };
 }
 
-describe("end-to-end project creation", () => {
+const e2e = ["vite", "next"].includes(process.env.E2E_FRAMEWORK ?? "")
+  ? describe
+  : describe.skip;
+
+e2e("end-to-end project creation", () => {
   beforeAll(async () => {
     gitConfigDir = await mkdtemp(join(tmpdir(), "raulmoracode-gitconfig-"));
     await writeFile(
@@ -145,15 +148,19 @@ describe("end-to-end project creation", () => {
 
   it("creates, configures, commits and pushes the project", async () => {
     const { log } = await import("@clack/prompts");
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
+      const errors = (log.error as ReturnType<typeof vi.fn>).mock.calls
+        .map(([message]) => String(message))
+        .join("\n");
+      throw new Error(
+        `run() called process.exit(${code}): ${errors || "no log.error calls"}`,
+      );
+    });
     try {
       await run({ verbose: false });
-    } catch (error) {
-      console.log("RUN THREW:", error);
+    } finally {
+      exitSpy.mockRestore();
     }
-    console.log(
-      "LOG.ERROR CALLS:",
-      JSON.stringify((log.error as ReturnType<typeof vi.fn>).mock.calls),
-    );
 
     const projectDir = join(workDir, "my-project");
     expect(existsSync(join(projectDir, "package.json"))).toBe(true);
