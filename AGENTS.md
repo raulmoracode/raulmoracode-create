@@ -205,12 +205,13 @@ prompt (prompts/*.ts, Clack + validation.ts)
 ### 5.1 `raulmoracode.json`, managed templates and upgrade notes
 
 Every generated project gets a `raulmoracode.json` manifest (written by
-`configureManifest()`, the last step of the "Creating project" task, so it is in the initial
+`configureManifest()`, the last step of the "Installing dependencies" task — **after**
+`formatProject`, so the hashes describe the committed bytes — and therefore part of the initial
 commit). It records `manifestVersion`, `cliVersion` (`VERSION` from `src/cli/args.ts`),
 `framework`, `selection`, `projectName`, `githubUrl`, `files` (POSIX path → sha256 of the managed
-file **as it is on disk**, hashed after the generators ran so a later Biome pass is what gets
-hashed; missing files are skipped) and `dependencies` (`managedDependencyPins()`, i.e. the exact
-versions the CLI pinned). `upgrade/` reads it to tell the user's edits from the CLI's.
+file **as it is on disk**; missing files are skipped) and `dependencies` (`managedDependencyPins()`,
+i.e. the exact versions the CLI pinned). `upgrade/` reads it to tell the user's edits from the
+CLI's.
 
 **Changing a managed template requires an `UpgradeNotes` entry.** `UPGRADE_NOTES`
 (`src/upgrade/notes.ts`) is the only channel through which a generated project learns what a new
@@ -229,6 +230,44 @@ framework template, do:
 
 The notes are still empty: `1.0.8` is the baseline that introduced the manifest, so projects
 created before it have no upgrade history to replay.
+
+### 5.2 `upgrade`: bringing a new CLI version to an existing project
+
+`raulmoracode-create upgrade` (`src/cli/upgrade.ts`, dispatched from `args.ts`) runs inside a
+generated project and always ends in a **ready-for-review** PR (`createPullRequest`, never
+`--draft`). Flow:
+
+1. `upgradePreflightChecks` (`upgrade/preflight.ts`): Node 24 → pnpm 12 (`REQUIRED_PNPM_MAJOR`) →
+   git → inside a repo → **clean working tree** → `gh` auth → `origin` is a GitHub remote →
+   `raulmoracode.json` exists and parses. Any failure: Spanish message, `exit 1`, nothing written.
+2. `readProjectState` + `buildUpgradePlan` (pure, `upgrade/plan.ts`): compares three hashes per
+   managed file — the template the CLI would render today, the hash in the manifest and the hash on
+   disk — and classifies each file as `updated`, `overwritten` (the user edited it), `new`,
+   `removed` (only when a migration handles it) or skipped `deleted-locally`. Pins are bumped to the
+   CLI's exact version, flagging `hadLocalVersion`; a pin the CLI no longer owns becomes
+   `keptDependencies`. Migrations come from `upgrade/migrations/index.ts` in ascending version order.
+3. `confirmUpgrade` (`prompts/upgrade.ts`) after `showUpgradeSummary` warns about the files that will
+   be overwritten. Declining writes nothing.
+4. `prepareUpgradeBranch` → `applyUpgradeFiles` → `commitUpgrade` → push → `createPullRequest`, as
+   four Clack tasks. `applyUpgradeFiles` writes the files (restoring the executable bit for
+   `EXECUTABLE_MANAGED_FILES`), runs the migrations, patches only the managed `package.json` fields,
+   merges `pnpm-workspace.yaml`, runs `pnpm install` + `normalizePackageJson` + Biome, then rewrites
+   the manifest with the **post-format** on-disk hashes.
+5. `commitUpgrade` makes two Conventional Commits: `chore: upgrade raulmoracode-create to <version>`
+   (everything else) and `chore: overwrite locally modified files` (only the overwritten files), so
+   the overwrite is reviewable on its own. `upgradePrBody(report)` builds the PR body from the report
+   alone (`truncateForGithub` only ever trims the diff sections).
+
+Rules that must not regress: the current branch is never touched, `git push` never uses `--force`,
+nothing resets or cleans, and any failure while writing or committing reverts exactly the files the
+run wrote (`revertAppliedFiles`, safe only because the preflight proved the tree was clean) and
+deletes the half-created branch. A failure at push/PR time **keeps** the branch and the commits and
+prints the exact retry commands.
+
+`upgrade/` takes no Clack and no process: `github/gh.ts` wraps `gh` (arg builders + thin wrappers
+through `utils/exec.ts`), `git/upgrade.ts` wraps git. `runUpgrade({ verbose, deps })` takes `gh` and
+the default-branch detector as injectable dependencies so the E2E can run against a local bare
+remote. PR bodies are English; CLI messages are Spanish.
 
 ## 6. Subtle verified details (do not "simplify" them)
 
