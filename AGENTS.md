@@ -31,12 +31,13 @@ pnpm lint       # biome lint .
 pnpm test       # vitest run        (node environment, tests/**/*.test.ts; E2E skipped by default)
 ```
 
-Plain `pnpm test` runs the offline tests only; it skips `tests/e2e.test.ts` unless
-`E2E_FRAMEWORK` is `vite` or `next`. E2E per framework (requires Node 24 and network):
+Plain `pnpm test` runs the offline tests only; it skips the opt-in suites
+(`tests/e2e.test.ts`, `tests/upgrade-e2e.test.ts`) unless `E2E_FRAMEWORK` is
+`vite` or `next`. E2E per framework (requires Node 24 and network):
 
 ```bash
-E2E_FRAMEWORK=vite pnpm test --run tests/e2e.test.ts
-E2E_FRAMEWORK=next pnpm test --run tests/e2e.test.ts
+E2E_FRAMEWORK=vite pnpm test --run tests/e2e.test.ts tests/upgrade-e2e.test.ts
+E2E_FRAMEWORK=next pnpm test --run tests/e2e.test.ts tests/upgrade-e2e.test.ts
 ```
 
 A scheduled E2E (`.github/workflows/e2e-scheduled.yml`, Mondays 06:00 UTC + manual
@@ -284,6 +285,8 @@ created before it have no upgrade history to replay.
 | `upgrade-contract.test.ts` | manifest contract (hash/serialize/parse), `managedFiles()`, `managedPackageJson()`, `managedDependencyPins()`, `notesBetween()` |
 | `upgrade-notes.test.ts` | rendered managed-template snapshot vs `src/upgrade/__snapshots__/templates.json` (deterministic, no absolute paths), `UPGRADE_NOTES` shape, every note file exists in the snapshot, notes still empty at the 1.0.8 baseline |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: schedule + `workflow_dispatch`, read-only permissions, `[vite, next]` matrix, Node 24, frozen-lockfile install, E2E command with `E2E_FRAMEWORK` from the matrix, observe-only |
+| `upgrade-plan.test.ts` / `upgrade-engine.test.ts` | pure `buildUpgradePlan`/`classifyManagedFiles`/`classifyDependencies` (updated/overwritten/new/removed, `hadLocalVersion`, `keptDependencies`, migration order, up-to-date and CLI-outdated) + `runUpgrade()` with mocked Clack/`exec`/gh: exact command order (fetch → switch → commits → push), never `--force`/`reset`/`clean`, rollback, no writes on preflight failure |
+| `upgrade-e2e.test.ts` | opt-in: real `run()` (mocked Clack) creates the project against a local bare remote, then a real `runUpgrade()` rewinds the manifest, overwrites a locally edited managed file, creates `chore/raulmoracode-update-<version>`, commits twice (`chore: upgrade …` + `chore: overwrite locally modified files` carrying only that file), pushes it and produces the PR body; no `.new` file is left behind and a second run is a no-op |
 | `e2e.test.ts` | opt-in via `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`): full `run()` with mocked Clack and real `exec` (except `ls-remote` and remote rewrite to local bare): pins, files, `node_modules`, workspace, branding/starter per framework, `pnpm check` + `vitest run` + `build`, initial commit and push |
 
 Mock pattern: `vi.mock("../src/utils/exec.js", ... importOriginal + override execMock)`.
