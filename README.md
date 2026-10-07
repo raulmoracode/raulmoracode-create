@@ -9,7 +9,7 @@ Professional CLI to scaffold modern React projects. Built with Node.js, TypeScri
 ## Requirements
 
 - [Node.js](https://nodejs.org) 24 LTS
-- [pnpm](https://pnpm.io/installation) (declared per project via `packageManager`)
+- [pnpm](https://pnpm.io/installation) 12 (declared per project via `packageManager`). The CLI aborts early if another major is active; fix it with `corepack enable && corepack prepare pnpm@12.6.0 --activate` (or `npm install -g pnpm@12.6.0`)
 - npm
 - [Git](https://git-scm.com/downloads) with a configured identity (`user.name` and `user.email`)
 - A GitHub account and an existing empty repository for the new project

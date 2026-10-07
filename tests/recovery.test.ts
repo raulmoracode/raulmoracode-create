@@ -84,6 +84,10 @@ function execFailure(command: string, args: string[]): ExecError {
   });
 }
 
+function versionOutput(command: string): string {
+  return command === "pnpm" ? "12.6.0\n" : "git version 2.50.0\n";
+}
+
 beforeEach(async () => {
   execMock.mockReset();
   exitSpy = vi
@@ -127,7 +131,7 @@ describe("run() failure recovery", () => {
     mockAnswers("half-baked", "https://github.com/raulmoracode/half-baked");
     execMock.mockImplementation(async (command: string, args: string[]) => {
       if (args[0] === "--version") {
-        return { code: 0, stdout: "9.9.9\n", stderr: "" };
+        return { code: 0, stdout: versionOutput(command), stderr: "" };
       }
       if (command === "git" && args[0] === "config") {
         return { code: 0, stdout: "Test User\n", stderr: "" };
@@ -156,7 +160,7 @@ describe("run() failure recovery", () => {
       mockAnswers("empty-again", "https://github.com/raulmoracode/empty-again");
       execMock.mockImplementation(async (command: string, args: string[]) => {
         if (args[0] === "--version") {
-          return { code: 0, stdout: "9.9.9\n", stderr: "" };
+          return { code: 0, stdout: versionOutput(command), stderr: "" };
         }
         if (command === "git" && args[0] === "config") {
           return { code: 0, stdout: "Test User\n", stderr: "" };

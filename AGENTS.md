@@ -87,7 +87,9 @@ everything in it was created by this run; never on push failure — the project 
 locally — and restores a reused empty dir on pre-task failures) + actionable hint
 (retry vs manual `git push`) → `log.error` + `process.exit(1)` (130 on SIGINT/SIGTERM).
 
-**Preflights (in order):** Node >= 24 → `pnpm --version` → `git --version` →
+**Preflights (in order):** Node >= 24 → `pnpm --version` (exists + major must equal
+`REQUIRED_PNPM_MAJOR`, derived from `PNPM_VERSION` in `generators/configure-project.ts`, checked
+with pure `satisfiesPnpmVersion()` on the same stdout, no second spawn) → `git --version` →
 git identity (`user.name` + `user.email`). There is no token-based preflight:
 generated projects contain no `.npmrc` and no private dependencies. User-facing
 failures → `PreflightError`.
@@ -216,7 +218,8 @@ prompt (prompts/*.ts, Clack + validation.ts)
 
 | File | What it covers |
 |---|---|
-| `validation.test.ts` | names, GitHub URLs, `isFramework`, `satisfiesNodeVersion` |
+| `validation.test.ts` | names, GitHub URLs, `isFramework`, `satisfiesNodeVersion`, `satisfiesPnpmVersion` |
+| `preflight.test.ts` | `run()` with mocked Clack/`exec`: pnpm major mismatch / unparsable output → actionable `PreflightError` + exit 1; pnpm 12.x proceeds (single `pnpm --version`) |
 | `config.test.ts` | each pure template (exact content + trailing `\n` + no tokens/machine paths) |
 | `frameworks.test.ts` | registration, exact pins, scripts, removal patterns, `patch/normalize` against temp `package.json` |
 | `generators.test.ts` | each `configure*` against temp dirs (+ executable bit except win32) |
