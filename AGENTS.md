@@ -56,7 +56,8 @@ src/
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
 ├── github/             # `gh` CLI wrappers ONLY (arg builders + thin wrappers)
-├── upgrade/            # PURE manifest contract: types, manifest, managed files, notes, snapshot
+├── upgrade/            # PURE manifest contract (types, manifest, managed files, notes,
+│                       # snapshot, PR body) + the upgrade orchestration (plan, preflight, apply)
 ├── config/             # PURE templates: functions returning strings, no I/O
 └── utils/
     ├── exec.ts         # ONLY external-process execution path (spawn)
@@ -85,6 +86,15 @@ Rules:
   `exec` resolves `.cmd` on win32. `ExecError` carries `command/args/code/signal/stdout/stderr/spawnError`.
 - **`git/` contains no Husky or Commitlint logic** (git only). Husky activation
   (`pnpm exec husky` after `git init`) is orchestrated from `cli/run.ts`, not from `git/`.
+- **`github/` contains only `gh` wrappers** (arg builders + thin wrappers, exactly like
+  `git/`): no Clack, no markdown generation, no business logic. It owns `GhAuthError`
+  (defined there, not imported from `cli/run.ts`, so `github/` stays CLI-free) and always
+  runs `gh` through `utils/exec.ts` with an args array.
+- **Upgrade pull request bodies are generated purely from `UpgradeReport`**
+  (`upgrade/pr-body.ts`: `upgradePrBody`/`upgradePrTitle`/`unifiedDiff`/`truncateForGithub`)
+  and are therefore **in English** — the reader is a reviewer of a GitHub PR, not the CLI
+  user. The CLI messages around the upgrade stay in Spanish. Never add I/O to
+  `upgrade/pr-body.ts`.
 - **CLI messages are in Spanish** (preflights, prompts, errors). Keep the language.
 
 ## 4. Execution flow (`src/cli/run.ts` — the orchestrator, read it first)
@@ -269,6 +279,8 @@ created before it have no upgrade history to replay.
 | `install.test.ts` | `installDependencies` with mocked `exec`: `install`→`add`→`add -D` order, `cwd`, PostCSS variant on Next |
 | `package-metadata.test.ts` | own metadata + `prepare: husky` and exact pins of generated projects |
 | `git/exec/error-handling.test.ts` | git constructors, real `exec`, remote divergence, `PreflightError`, `REMOTE_CONFLICT_MESSAGE` |
+| `upgrade-pr-body.test.ts` | `upgradePrBody` (empty plan, all statuses, notes with/without `action`, unmatched overwritten file, CRLF, pipe escaping), `unifiedDiff`/`diffLineCounts`/`diffCounts` on small inputs and caps, `truncateForGithub` (summary/⚠️/tables/action items survive, diffs trimmed, under the limit, idempotent) |
+| `github.test.ts` | `gh` arg builders (never `--draft`), `requireGhAuth` (`GhAuthError`, `gh auth login`), `findOpenPullRequest` with mocked `exec` (JSON, empty, garbage, no url, non-zero exit → `null`), `createPullRequest` (`--body-file`, temp file written and removed, URL extraction), `repoDefaultBranch` |
 | `upgrade-contract.test.ts` | manifest contract (hash/serialize/parse), `managedFiles()`, `managedPackageJson()`, `managedDependencyPins()`, `notesBetween()` |
 | `upgrade-notes.test.ts` | rendered managed-template snapshot vs `src/upgrade/__snapshots__/templates.json` (deterministic, no absolute paths), `UPGRADE_NOTES` shape, every note file exists in the snapshot, notes still empty at the 1.0.8 baseline |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: schedule + `workflow_dispatch`, read-only permissions, `[vite, next]` matrix, Node 24, frozen-lockfile install, E2E command with `E2E_FRAMEWORK` from the matrix, observe-only |
