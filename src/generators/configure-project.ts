@@ -125,7 +125,7 @@ export const PROJECT_AUTHOR = {
   url: "https://raulmoracode.com",
 };
 
-function projectScripts(
+export function projectScripts(
   framework: ProjectFramework,
   selection: TechSelection,
 ): Record<string, string> {
