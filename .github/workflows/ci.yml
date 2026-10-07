@@ -59,7 +59,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: E2E (Next.js)
-        run: pnpm test --run tests/e2e.test.ts
+        run: pnpm test --run tests/e2e.test.ts tests/upgrade-e2e.test.ts
         env:
           E2E_FRAMEWORK: next
 
@@ -82,6 +82,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: E2E (Vite)
-        run: pnpm test --run tests/e2e.test.ts
+        run: pnpm test --run tests/e2e.test.ts tests/upgrade-e2e.test.ts
         env:
           E2E_FRAMEWORK: vite

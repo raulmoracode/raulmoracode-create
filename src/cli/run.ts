@@ -277,14 +277,6 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await augmentGitignore(projectDir);
           message("Configuring CI");
           await configureCi(projectDir);
-          message("Writing project manifest");
-          await configureManifest(projectDir, {
-            framework,
-            projectName,
-            githubUrl,
-            selection,
-            cliVersion: VERSION,
-          });
           return "Project created";
         },
       },
@@ -324,6 +316,14 @@ export async function run(options: RunOptions = {}): Promise<void> {
           if (selection.testing) {
             message("Testing configured");
           }
+          message("Writing project manifest");
+          await configureManifest(projectDir, {
+            framework,
+            projectName,
+            githubUrl,
+            selection,
+            cliVersion: VERSION,
+          });
           return "Dependencies installed";
         },
       },

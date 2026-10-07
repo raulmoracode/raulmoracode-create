@@ -46,9 +46,11 @@ export function buildProjectManifest(
 }
 
 /**
- * Hashes the managed templates from the content actually on disk (Biome may
- * reformat them) and skips the ones that do not exist (never applied by this
- * selection).
+ * Hashes the managed templates from the content actually on disk and skips the
+ * ones that do not exist (never applied by this selection). Callers must run
+ * this after `formatProject`: Biome rewrites JSON and TS templates, so hashing
+ * the pre-format bytes would make the very next `upgrade` see the CLI's own
+ * formatting as a local edit.
  */
 export async function collectManagedFileHashes(
   projectDir: string,
