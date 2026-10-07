@@ -76,6 +76,15 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── remote.ts             # remote add / ls-remote
 │   │   ├── commit.ts             # git add + initial commit
 │   │   └── push.ts               # fetch, conflict detection, push
+│   ├── github/
+│   │   └── gh.ts                 # gh CLI wrappers (arg builders + thin wrappers)
+│   ├── upgrade/
+│   │   ├── types.ts              # manifest, UpgradeReport and its parts
+│   │   ├── manifest.ts           # raulmoracode.json read/write/hash
+│   │   ├── managed-files.ts      # exact content of every CLI-managed file
+│   │   ├── notes.ts              # per-release notes of generated-project changes
+│   │   ├── version.ts            # version parsing and range helpers
+│   │   └── pr-body.ts            # pure pull request body/title generator
 │   ├── config/
 │   │   ├── agents.ts             # AGENTS.md content
 │   │   ├── biome.ts              # biome.json content
@@ -108,7 +117,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 └── dist/                         # compiled output (generated, not versioned)
 ```
 
-Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O.
+Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O. `upgrade/pr-body.ts` is pure (markdown out, nothing in but the report) and therefore **English**, like every other file in the repo; only the CLI messages the user sees are in Spanish.
 
 ---
 
@@ -343,7 +352,7 @@ Internal functions:
 
 ---
 
-## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, ~215)
+## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`)
 
 | File | What it covers |
 |---|---|
@@ -360,6 +369,8 @@ Internal functions:
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
 | `preflight.test.ts` | Full `run()` preflight with mocked Clack/exec (Node 24 only): `REQUIRED_PNPM_MAJOR` derived from `PNPM_VERSION`; pnpm 13.x or unparsable output → exact actionable error + exit 1 before any prompt; pnpm 12.x proceeds with a single `pnpm --version` call in the order pnpm → git → identity |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: weekly `schedule` + `workflow_dispatch` (no push/PR), read-only permissions, `[vite, next]` matrix with `fail-fast: false`, Node 24 + pnpm cache, frozen-lockfile install, E2E command with `E2E_FRAMEWORK: ${{ matrix.framework }}`, observe-only (no updates, pushes or secrets) |
+| `upgrade-pr-body.test.ts` | `upgradePrTitle`; `upgradePrBody` (empty plan, section order, all file statuses, counts table, notes with/without `action`, unmatched overwritten file, no-content diff placeholder, pipe/newline escaping, CRLF normalisation, action items derived from notes and from Biome/testing/CI files); `unifiedDiff` (identical → `""`, single change, insertions/deletions, line and character caps), `diffLineCounts`/`diffCounts`; `truncateForGithub` (short body untouched, limit enforced, summary/⚠️/tables/action items preserved, note inserted, idempotent) |
+| `github.test.ts` | Arg builders (`gh auth status`, `gh pr list`, `gh pr create` with `--body-file` and no `--draft`, `gh repo view`); `requireGhAuth` (`GhAuthError`, `gh auth login`, missing-binary message); `findOpenPullRequest` with mocked `exec` (url, `[]`, empty, garbage, entry without url, non-zero exit → `null`); `createPullRequest` (temp file written with the exact body and removed afterwards even on failure, URL extraction, error when `gh` prints no URL); `repoDefaultBranch` (value, empty, failure) |
 | `e2e.test.ts` | Opt-in with `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`); full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`, `.github/workflows/ci.yml`, `CHANGELOG.md`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
 ---
@@ -439,3 +450,47 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 - shadcn on Vite needs the `@/*` alias in `vite.config.ts` **and** both tsconfigs (the CLI only reads the root one; without it a literal `@/` folder is created).
 - VS Code deprecated `typescript.tsdk` in favor of `js/ts.tsdk.path` (unified `js/ts.*` namespace); generated settings use the new key.
 - `prepare: husky` requires Husky to already be listed in `patchPackageJson`; otherwise the first `pnpm install` fails with exit 127. `pnpm exec husky` must run after `git init` (the install-time `prepare` runs without `.git` and only warns).
+
+---
+
+## 17. GitHub layer (`src/github/gh.ts`, `gh` wrappers only)
+
+Same style as `git/`: pure arg builders (unit-testable without `gh`) plus thin wrappers that run everything through `utils/exec.ts` with an **args array**. No Clack, no markdown, no upgrade logic.
+
+| Export | Command | Notes |
+|---|---|---|
+| `ghAuthStatusArgs()` | `gh auth status` | |
+| `ghPrListArgs(head)` | `gh pr list --head <head> --state open --json url --limit 1` | |
+| `ghPrCreateArgs({base,head,title,bodyFile})` | `gh pr create --base <base> --head <head> --title <title> --body-file <file>` | **never** `--draft`: the upgrade PR must be reviewable immediately |
+| `ghRepoViewArgs()` | `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` | |
+| `requireGhAuth(verbose)` | runs `gh auth status` | throws `GhAuthError` (defined in `github/`, not imported from `cli/run.ts`, so the layer stays CLI-free) with a Spanish message: `gh auth login`, or how to install `gh` when the binary is missing (`ExecError.spawnError`) |
+| `findOpenPullRequest(cwd, head, verbose)` | `gh pr list` | first `url`, or `null` for `[]`, empty output, non-JSON garbage or a non-zero exit |
+| `createPullRequest({cwd,base,head,title,body,verbose})` | `gh pr create` | writes the body to a temp file (`utils/filesystem.ts`, `tmpdir()` + UUID) and always removes it in `finally`; returns the first `https://…` line of stdout, throws when `gh` printed none |
+| `repoDefaultBranch(cwd, verbose)` | `gh repo view` | branch name, or `null` on empty output/failure; used by the engine to pick the base branch |
+
+Why `--body-file`: a generated upgrade body can be tens of kilobytes with markdown, unicode and code fences; passing it inline risks argument-length limits and any shell interpolation, while a file is transmitted byte-for-byte.
+
+---
+
+## 18. Upgrade pull request body (`src/upgrade/pr-body.ts`, pure)
+
+`upgradePrBody(report: UpgradeReport)` derives the whole English body from the report alone (no I/O, no dates, no machine paths), and `upgradePrTitle(report)` returns `chore: upgrade raulmoracode-create to <toVersion>`. Sections, in order:
+
+1. `# Upgrade raulmoracode-create <from> → <to>` plus the trim-note anchor.
+2. `## Summary` — one paragraph (versions, framework, what the CLI owns) + a counts table (updated / new / overwritten with local changes / removed / skipped / dependencies updated / kept / migrations) and a `> [!WARNING]` line when files were overwritten.
+3. `## ⚠️ Overwritten files with local changes` — **only** when `files` contains `overwritten` entries, placed high on purpose: per file the path, the matched `what`/`why`/`action` from the release notes (or an explicit "no upgrade note for this file"), the `<details>` diff of `previousContent` → `nextContent`, and the reminder that the file is isolated in its own commit so customizations can be re-applied on top.
+4. `## Changes by version` — one `### <version>` subsection per note, ascending, with a `File | Status | +/− lines | What | Why` table (rows matched against `files`; unknown paths render `—`) and an `Action` bullet list when the notes define one, plus the per-file collapsed diffs.
+5. `## Dependencies` — `Package | Type | From | To | Note` (`had a local version` when `hadLocalVersion`) and a `### Kept as-is` table for `keptDependencies`.
+6. `## Migrations` — id, version, description, why per applied migration.
+7. `## Action items` — checkboxes: review the overwritten files (or the whole diff), every note `action` (deduplicated), `pnpm check` when Biome files are involved, `pnpm test` when testing files are involved, verify CI when a workflow changed, and "delete nothing else".
+8. `## Not touched` — the static guarantee: application code under `src/`, `README.md`, `CHANGELOG.md`, `LICENSE`.
+9. `## Commits` — numbered `report.commits`.
+10. Footer: generated-by line (`v<toVersion>`) and the `changelogUrl` link when present.
+
+Helpers:
+
+- `unifiedDiff(previousContent, nextContent)` — pure line-based LCS diff (` ` / `-` / `+` with `@@` hunk headers and 3 lines of context). CRLF is normalised to LF first, inputs are capped at `MAX_DIFF_LINES` (400) and the rendered diff at `MAX_DIFF_CHARS` (8 000) so a huge file cannot flood the body; both caps are marked with a `@@ diff truncated … @@` note. Returns `""` when the contents are equivalent.
+- `diffLineCounts(previousContent, nextContent)` → `{added, removed}` and `diffCounts(...)` → `+N −M` (U+2212), used by the `+/− lines` column.
+- `truncateForGithub(body)` — GitHub rejects bodies over ~65 000 characters (`GITHUB_PR_BODY_LIMIT`). Bodies under the limit are returned untouched; longer ones get their `<details>` diff blocks collapsed, then dropped if still too long, and a visible note pointing at the **Files changed** tab. The Summary, the ⚠️ section, every table, the action items and the footer are never removed. The function is **idempotent**: running it on its own output returns the same string (the replacements are fixed points and the trim note is inserted at most once).
+
+Table cells are escaped (`|` → `\|`, newlines → `<br>`) and CRLF is normalised before diffing, so generated content can never break the markdown layout.

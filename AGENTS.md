@@ -55,6 +55,8 @@ src/
 ├── generators/         # steps that modify the generated project
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
+├── github/             # gh CLI wrappers ONLY (arg builders + thin wrappers)
+├── upgrade/            # upgrade command: manifest, managed files, PR body (pure)
 ├── config/             # PURE templates: functions returning strings, no I/O
 └── utils/
     ├── exec.ts         # ONLY external-process execution path (spawn)
@@ -75,6 +77,15 @@ Rules:
   `exec` resolves `.cmd` on win32. `ExecError` carries `command/args/code/signal/stdout/stderr/spawnError`.
 - **`git/` contains no Husky or Commitlint logic** (git only). Husky activation
   (`pnpm exec husky` after `git init`) is orchestrated from `cli/run.ts`, not from `git/`.
+- **`github/` contains only `gh` wrappers** (arg builders + thin wrappers, exactly like
+  `git/`): no Clack, no markdown generation, no business logic. It owns `GhAuthError`
+  (defined there, not imported from `cli/run.ts`, so `github/` stays CLI-free) and always
+  runs `gh` through `utils/exec.ts` with an args array.
+- **Upgrade pull request bodies are generated purely from `UpgradeReport`**
+  (`upgrade/pr-body.ts`: `upgradePrBody`/`upgradePrTitle`/`unifiedDiff`/`truncateForGithub`)
+  and are therefore **in English** — the reader is a reviewer of a GitHub PR, not the CLI
+  user. The CLI messages around the upgrade stay in Spanish. Never add I/O to
+  `upgrade/pr-body.ts`.
 - **CLI messages are in Spanish** (preflights, prompts, errors). Keep the language.
 
 ## 4. Execution flow (`src/cli/run.ts` — the orchestrator, read it first)
@@ -229,6 +240,8 @@ prompt (prompts/*.ts, Clack + validation.ts)
 | `install.test.ts` | `installDependencies` with mocked `exec`: `install`→`add`→`add -D` order, `cwd`, PostCSS variant on Next |
 | `package-metadata.test.ts` | own metadata + `prepare: husky` and exact pins of generated projects |
 | `git/exec/error-handling.test.ts` | git constructors, real `exec`, remote divergence, `PreflightError`, `REMOTE_CONFLICT_MESSAGE` |
+| `upgrade-pr-body.test.ts` | `upgradePrBody` (empty plan, all statuses, notes with/without `action`, unmatched overwritten file, CRLF, pipe escaping), `unifiedDiff`/`diffLineCounts`/`diffCounts` on small inputs and caps, `truncateForGithub` (summary/⚠️/tables/action items survive, diffs trimmed, under the limit, idempotent) |
+| `github.test.ts` | `gh` arg builders (never `--draft`), `requireGhAuth` (`GhAuthError`, `gh auth login`), `findOpenPullRequest` with mocked `exec` (JSON, empty, garbage, no url, non-zero exit → `null`), `createPullRequest` (`--body-file`, temp file written and removed, URL extraction), `repoDefaultBranch` |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: schedule + `workflow_dispatch`, read-only permissions, `[vite, next]` matrix, Node 24, frozen-lockfile install, E2E command with `E2E_FRAMEWORK` from the matrix, observe-only |
 | `e2e.test.ts` | opt-in via `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`): full `run()` with mocked Clack and real `exec` (except `ls-remote` and remote rewrite to local bare): pins, files, `node_modules`, workspace, branding/starter per framework, `pnpm check` + `vitest run` + `build`, initial commit and push |
 
