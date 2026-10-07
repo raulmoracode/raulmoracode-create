@@ -13,6 +13,7 @@ afterEach(() => {
 describe("parseArgs", () => {
   it("defaults to an interactive run without flags", () => {
     expect(parseArgs([])).toEqual({
+      command: "create",
       help: false,
       version: false,
       verbose: false,
@@ -36,14 +37,27 @@ describe("parseArgs", () => {
 
   it("combines flags", () => {
     expect(parseArgs(["--verbose", "--help"])).toEqual({
+      command: "create",
       help: true,
       version: false,
       verbose: true,
     });
   });
 
+  it("detects the upgrade subcommand", () => {
+    expect(parseArgs(["upgrade"]).command).toBe("upgrade");
+    expect(parseArgs(["--verbose", "upgrade"])).toEqual({
+      command: "upgrade",
+      help: false,
+      version: false,
+      verbose: true,
+    });
+    expect(parseArgs(["something"]).command).toBe("create");
+  });
+
   it("ignores unknown flags", () => {
     expect(parseArgs(["--whatever"])).toEqual({
+      command: "create",
       help: false,
       version: false,
       verbose: false,
@@ -66,6 +80,7 @@ describe("help and version output", () => {
     expect(text).toContain("--verbose");
     expect(text).toContain("--help");
     expect(text).toContain("--version");
+    expect(text).toContain("raulmoracode-create upgrade");
     expect(text).toContain(VERSION);
   });
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs, printHelp, VERSION } from "./cli/args.js";
 import { run } from "./cli/run.js";
+import { runUpgrade } from "./cli/upgrade.js";
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -14,7 +15,12 @@ if (args.version) {
   process.exit(0);
 }
 
-run({ verbose: args.verbose }).catch((error: unknown) => {
+const main =
+  args.command === "upgrade"
+    ? runUpgrade({ verbose: args.verbose })
+    : run({ verbose: args.verbose });
+
+main.catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });
