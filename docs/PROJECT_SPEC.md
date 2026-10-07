@@ -65,7 +65,8 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── configure-node.ts     # .nvmrc, .editorconfig, .gitignore
 │   │   ├── configure-site.ts     # src/config/site.ts (site identity)
 │   │   ├── configure-changelog.ts# CHANGELOG.md
-│   │   └── configure-ci.ts       # .github/workflows/ci.yml
+│   │   ├── configure-ci.ts       # .github/workflows/ci.yml
+│   │   └── configure-manifest.ts # raulmoracode.json (project manifest)
 │   ├── frameworks/
 │   │   ├── types.ts              # PackageJson, ProjectFramework
 │   │   ├── index.ts              # { vite, next } registry, getFramework()
@@ -76,6 +77,18 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── remote.ts             # remote add / ls-remote
 │   │   ├── commit.ts             # git add + initial commit
 │   │   └── push.ts               # fetch, conflict detection, push
+│   ├── github/
+│   │   └── gh.ts                 # gh CLI wrappers (PR creation for upgrade)
+│   ├── upgrade/
+│   │   ├── types.ts              # ProjectManifest, UpgradeNotes, Migration
+│   │   ├── manifest.ts           # hashContent, serializeManifest, parseManifest
+│   │   ├── managed-files.ts      # managedFiles, managedPackageJson, managedDependencyPins
+│   │   ├── notes.ts              # UPGRADE_NOTES, notesBetween
+│   │   ├── version.ts            # X.Y.Z parsing and comparison
+│   │   ├── pr-body.ts            # upgrade pull request body
+│   │   ├── template-snapshot.ts  # rendered snapshot of every managed template
+│   │   └── __snapshots__/
+│   │       └── templates.json    # stored snapshot (UpgradeNotes gate)
 │   ├── config/
 │   │   ├── agents.ts             # AGENTS.md content
 │   │   ├── biome.ts              # biome.json content
@@ -97,7 +110,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │       ├── exec.ts               # safe process execution (spawn)
 │       ├── filesystem.ts         # file helpers and JSON/JSONC
 │       └── validation.ts         # name, URL and framework validation
-├── tests/                        # Vitest suite (16 files, ~237 tests)
+├── tests/                        # Vitest suite (18 files, 256 tests + the opt-in E2E)
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
@@ -108,7 +121,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 └── dist/                         # compiled output (generated, not versioned)
 ```
 
-Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O.
+Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, `config/` holds pure templates with no I/O, and `upgrade/` is a pure contract (manifest, managed files, notes, snapshot) with no Clack, no I/O and no processes.
 
 ---
 
@@ -157,7 +170,7 @@ Internal functions:
 3. Prompts in order: `promptFramework()` → `promptTechPreset()` (multiselect with everything preselected by default; `resolveTechSelection` forces Tailwind back on if shadcn is left selected without it, with a warning) → `promptProjectName()` → `promptGitHubUrl()`.
 4. `checkDestination` + `checkRemoteAccess`.
 5. `getFramework(frameworkId)` and the Clack `tasks([...])` block (each task records its title in `failedStep` first):
-   - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); branding (always); shadcn (only if `selection.shadcn`); theme (only if `selection.theme`, via `applyRegistryTheme` after shadcn and before `patchPackageJson`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `configureReadme(..., selection)` (always, after the patch so the scripts table matches); `augmentGitignore` (always). Returns `"Project created"`.
+   - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); branding (always); shadcn (only if `selection.shadcn`); theme (only if `selection.theme`, via `applyRegistryTheme` after shadcn and before `patchPackageJson`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `configureReadme(..., selection)` (always, after the patch so the scripts table matches); `augmentGitignore` (always); license, changelog and CI; `configureManifest(...)` (always, last: writes `raulmoracode.json` with the sha256 of the managed files as they are on disk, before the initial commit). Returns `"Project created"`.
    - **"Installing dependencies"** → `installDependencies(..., selection)` (`pnpm install`, `pnpm add` runtime unless empty, `pnpm add -D` dev unless empty — a bare `add` with no packages would fail, hence they are skipped); `normalizePackageJson`; `formatProject` only with Biome (it would fail without the binary); `refreshPnpmWorkspaceExcludes(..., selection)`. Returns `"Dependencies installed"`.
    - **"Initializing Git"** → `initRepository` + `pnpm exec husky` only with Husky. **"Configuring remote"** → `addRemote`. **"Creating initial commit"** → `createCommit`. **"Pushing to GitHub"** → `remoteHasDivergentCommits` (if `true`, error with `REMOTE_CONFLICT_MESSAGE`) otherwise `push` (`push -u origin main`, never `--force`).
 6. `showSummary({ projectName, githubUrl, frameworkLabel, shadcn: selection.shadcn })` (registry hint only with shadcn).
@@ -245,6 +258,23 @@ Internal functions:
 - `configure-git-hooks.ts` — `configureGitHooks(projectDir, selection = FULL_TECH_SELECTION)`: writes `.husky/pre-commit` (`huskyPreCommit(selection)`), `.husky/commit-msg`, marks both executable, and writes `commitlint.config.ts`.
 - `configure-changelog.ts` — `configureChangelog(projectDir)`: writes `CHANGELOG.md` (`changelogMd()`).
 - `configure-ci.ts` — `configureCi(projectDir)`: writes `.github/workflows/ci.yml` (`ciWorkflowYaml()`).
+- `configure-manifest.ts` — `buildProjectManifest(identity, files)` (pure) + `collectManagedFileHashes(projectDir, framework, selection)` + `configureManifest(projectDir, identity)`: writes `raulmoracode.json`, the last step of the "Creating project" task (so it is part of the initial commit). `identity` is `{ framework, projectName, githubUrl, selection, cliVersion }` (`cliVersion` = `VERSION`). The `files` map is hashed from the content **on disk** (read after every generator ran, never from the freshly rendered template, because Biome reformats afterwards); managed files that do not exist for the selection are skipped. `dependencies` is `managedDependencyPins(framework.id, selection)`, the exact versions the CLI pinned.
+
+### 7.6 The project manifest — `raulmoracode.json`
+
+Written by `configureManifest()` at the end of the "Creating project" task, therefore present in the initial commit (a commit that a user's project can be upgraded from). It is the only state `raulmoracode-create upgrade` needs to tell the CLI's files from the user's edits:
+
+| Field | Content |
+|---|---|
+| `manifestVersion` | `1` (`MANIFEST_VERSION`); a different value makes `parseManifest()` refuse the manifest and ask for a CLI update |
+| `cliVersion` | the CLI version that generated the project (`VERSION`) |
+| `framework` | `"vite"` or `"next"` |
+| `selection` | the ten `TechSelection` booleans, so `upgrade` knows which templates applied |
+| `projectName`, `githubUrl` | what the user answered (the URL is already normalized) |
+| `files` | POSIX path → sha256 of the managed file as it is on disk (`managedFiles()`), skipped when missing |
+| `dependencies` | package → exact version the CLI pinned (`managedDependencyPins()`), flat map of `dependencies` + `devDependencies` |
+
+The file is sorted and two-space indented with a trailing newline (`serializeManifest()`), so a diff of the manifest is readable, and it is never part of its own managed inventory. The managed templates themselves are the pure `upgrade/managed-files.ts`, shared by creation, `upgrade` and the snapshot test.
 
 ---
 
@@ -343,14 +373,14 @@ Internal functions:
 
 ---
 
-## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, ~215)
+## 12. Tests (`vitest run`, `node` environment, `tests/**/*.test.ts`, 256 + the opt-in E2E)
 
 | File | What it covers |
 |---|---|
 | `validation.test.ts` | Names (valid/invalid, length, reserved), GitHub URLs (protocol, host, credentials, format), `isFramework`/`validateFramework`, `satisfiesNodeVersion`, `satisfiesPnpmVersion` (12.x, leading `v`, whitespace, prerelease, 11.x/13.x, garbage, empty) |
 | `config.test.ts` | `.nvmrc`, `components.json` + `cn()` + registry aliases/merge/add example, generated `README.md` (title, scripts table, gated stack/sections, per-framework variants), `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (namespaced shadcn example + Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION` incl. theme, `resolveTechSelection` cascades), adaptive Husky hooks, Commitlint config, CI workflow template (install/check/test/build steps, no deploys), CHANGELOG template (Keep a Changelog + `[Unreleased]`) |
 | `frameworks.test.ts` | Framework registration, exact pins per framework, scripts, removal patterns, runtime/dev lists (no `lucide-react`, `tw-animate-css` only with theme), pnpm constructors, `patchPackageJson` and `normalizePackageJson` against temp `package.json` (incl. author/homepage/repository, `prepare: husky`), no-trace patch with deselected techs, dependency filtering |
-| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter (vite starter preserves registry aliases), workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn (registry + `cn()` + tsconfig aliases incl. merge/preservation/missing-file skip), readme overwrite (name, final scripts, tech gating per framework), theme (exact dlx args, junk cleanup per framework, alias restore; mocked `exec`), biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit), ci (`.github/workflows/ci.yml` steps), changelog (`CHANGELOG.md` structure) |
+| `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter (vite starter preserves registry aliases), workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn (registry + `cn()` + tsconfig aliases incl. merge/preservation/missing-file skip), readme overwrite (name, final scripts, tech gating per framework), theme (exact dlx args, junk cleanup per framework, alias restore; mocked `exec`), biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit), ci (`.github/workflows/ci.yml` steps), changelog (`CHANGELOG.md` structure), manifest (`raulmoracode.json`: identity, `managedDependencyPins`, sha256 of the files on disk, missing files skipped, hooks left untouched) |
 | `install.test.ts` | `installDependencies` with mocked `exec`: order `install` → `add` (exact runtime) → `add -D` (incl. tailwind/biome/vitest/testing-library/clsx/cva/husky/commitlint), `cwd` correctness, empty-add skipping with deselected techs, PostCSS variant on Next, `ExecError` propagation |
 | `git.test.ts` | Constructors (`init`, `branch -M main`, `remote add`, `add .`, `commit`, `push` without force) + integration with real Git in temp dirs: init on `main`, remote, initial commit, push to a bare repo |
 | `exec.test.ts` | Real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
@@ -360,6 +390,8 @@ Internal functions:
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
 | `preflight.test.ts` | Full `run()` preflight with mocked Clack/exec (Node 24 only): `REQUIRED_PNPM_MAJOR` derived from `PNPM_VERSION`; pnpm 13.x or unparsable output → exact actionable error + exit 1 before any prompt; pnpm 12.x proceeds with a single `pnpm --version` call in the order pnpm → git → identity |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: weekly `schedule` + `workflow_dispatch` (no push/PR), read-only permissions, `[vite, next]` matrix with `fail-fast: false`, Node 24 + pnpm cache, frozen-lockfile install, E2E command with `E2E_FRAMEWORK: ${{ matrix.framework }}`, observe-only (no updates, pushes or secrets) |
+| `upgrade-contract.test.ts` | Versions (`X.Y.Z`, `(from, to]` range, `notesBetween` ordering), manifest (`MANIFEST_FILE`, serialize/parse round trip with sorted maps, sha256, Spanish validation errors), managed files (exact templates, per selection and framework, never application code or user-owned docs, `managedPackageJson`/`managedDependencyPins` vs `pinnedPackages`) |
+| `upgrade-notes.test.ts` | Rendered managed-template snapshot equals `src/upgrade/__snapshots__/templates.json` (deterministic key order, no `\r`, no absolute paths, sorted maps, trailing `\n`), every managed path in `UPGRADE_NOTES` exists in the snapshot, every note/change is documented (`version`, `summary`, `changes[].files`, `what`, `why`), and `UPGRADE_NOTES` is still empty at the 1.0.8 baseline. Regenerate the snapshot with `UPDATE_TEMPLATE_SNAPSHOT=1 pnpm test --run tests/upgrade-notes.test.ts`; without the env var a mismatch fails listing the changed case/file/pin and demanding the matching `UpgradeNotes` entry for the version in `src/cli/args.ts` |
 | `e2e.test.ts` | Opt-in with `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`); full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`, `.github/workflows/ci.yml`, `CHANGELOG.md`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
 ---
@@ -401,7 +433,7 @@ Internal functions:
 
 ### 14.2 Generated files (full preset)
 
-`package.json` (name, `0.1.0`, `private`, `type module`, `author` Raul Mora, `homepage`+`repository` with the entered URL, `prepare: husky`, framework scripts, `engines`, `packageManager`), `pnpm-lock.yaml` (no `package-lock.json`/`yarn.lock`), `.nvmrc`, `.editorconfig`, augmented `.gitignore`, `biome.json`, `commitlint.config.ts`, `.husky/pre-commit` + `.husky/commit-msg` (executable), `components.json`, `vitest.config.ts`, `src/test/smoke.test.tsx`, `src/lib/query-client.ts`, `src/lib/utils.ts` (`cn`), `.vscode/settings.json` + `extensions.json`, `pnpm-workspace.yaml` (`minimumReleaseAge: 10080` + excludes for the whole lockfile), `.github/workflows/ci.yml` (install/check/test/build on push/PR), `CHANGELOG.md` (Keep a Changelog + `[Unreleased]`), `AGENTS.md`, official generator structure, Git repo on `main` with remote/initial commit/push.
+`package.json` (name, `0.1.0`, `private`, `type module`, `author` Raul Mora, `homepage`+`repository` with the entered URL, `prepare: husky`, framework scripts, `engines`, `packageManager`), `pnpm-lock.yaml` (no `package-lock.json`/`yarn.lock`), `.nvmrc`, `.editorconfig`, augmented `.gitignore`, `biome.json`, `commitlint.config.ts`, `.husky/pre-commit` + `.husky/commit-msg` (executable), `components.json`, `vitest.config.ts`, `src/test/smoke.test.tsx`, `src/lib/query-client.ts`, `src/lib/utils.ts` (`cn`), `.vscode/settings.json` + `extensions.json`, `pnpm-workspace.yaml` (`minimumReleaseAge: 10080` + excludes for the whole lockfile), `.github/workflows/ci.yml` (install/check/test/build on push/PR), `CHANGELOG.md` (Keep a Changelog + `[Unreleased]`), `AGENTS.md`, `raulmoracode.json` (the manifest of §7.6, committed with the project), official generator structure, Git repo on `main` with remote/initial commit/push.
 
 Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scripts: `dev: vite`, `build: vite build`, `check/format/lint` (biome, only with Biome), `test: vitest` (only with testing). Next scripts: `dev: next dev`, `build: next build`, `start: next start` + the same biome/test scripts when selected.
 
@@ -422,7 +454,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 3. Prompts: framework → tech preset → name → GitHub URL (normalized without trailing `/` or `.git`).
 4. Destination: `<cwd>/<name>` (empty→reused and removed; with content→error, never deletes).
 5. `git ls-remote <url>` (access to the already-existing remote).
-6. Tasks: scaffold gated by selection → `package.json` → `.gitignore` → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
+6. Tasks: scaffold gated by selection → `package.json` → `.gitignore` → `raulmoracode.json` (manifest with the sha256 of the managed files on disk) → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
 7. Summary (framework, `./<name>`, URL) → `¿Quieres abrir el proyecto ahora?` → `code .` (tolerant) → farewell.
 8. Errors: `failedStep` recorded per task; cleanup when everything was CLI-created (never on push failure; empty-dir restore on pre-task failures) + actionable hint → exit 1 (130 on SIGINT/SIGTERM); Clack cancellation → clean exit 0.
 
