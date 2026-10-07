@@ -15,7 +15,9 @@ import {
 import {
   installDependencies,
   normalizePackageJson,
+  PNPM_VERSION,
   patchPackageJson,
+  REQUIRED_PNPM_MAJOR,
   refreshPnpmWorkspaceExcludes,
   writeProjectLicense,
 } from "../generators/configure-project.js";
@@ -44,7 +46,10 @@ import {
   removeIfExists,
   resolvePath,
 } from "../utils/filesystem.js";
-import { satisfiesNodeVersion } from "../utils/validation.js";
+import {
+  satisfiesNodeVersion,
+  satisfiesPnpmVersion,
+} from "../utils/validation.js";
 import { showFarewell, showSummary, showWarning } from "./output.js";
 
 const MINIMUM_NODE_MAJOR = 24;
@@ -82,9 +87,10 @@ async function requireCommand(
   command: string,
   instructions: string,
   verbose: boolean,
-): Promise<void> {
+): Promise<string> {
   try {
-    await exec(command, ["--version"], { verbose });
+    const result = await exec(command, ["--version"], { verbose });
+    return result.stdout;
   } catch (error) {
     if (error instanceof ExecError && error.spawnError) {
       throw new PreflightError(
@@ -115,11 +121,17 @@ async function preflightChecks(verbose: boolean): Promise<void> {
       `${nodeCheck.error}\nInstala Node.js ${MINIMUM_NODE_MAJOR} LTS: https://nodejs.org`,
     );
   }
-  await requireCommand(
+  const pnpmVersion = await requireCommand(
     "pnpm",
     "Instala pnpm: https://pnpm.io/installation",
     verbose,
   );
+  const pnpmCheck = satisfiesPnpmVersion(pnpmVersion, REQUIRED_PNPM_MAJOR);
+  if (!pnpmCheck.valid) {
+    throw new PreflightError(
+      `${pnpmCheck.error}\nInstala pnpm ${PNPM_VERSION}: corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate  (o: npm install -g pnpm@${PNPM_VERSION})`,
+    );
+  }
   await requireCommand(
     "git",
     "Instala Git: https://git-scm.com/downloads",

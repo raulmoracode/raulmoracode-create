@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isFramework,
   satisfiesNodeVersion,
+  satisfiesPnpmVersion,
   validateFramework,
   validateGitHubUrl,
   validateProjectName,
@@ -145,5 +146,59 @@ describe("satisfiesNodeVersion", () => {
 
   it("rejects unparseable versions", () => {
     expect(satisfiesNodeVersion("unknown", 24).valid).toBe(false);
+  });
+});
+
+describe("satisfiesPnpmVersion", () => {
+  it("accepts any 12.x version", () => {
+    expect(satisfiesPnpmVersion("12.6.0", 12).valid).toBe(true);
+    expect(satisfiesPnpmVersion("12.0.0", 12).valid).toBe(true);
+    expect(satisfiesPnpmVersion("12.10.3", 12).valid).toBe(true);
+  });
+
+  it("tolerates a leading v", () => {
+    expect(satisfiesPnpmVersion("v12.6.0", 12).valid).toBe(true);
+  });
+
+  it("trims surrounding whitespace and newlines", () => {
+    expect(satisfiesPnpmVersion("  12.6.0\n", 12).valid).toBe(true);
+    expect(satisfiesPnpmVersion("\r\n12.6.0\r\n", 12).valid).toBe(true);
+  });
+
+  it("accepts prereleases of the required major", () => {
+    expect(satisfiesPnpmVersion("12.6.0-rc.1", 12).valid).toBe(true);
+  });
+
+  it("rejects an older major", () => {
+    const result = satisfiesPnpmVersion("11.9.0\n", 12);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Se requiere pnpm 12. Versión actual: 11.9.0.");
+  });
+
+  it("rejects a newer major", () => {
+    const result = satisfiesPnpmVersion("v13.1.0", 12);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Se requiere pnpm 12. Versión actual: 13.1.0.");
+  });
+
+  it("rejects prereleases of another major", () => {
+    expect(satisfiesPnpmVersion("13.0.0-beta.2", 12).valid).toBe(false);
+  });
+
+  it("rejects unparseable output", () => {
+    const result = satisfiesPnpmVersion("command not found", 12);
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe(
+      'No se pudo interpretar la versión de pnpm: "command not found".',
+    );
+    expect(satisfiesPnpmVersion("12", 12).valid).toBe(false);
+    expect(satisfiesPnpmVersion("12.6", 12).valid).toBe(false);
+  });
+
+  it("rejects empty output", () => {
+    const result = satisfiesPnpmVersion("", 12);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("No se pudo interpretar");
+    expect(satisfiesPnpmVersion("   \n", 12).valid).toBe(false);
   });
 });

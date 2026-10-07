@@ -175,3 +175,27 @@ export function satisfiesNodeVersion(
   }
   return { valid: true };
 }
+
+const PNPM_VERSION_REGEX = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.+-]*)?$/;
+
+export function satisfiesPnpmVersion(
+  version: string,
+  requiredMajor: number,
+): ValidationResult {
+  const trimmed = version.trim();
+  const match = PNPM_VERSION_REGEX.exec(trimmed);
+  if (!match) {
+    return {
+      valid: false,
+      error: `No se pudo interpretar la versión de pnpm: "${trimmed}".`,
+    };
+  }
+  const major = Number(match[1]);
+  if (major !== requiredMajor) {
+    return {
+      valid: false,
+      error: `Se requiere pnpm ${requiredMajor}. Versión actual: ${trimmed.replace(/^v/, "")}.`,
+    };
+  }
+  return { valid: true };
+}

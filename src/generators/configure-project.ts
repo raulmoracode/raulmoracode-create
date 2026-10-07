@@ -21,6 +21,8 @@ import {
 
 export const PNPM_VERSION = "12.6.0";
 
+export const REQUIRED_PNPM_MAJOR = Number(PNPM_VERSION.split(".")[0]);
+
 export const CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1";
 
 /** Required by the `@raulmoracode` theme globals (only with the theme). */

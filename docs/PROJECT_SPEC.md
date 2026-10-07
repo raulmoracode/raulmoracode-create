@@ -142,9 +142,9 @@ Constants and types:
 
 Internal functions:
 
-- `requireCommand(command, instructions, verbose): Promise<void>` — runs `<command> --version`. If the process does not exist (`ExecError` with `spawnError`), throws `PreflightError` with install instructions; on any other failure, a generic `PreflightError`.
+- `requireCommand(command, instructions, verbose): Promise<string>` — runs `<command> --version` and returns its stdout. If the process does not exist (`ExecError` with `spawnError`), throws `PreflightError` with install instructions; on any other failure, a generic `PreflightError`.
 - `requireGitIdentity(verbose): Promise<void>` — requires non-empty `git config --get user.name` and `user.email`; otherwise `PreflightError` with the command to configure them.
-- `preflightChecks(verbose): Promise<void>` — in order: Node version (`satisfiesNodeVersion(process.version, 24)`), `pnpm` available, `git` available, Git identity. There is no token-based preflight: generated projects contain no `.npmrc` and no private dependencies.
+- `preflightChecks(verbose): Promise<void>` — in order: Node version (`satisfiesNodeVersion(process.version, 24)`), `pnpm` available + major check (`satisfiesPnpmVersion(stdout, REQUIRED_PNPM_MAJOR)` on the same `pnpm --version` output; on mismatch `PreflightError` with `Se requiere pnpm 12. Versión actual: X.Y.Z.` plus the `corepack prepare pnpm@${PNPM_VERSION} --activate` / `npm install -g pnpm@${PNPM_VERSION}` fix), `git` available, Git identity. There is no token-based preflight: generated projects contain no `.npmrc` and no private dependencies.
 - `checkDestination(projectName): Promise<{ projectDir, reusedEmptyDir }>` — resolves `<cwd>/<projectName>`. If it exists and is empty, removes it with `removeEmptyDir` (only succeeds when empty) and marks `reusedEmptyDir: true`; if it exists and is NOT empty, `PreflightError` (never deletes user content).
 - `shouldRemoveProjectDir(failedStep: string | null): boolean` (pure, exported) — decides whether to clean up after a failure: `false` when `null` (failure before the tasks, nothing created) or `"Pushing to GitHub"` (project complete locally, only the push failed); `true` otherwise (everything under `./<name>` was created by this run).
 - `checkRemoteAccess(githubUrl, verbose): Promise<void>` — `git ls-remote <url>`; on failure, `PreflightError` (URL, connection, or GitHub authentication).
@@ -201,6 +201,7 @@ Internal functions:
 ### 7.2 `generators/configure-project.ts`
 
 - `PNPM_VERSION = "12.6.0"` — version pinned in `packageManager` of generated projects.
+- `REQUIRED_PNPM_MAJOR` — major derived from `PNPM_VERSION` (`12`); the preflight requires the user's pnpm to match it.
 - `HUSKY_VERSION = "9.1.7"`, `COMMITLINT_CLI_VERSION = "21.2.3"`, `COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3"`, `CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1"`.
 - `PROJECT_AUTHOR = { name: "Raul Mora", url: "https://raulmoracode.com" }`.
 - `runtimeDependencies(selection = FULL_TECH_SELECTION): Record<string,string>` — exact pins filtered by selection: `zustand 5.0.15` (only if `zustand`), `react-hook-form 7.89.0` + `zod 4.6.5` (only if `forms`), `@tanstack/react-query 5.104.0` (only if `tanstack-query`).
@@ -337,7 +338,7 @@ Internal functions:
 
 **`utils/filesystem.ts`** — `pathExists`, `isDirectory`, `isDirectoryEmpty`, `listDirEntries`, `ensureDir` (recursive), `writeTextFile` (creates parents), `readTextFile`, `readJsonFile<T>`, `stripJsonComments` + `parseJsonc<T>` (JSONC with `//` and `/* */` respecting strings and escapes), `removeIfExists` (recursive+force `rm`), `joinPath`, `resolvePath`, `removeEmptyDir` (only succeeds when empty), `makeExecutable` (`chmod 0o755`).
 
-**`utils/validation.ts`** — `Framework = "vite" | "next"`; `ValidationResult { valid, error? }`; `validateProjectName` (empty, surrounding spaces, >214 chars, leading `.`/`_`, lowercase+digits+`._~-` regex, npm + Windows reserved names); `GitHubUrlResult { owner?, repo? }`; `validateGitHubUrl` (https, `github.com`, no credentials, `owner/repo`, owner/repo regexes); `isFramework` (type guard), `validateFramework`; `satisfiesNodeVersion(version, minimumMajor)` (parses major, compares).
+**`utils/validation.ts`** — `Framework = "vite" | "next"`; `ValidationResult { valid, error? }`; `validateProjectName` (empty, surrounding spaces, >214 chars, leading `.`/`_`, lowercase+digits+`._~-` regex, npm + Windows reserved names); `GitHubUrlResult { owner?, repo? }`; `validateGitHubUrl` (https, `github.com`, no credentials, `owner/repo`, owner/repo regexes); `isFramework` (type guard), `validateFramework`; `satisfiesNodeVersion(version, minimumMajor)` (parses major, compares); `satisfiesPnpmVersion(version, requiredMajor)` (trims, tolerates a leading `v`, parses `X.Y.Z` incl. prereleases, valid only when the major is exactly `requiredMajor`).
 
 ---
 
@@ -345,7 +346,7 @@ Internal functions:
 
 | File | What it covers |
 |---|---|
-| `validation.test.ts` | Names (valid/invalid, length, reserved), GitHub URLs (protocol, host, credentials, format), `isFramework`/`validateFramework`, `satisfiesNodeVersion` |
+| `validation.test.ts` | Names (valid/invalid, length, reserved), GitHub URLs (protocol, host, credentials, format), `isFramework`/`validateFramework`, `satisfiesNodeVersion`, `satisfiesPnpmVersion` (12.x, leading `v`, whitespace, prerelease, 11.x/13.x, garbage, empty) |
 | `config.test.ts` | `.nvmrc`, `components.json` + `cn()` + registry aliases/merge/add example, generated `README.md` (title, scripts table, gated stack/sections, per-framework variants), `biome.json`, `.editorconfig`, VS Code, branding, `pnpm-workspace.yaml` (merge + `collectLockedPackages`), agents guide (namespaced shadcn example + Git hooks section), Tailwind (incl. `@` alias), query client, vitest/jsdom, tech preset (`FULL_TECH_SELECTION` incl. theme, `resolveTechSelection` cascades), adaptive Husky hooks, Commitlint config, CI workflow template (install/check/test/build steps, no deploys), CHANGELOG template (Keep a Changelog + `[Unreleased]`) |
 | `frameworks.test.ts` | Framework registration, exact pins per framework, scripts, removal patterns, runtime/dev lists (no `lucide-react`, `tw-animate-css` only with theme), pnpm constructors, `patchPackageJson` and `normalizePackageJson` against temp `package.json` (incl. author/homepage/repository, `prepare: husky`), no-trace patch with deselected techs, dependency filtering |
 | `generators.test.ts` | Each `configure*` against temp dirs: node/editorconfig/gitignore, vite/next branding (incl. clear failures), vite/next starter (vite starter preserves registry aliases), workspace refresh (mocked `exec`: JSON success, fallback, preservation, Husky pins), shadcn (registry + `cn()` + tsconfig aliases incl. merge/preservation/missing-file skip), readme overwrite (name, final scripts, tech gating per framework), theme (exact dlx args, junk cleanup per framework, alias restore; mocked `exec`), biome (+linter deletion), vscode, testing, git hooks (exact contents, adaptive `pre-commit`, executable bit), ci (`.github/workflows/ci.yml` steps), changelog (`CHANGELOG.md` structure) |
@@ -356,6 +357,7 @@ Internal functions:
 | `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, npmjs registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
 | `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
+| `preflight.test.ts` | Full `run()` preflight with mocked Clack/exec (Node 24 only): `REQUIRED_PNPM_MAJOR` derived from `PNPM_VERSION`; pnpm 13.x or unparsable output → exact actionable error + exit 1 before any prompt; pnpm 12.x proceeds with a single `pnpm --version` call in the order pnpm → git → identity |
 | `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`, `.github/workflows/ci.yml`, `CHANGELOG.md`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
 ---
@@ -413,7 +415,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 ## 15. Full execution sequence
 
 1. `node dist/index.js` (or `raulmoracode-create`) → flags (`--help`/`--version` exit early) → `run({ verbose })`.
-2. Preflight: Node ≥24 → pnpm → git → Git identity (no tokens involved).
+2. Preflight: Node ≥24 → pnpm (exists + major 12) → git → Git identity (no tokens involved).
 3. Prompts: framework → tech preset → name → GitHub URL (normalized without trailing `/` or `.git`).
 4. Destination: `<cwd>/<name>` (empty→reused and removed; with content→error, never deletes).
 5. `git ls-remote <url>` (access to the already-existing remote).
