@@ -9,6 +9,35 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Nothing pending yet.
 
+## [1.0.7] - 2026-10-07
+
+### Added
+
+- pnpm major version preflight: the CLI now validates the output of
+  `pnpm --version` (reusing the existing call, no extra process) and aborts
+  before the first prompt when the active pnpm major is not 12, with an
+  actionable Spanish message (`corepack enable && corepack prepare
+  pnpm@12.6.0 --activate`). The required major is derived from `PNPM_VERSION`,
+  so it has a single source of truth. New pure `satisfiesPnpmVersion()` plus
+  `tests/preflight.test.ts`.
+- Weekly scheduled E2E workflow (`.github/workflows/e2e-scheduled.yml`,
+  Mondays 06:00 UTC + `workflow_dispatch`) running both framework E2Es to
+  detect breakage outside the pinned versions (transitive dependencies,
+  `registry.raulmoracode.com`, GitHub/npm). Observe-only: it never updates
+  pins or the lockfile. Covered by `tests/e2e-scheduled-workflow.test.ts`.
+
+### Changed
+
+- The E2E suite is now opt-in: plain `pnpm test` skips `tests/e2e.test.ts`
+  unless `E2E_FRAMEWORK` is `vite` or `next`, so the default test run is fast,
+  offline and independent of the local Node version. The dedicated
+  `e2e-vite`/`e2e-next` CI jobs still run it on every push and pull request.
+- E2E failures now report the real cause: `process.exit` is mocked and the
+  `log.error` messages are surfaced in the failure, instead of an opaque
+  `expected false to be true` assertion. Leftover debug logging removed.
+- `AGENTS.md` documents the opt-in E2E, the scheduled workflow, the pnpm
+  major gate and the release procedure.
+
 ## [1.0.6] - 2026-10-06
 
 ### Added
@@ -165,7 +194,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.3...v1.0.4
