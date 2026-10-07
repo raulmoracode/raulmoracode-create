@@ -185,6 +185,9 @@ prompt (prompts/*.ts, Clack + validation.ts)
   then pin `vite@8.3.1`. `create-next-app@16.3.6` with flags `--ts --app --src-dir
   --import-alias "@/*" --biome --use-pnpm --disable-git --yes` (no `--tailwind`: Tailwind is
   pinned by the scaffolder).
+- pnpm major gate: the preflight derives `REQUIRED_PNPM_MAJOR` from `PNPM_VERSION`, so bumping
+  `PNPM_VERSION` moves the requirement automatically. The `README.md` Requirements line hardcodes
+  `pnpm@12.6.0` in its fix command: update it in the same change.
 - Husky 9.1.7: hooks in `.husky/pre-commit` (`pnpm check` + `pnpm test`) and
   `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), `prepare: husky` in scripts,
   `commitlint.config.ts` = `{ extends: ["@commitlint/config-conventional"] }`.
@@ -244,6 +247,12 @@ the suite pass; if you change behavior, update the corresponding test.
 5. Do not use `git push --force/-f`, `reset --hard`, `clean -fd`; do not rewrite history; do not
    commit unless explicitly requested; do not delete user content.
 6. After changing code: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build` (plus the affected
-   framework's E2E if it touches scaffolding). Do not claim something passes if you did not run it.
+   framework's E2E via `E2E_FRAMEWORK=vite|next` if it touches scaffolding, since plain
+   `pnpm test` skips it). Do not claim something passes if you did not run it.
 7. When done, report: what changed, files, validation performed, and remaining limitations.
+8. Releasing `X.Y.Z`: bump `version` in `package.json` AND `VERSION` in `src/cli/args.ts` (a test
+   pins them together) plus the version references in `docs/PROJECT_SPEC.md`; move
+   `CHANGELOG.md` `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` and update the compare
+   links; merge the `chore/release-X.Y.Z` PR, then push tag `vX.Y.Z` on the merge commit:
+   `publish.yml` validates tag/version, builds, tests and publishes to npm.
 

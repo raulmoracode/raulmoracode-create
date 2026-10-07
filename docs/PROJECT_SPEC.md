@@ -10,7 +10,7 @@ Complete reference document for the scaffolder: identity, architecture, what eac
 |---|---|
 | Repository | `raulmoracode/create` (`github.com/raulmoracode/raulmoracode-create`) |
 | npm package | `@raulmoracode/create` |
-| Current version | `1.0.6` |
+| Current version | `1.0.7` |
 | Global command (only one) | `raulmoracode-create` |
 | Compiled entry point | `./dist/index.js` (with `#!/usr/bin/env node` shebang) |
 | Publish registry | `https://registry.npmjs.org/` (npmjs) |
@@ -167,7 +167,7 @@ Internal functions:
 
 ### 5.2 `src/cli/args.ts` — flags
 
-- `VERSION = "1.0.6"` — single source of truth for `--version`; pinned to `package.json` by a test.
+- `VERSION = "1.0.7"` — single source of truth for `--version`; pinned to `package.json` by a test.
 - `parseArgs(argv): CliArgs` — `{ help, version, verbose }` (`-h`/`--help`, `-V`/`--version`, `--verbose`; unknown flags are ignored).
 - `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
@@ -366,7 +366,7 @@ Internal functions:
 
 ## 13. Root config files
 
-- **`package.json`**: `name @raulmoracode/create`, `version 1.0.6`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
+- **`package.json`**: `name @raulmoracode/create`, `version 1.0.7`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
 - **`tsconfig.json`**: `target ES2022`, `module/moduleResolution NodeNext` (imports with `.js` extension), `outDir dist`, `rootDir src`, `strict` + `noUncheckedIndexedAccess`, `types: [node]`, `include: [src]`.
 - **`vitest.config.ts`**: `node` environment, `include tests/**/*.test.ts`.
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.
