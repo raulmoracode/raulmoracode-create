@@ -7,6 +7,7 @@ import {
 import { configureChangelog } from "../generators/configure-changelog.js";
 import { configureCi } from "../generators/configure-ci.js";
 import { configureGitHooks } from "../generators/configure-git-hooks.js";
+import { configureManifest } from "../generators/configure-manifest.js";
 import {
   augmentGitignore,
   configureEditorconfig,
@@ -50,6 +51,7 @@ import {
   satisfiesNodeVersion,
   satisfiesPnpmVersion,
 } from "../utils/validation.js";
+import { VERSION } from "./args.js";
 import { showFarewell, showSummary, showWarning } from "./output.js";
 
 const MINIMUM_NODE_MAJOR = 24;
@@ -275,6 +277,14 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await augmentGitignore(projectDir);
           message("Configuring CI");
           await configureCi(projectDir);
+          message("Writing project manifest");
+          await configureManifest(projectDir, {
+            framework,
+            projectName,
+            githubUrl,
+            selection,
+            cliVersion: VERSION,
+          });
           return "Project created";
         },
       },
