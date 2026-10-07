@@ -38,6 +38,12 @@ E2E_FRAMEWORK=vite pnpm test --run tests/e2e.test.ts
 E2E_FRAMEWORK=next pnpm test --run tests/e2e.test.ts
 ```
 
+A scheduled E2E (`.github/workflows/e2e-scheduled.yml`, Mondays 06:00 UTC + manual
+`gh workflow run e2e-scheduled.yml`) runs both frameworks to catch breakage that
+needs no commit here (transitive deps, `registry.raulmoracode.com`, GitHub/npm). It only
+observes: it never updates pins or the lockfile. Failures notify by email; GitHub disables
+scheduled workflows after 60 days without repo activity (re-enable them in the Actions tab).
+
 ## 3. Layered architecture (separation rule — DO NOT break it)
 
 ```text
@@ -216,6 +222,7 @@ prompt (prompts/*.ts, Clack + validation.ts)
 | `install.test.ts` | `installDependencies` with mocked `exec`: `install`→`add`→`add -D` order, `cwd`, PostCSS variant on Next |
 | `package-metadata.test.ts` | own metadata + `prepare: husky` and exact pins of generated projects |
 | `git/exec/error-handling.test.ts` | git constructors, real `exec`, remote divergence, `PreflightError`, `REMOTE_CONFLICT_MESSAGE` |
+| `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: schedule + `workflow_dispatch`, read-only permissions, `[vite, next]` matrix, Node 24, frozen-lockfile install, E2E command with `E2E_FRAMEWORK` from the matrix, observe-only |
 | `e2e.test.ts` | full `run()` with mocked Clack and real `exec` (except `ls-remote` and remote rewrite to local bare): pins, files, `node_modules`, workspace, branding/starter per framework, `pnpm check` + `vitest run` + `build`, initial commit and push |
 
 Mock pattern: `vi.mock("../src/utils/exec.js", ... importOriginal + override execMock)`.
