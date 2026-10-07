@@ -55,8 +55,9 @@ src/
 ├── generators/         # steps that modify the generated project
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
-├── github/             # gh CLI wrappers ONLY (arg builders + thin wrappers)
-├── upgrade/            # upgrade command: manifest, managed files, PR body (pure)
+├── github/             # `gh` CLI wrappers ONLY (arg builders + thin wrappers)
+├── upgrade/            # PURE manifest contract (types, manifest, managed files, notes,
+│                       # snapshot, PR body) + the upgrade orchestration (plan, preflight, apply)
 ├── config/             # PURE templates: functions returning strings, no I/O
 └── utils/
     ├── exec.ts         # ONLY external-process execution path (spawn)
@@ -69,6 +70,14 @@ Rules:
 - **Clack only in `cli/` and `prompts/`**. No other module imports `@clack/prompts`.
 - **`config/` performs no I/O**: it only exports pure functions (`biomeConfig()`, `huskyPreCommit()`,
   `commitlintConfig()`, …). If a template needs data, pass it as a parameter.
+- **`upgrade/` is pure and framework agnostic**: manifest (`ProjectManifest`, `hashContent()`,
+  `serializeManifest()`, `parseManifest()`), the managed-file inventory (`managedFiles()`,
+  `managedPackageJson()`, `managedDependencyPins()`, `EXECUTABLE_MANAGED_FILES`), the release
+  notes (`UPGRADE_NOTES`, `notesBetween()`) and the template snapshot. No Clack, no I/O, no
+  processes. `upgrade/` never imports `cli/` or `prompts/`; the reverse is fine.
+- **`github/` wraps the `gh` CLI, `git/` wraps `git`**: neither one knows about the other
+  (no `gh` call inside `git/`, no `git` call inside `github/`), and Husky/Commitlint logic stays
+  out of both.
 - **All file I/O goes through `utils/filesystem.ts`** (`writeTextFile` creates parents,
   `makeExecutable` = `chmod 0o755`, `parseJsonc` for tsconfigs with comments).
   Do not use `node:fs` directly in generators/frameworks/config.
@@ -121,7 +130,9 @@ failures → `PreflightError`.
    Husky/Commitlint devDeps without Husky) → `configureReadme(...)` (always, after the
    patch so the scripts table matches the final `package.json`) → `writeProjectLicense(...)`
    (always, current year from `run.ts`) → `configureChangelog(...)` (always) →
-   `augmentGitignore` (always) → `configureCi(...)` (always, `.github/workflows/ci.yml`).
+    `augmentGitignore` (always) → `configureCi(...)` (always, `.github/workflows/ci.yml`) →
+   `configureManifest(...)` (always, last step: writes `raulmoracode.json` with the sha256 of the
+   managed files as they are on disk, before the initial commit).
 2. `Installing dependencies`: `installDependencies` (`pnpm install --no-frozen-lockfile` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
    `formatProject` (`pnpm exec biome check --write .`) → `refreshPnpmWorkspaceExcludes`.
@@ -190,6 +201,34 @@ prompt (prompts/*.ts, Clack + validation.ts)
 - **Git**: `git/*.ts` exposes pure constructors (`initArgs()`, `commitArgs()`, `pushArgs()`, …,
   testable without git) + wrappers (`initRepository`, `createCommit`, …). `run.ts` only uses the wrappers.
 
+### 5.1 `raulmoracode.json`, managed templates and upgrade notes
+
+Every generated project gets a `raulmoracode.json` manifest (written by
+`configureManifest()`, the last step of the "Creating project" task, so it is in the initial
+commit). It records `manifestVersion`, `cliVersion` (`VERSION` from `src/cli/args.ts`),
+`framework`, `selection`, `projectName`, `githubUrl`, `files` (POSIX path → sha256 of the managed
+file **as it is on disk**, hashed after the generators ran so a later Biome pass is what gets
+hashed; missing files are skipped) and `dependencies` (`managedDependencyPins()`, i.e. the exact
+versions the CLI pinned). `upgrade/` reads it to tell the user's edits from the CLI's.
+
+**Changing a managed template requires an `UpgradeNotes` entry.** `UPGRADE_NOTES`
+(`src/upgrade/notes.ts`) is the only channel through which a generated project learns what a new
+CLI version changes, and `tests/upgrade-notes.test.ts` enforces it with the stored snapshot
+`src/upgrade/__snapshots__/templates.json` (rendered by the pure `template-snapshot.ts` for the
+`full`, `core` and `none` selections × both frameworks, with sorted keys and no absolute paths or
+timestamps). Whenever you touch a template in `src/config/*.ts`, a pin in
+`generators/configure-project.ts`, the managed-file inventory (`upgrade/managed-files.ts`) or a
+framework template, do:
+
+1. `UPDATE_TEMPLATE_SNAPSHOT=1 pnpm test --run tests/upgrade-notes.test.ts` (regenerates the
+   snapshot; without the env var the test fails and prints exactly which case/file/pin changed).
+2. Add or update the `UpgradeNotes` entry for the version in `src/cli/args.ts`, listing every
+   changed file in `changes[].files` (managed paths only — a note may not reference a file the
+   snapshot does not know) with a non-empty `what` and `why`, and the changed pins in `what`/`why`.
+
+The notes are still empty: `1.0.8` is the baseline that introduced the manifest, so projects
+created before it have no upgrade history to replay.
+
 ## 6. Subtle verified details (do not "simplify" them)
 
 - `create-vite@8.3.1` **does not exist**: scaffold with `create-vite@9.2.1` (the line that generates Vite 8)
@@ -236,12 +275,14 @@ prompt (prompts/*.ts, Clack + validation.ts)
 | `preflight.test.ts` | `run()` with mocked Clack/`exec`: pnpm major mismatch / unparsable output → actionable `PreflightError` + exit 1; pnpm 12.x proceeds (single `pnpm --version`) |
 | `config.test.ts` | each pure template (exact content + trailing `\n` + no tokens/machine paths) |
 | `frameworks.test.ts` | registration, exact pins, scripts, removal patterns, `patch/normalize` against temp `package.json` |
-| `generators.test.ts` | each `configure*` against temp dirs (+ executable bit except win32) |
+| `generators.test.ts` | each `configure*` against temp dirs (+ executable bit except win32), `configureManifest` (identity, pins, sha256 taken from disk, missing files skipped, hooks untouched) |
 | `install.test.ts` | `installDependencies` with mocked `exec`: `install`→`add`→`add -D` order, `cwd`, PostCSS variant on Next |
 | `package-metadata.test.ts` | own metadata + `prepare: husky` and exact pins of generated projects |
 | `git/exec/error-handling.test.ts` | git constructors, real `exec`, remote divergence, `PreflightError`, `REMOTE_CONFLICT_MESSAGE` |
 | `upgrade-pr-body.test.ts` | `upgradePrBody` (empty plan, all statuses, notes with/without `action`, unmatched overwritten file, CRLF, pipe escaping), `unifiedDiff`/`diffLineCounts`/`diffCounts` on small inputs and caps, `truncateForGithub` (summary/⚠️/tables/action items survive, diffs trimmed, under the limit, idempotent) |
 | `github.test.ts` | `gh` arg builders (never `--draft`), `requireGhAuth` (`GhAuthError`, `gh auth login`), `findOpenPullRequest` with mocked `exec` (JSON, empty, garbage, no url, non-zero exit → `null`), `createPullRequest` (`--body-file`, temp file written and removed, URL extraction), `repoDefaultBranch` |
+| `upgrade-contract.test.ts` | manifest contract (hash/serialize/parse), `managedFiles()`, `managedPackageJson()`, `managedDependencyPins()`, `notesBetween()` |
+| `upgrade-notes.test.ts` | rendered managed-template snapshot vs `src/upgrade/__snapshots__/templates.json` (deterministic, no absolute paths), `UPGRADE_NOTES` shape, every note file exists in the snapshot, notes still empty at the 1.0.8 baseline |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: schedule + `workflow_dispatch`, read-only permissions, `[vite, next]` matrix, Node 24, frozen-lockfile install, E2E command with `E2E_FRAMEWORK` from the matrix, observe-only |
 | `e2e.test.ts` | opt-in via `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`): full `run()` with mocked Clack and real `exec` (except `ls-remote` and remote rewrite to local bare): pins, files, `node_modules`, workspace, branding/starter per framework, `pnpm check` + `vitest run` + `build`, initial commit and push |
 

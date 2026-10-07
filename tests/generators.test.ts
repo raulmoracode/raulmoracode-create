@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +13,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 import { SHADCN_VERSION } from "../src/config/components.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
+import { FULL_TECH_SELECTION } from "../src/config/tech.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
 import {
@@ -22,6 +23,7 @@ import {
 import { configureChangelog } from "../src/generators/configure-changelog.js";
 import { configureCi } from "../src/generators/configure-ci.js";
 import { configureGitHooks } from "../src/generators/configure-git-hooks.js";
+import { configureManifest } from "../src/generators/configure-manifest.js";
 import {
   augmentGitignore,
   configureEditorconfig,
@@ -42,6 +44,12 @@ import {
   themeAddArgs,
 } from "../src/generators/configure-theme.js";
 import { configureVscode } from "../src/generators/configure-vscode.js";
+import {
+  managedDependencyPins,
+  managedFiles,
+} from "../src/upgrade/managed-files.js";
+import { hashContent, parseManifest } from "../src/upgrade/manifest.js";
+import { MANIFEST_FILE } from "../src/upgrade/types.js";
 import { listDirEntries, writeTextFile } from "../src/utils/filesystem.js";
 
 const tempDirs: string[] = [];
@@ -788,7 +796,6 @@ describe("configureGitHooks", () => {
     if (process.platform === "win32") {
       return;
     }
-    const { stat } = await import("node:fs/promises");
     for (const hook of ["pre-commit", "commit-msg"]) {
       const mode = (await stat(join(dir, ".husky", hook))).mode;
       expect(mode & 0o111).toBeGreaterThan(0);
@@ -867,5 +874,121 @@ describe("configureChangelog", () => {
     expect(changelog).toContain("## [Unreleased]");
     expect(changelog).toContain("### Added");
     expect(changelog.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("configureManifest", () => {
+  const ON_DISK: Record<string, string> = {
+    ".nvmrc": "24\n",
+    ".editorconfig": "root = true\n\n[whatever]\nindent_size = 4\n",
+    "AGENTS.md": "# AGENTS.md\n\nReformatted by Biome.\n",
+    ".github/workflows/ci.yml": "name: CI\njobs:  {}\n",
+    "biome.json": '{  "$schema": "x" }\n',
+  };
+
+  async function seedManagedFiles(dir: string, files: Record<string, string>) {
+    for (const [path, content] of Object.entries(files)) {
+      await writeTextFile(join(dir, ...path.split("/")), content);
+    }
+  }
+
+  it("records the identity, the pins and the sha256 of the files on disk", async () => {
+    const dir = await makeTempDir();
+    await seedManagedFiles(dir, ON_DISK);
+
+    const manifest = await configureManifest(dir, {
+      framework: viteFramework,
+      projectName: "my-project",
+      githubUrl: "https://github.com/raulmoracode/my-project",
+      selection: FULL_TECH_SELECTION,
+      cliVersion: "1.0.8",
+    });
+
+    expect(manifest.manifestVersion).toBe(1);
+    expect(manifest.cliVersion).toBe("1.0.8");
+    expect(manifest.framework).toBe("vite");
+    expect(manifest.projectName).toBe("my-project");
+    expect(manifest.githubUrl).toBe(
+      "https://github.com/raulmoracode/my-project",
+    );
+    expect(manifest.selection).toEqual(FULL_TECH_SELECTION);
+    expect(manifest.dependencies).toEqual(
+      managedDependencyPins("vite", FULL_TECH_SELECTION),
+    );
+
+    expect(manifest.files).toEqual({
+      ".editorconfig": hashContent(ON_DISK[".editorconfig"] as string),
+      ".github/workflows/ci.yml": hashContent(
+        ON_DISK[".github/workflows/ci.yml"] as string,
+      ),
+      ".nvmrc": hashContent("24\n"),
+      "AGENTS.md": hashContent(ON_DISK["AGENTS.md"] as string),
+      "biome.json": hashContent(ON_DISK["biome.json"] as string),
+    });
+    const templates = managedFiles("vite", FULL_TECH_SELECTION);
+    for (const [path, content] of Object.entries(ON_DISK)) {
+      expect(manifest.files[path]).toBe(hashContent(content));
+      if (content !== templates[path]) {
+        expect(manifest.files[path], path).not.toBe(
+          hashContent(templates[path] as string),
+        );
+      }
+    }
+    expect(
+      Object.keys(ON_DISK).filter((path) => ON_DISK[path] !== templates[path]),
+    ).toHaveLength(4);
+    for (const missing of [
+      ".husky/pre-commit",
+      ".vscode/settings.json",
+      "components.json",
+      "vitest.config.ts",
+      "vite.config.ts",
+    ]) {
+      expect(manifest.files[missing]).toBeUndefined();
+    }
+  });
+
+  it("writes raulmoracode.json that parses back", async () => {
+    const dir = await makeTempDir();
+    await seedManagedFiles(dir, ON_DISK);
+    const written = await configureManifest(dir, {
+      framework: nextFramework,
+      projectName: "my-project",
+      githubUrl: "https://github.com/raulmoracode/my-project",
+      selection: FULL_TECH_SELECTION,
+      cliVersion: "1.0.8",
+    });
+
+    expect(await listDirEntries(dir)).toContain(MANIFEST_FILE);
+    const raw = await readFromFile(dir, MANIFEST_FILE);
+    expect(raw.endsWith("}\n")).toBe(true);
+    expect(JSON.parse(raw)).toEqual(written);
+    const parsed = parseManifest(raw);
+    expect(parsed.framework).toBe("next");
+    expect(parsed.files[".nvmrc"]).toBe(hashContent("24\n"));
+    expect(parsed.dependencies).toEqual(
+      managedDependencyPins("next", FULL_TECH_SELECTION),
+    );
+    expect(raw.indexOf('"cliVersion"')).toBeLessThan(raw.indexOf('"files"'));
+  });
+
+  it("hashes the hooks the CLI wrote without touching them", async () => {
+    const dir = await makeTempDir();
+    await configureGitHooks(dir, FULL_TECH_SELECTION);
+    const hook = join(dir, ".husky", "pre-commit");
+    const before = await readFile(hook, "utf8");
+    const modeBefore = (await stat(hook)).mode;
+
+    const manifest = await configureManifest(dir, {
+      framework: viteFramework,
+      projectName: "my-project",
+      githubUrl: "https://github.com/raulmoracode/my-project",
+      selection: FULL_TECH_SELECTION,
+      cliVersion: "1.0.8",
+    });
+
+    expect(await readFile(hook, "utf8")).toBe(before);
+    expect((await stat(hook)).mode).toBe(modeBefore);
+    expect(manifest.files[".husky/pre-commit"]).toBe(hashContent(before));
   });
 });
