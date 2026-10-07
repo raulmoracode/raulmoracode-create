@@ -97,11 +97,12 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │       ├── exec.ts               # safe process execution (spawn)
 │       ├── filesystem.ts         # file helpers and JSON/JSONC
 │       └── validation.ts         # name, URL and framework validation
-├── tests/                        # Vitest suite (14 files, ~215 tests)
+├── tests/                        # Vitest suite (15 files, ~215 tests)
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
 ├── .github/workflows/ci.yml     # check/lint/test/build + one E2E job per framework on main pushes and PRs
+├── .github/workflows/e2e-scheduled.yml # weekly + manual E2E matrix (vite, next), observe-only
 ├── package.json, tsconfig.json, vitest.config.ts, biome.json
 ├── .nvmrc (24), .gitignore, README.md, LICENSE
 └── dist/                         # compiled output (generated, not versioned)
@@ -356,6 +357,7 @@ Internal functions:
 | `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, npmjs registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
 | `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
+| `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: weekly `schedule` + `workflow_dispatch` (no push/PR), read-only permissions, `[vite, next]` matrix with `fail-fast: false`, Node 24 + pnpm cache, frozen-lockfile install, E2E command with `E2E_FRAMEWORK: ${{ matrix.framework }}`, observe-only (no updates, pushes or secrets) |
 | `e2e.test.ts` | Full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`, `.github/workflows/ci.yml`, `CHANGELOG.md`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
 ---
@@ -369,6 +371,7 @@ Internal functions:
 - **`.nvmrc`**: `24`. **`.gitignore`**: `node_modules`, `dist`, `.env`, `.env.*`, `*.tgz`.
 - **`.github/workflows/publish.yml`**: on `v*` tags, with `contents:read` permission: checkout, pnpm 12, Node 24 (npmjs registry + pnpm cache), `install --frozen-lockfile`, `build`, `test`, `npm publish --access public` with `NPM_TOKEN`.
 - **`.github/workflows/ci.yml`**: on `main` pushes and pull requests, with `contents:read` permission: `validate` job (checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `check`, `lint`, `test` incl. the Vite E2E, `build`) plus one E2E job per framework (`e2e-vite` with `E2E_FRAMEWORK=vite`, `e2e-next` with `E2E_FRAMEWORK=next`).
+- **`.github/workflows/e2e-scheduled.yml`**: weekly (`cron: 0 6 * * 1`, Mondays UTC) and `workflow_dispatch`, with `contents:read` permission: one `e2e` job over `framework: [vite, next]` (`fail-fast: false`, `timeout-minutes: 30`): checkout, pnpm 12, Node 24 + pnpm cache, `install --frozen-lockfile`, `pnpm test --run tests/e2e.test.ts` with `E2E_FRAMEWORK` from the matrix. Detects breakage outside the pins (transitive deps, `registry.raulmoracode.com`, GitHub/npm); it never updates pins or the lockfile. Failures notify by email; GitHub disables scheduled workflows after 60 days of repo inactivity.
 - **`README.md`**: global install (npmjs, no auth), usage (`raulmoracode-create`, flags, tech preset), what it does, generated contents, Git auth, publish, development, architecture, verified adjustments, packaging.
 - **`LICENSE`**: MIT.
 

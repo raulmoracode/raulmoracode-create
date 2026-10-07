@@ -1,0 +1,43 @@
+name: E2E (scheduled)
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-scheduled
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: E2E (${{ matrix.framework }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        framework: [vite, next]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: E2E
+        run: pnpm test --run tests/e2e.test.ts
+        env:
+          E2E_FRAMEWORK: ${{ matrix.framework }}
