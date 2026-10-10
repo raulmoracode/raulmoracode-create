@@ -10,7 +10,7 @@ Complete reference document for the scaffolder: identity, architecture, what eac
 |---|---|
 | Repository | `raulmoracode/create` (`github.com/raulmoracode/raulmoracode-create`) |
 | npm package | `@raulmoracode/create` |
-| Current version | `1.0.8` |
+| Current version | `1.0.9` |
 | Global command (only one) | `raulmoracode-create` |
 | Compiled entry point | `./dist/index.js` (with `#!/usr/bin/env node` shebang) |
 | Publish registry | `https://registry.npmjs.org/` (npmjs) |
@@ -194,7 +194,7 @@ Internal functions:
 
 ### 5.2 `src/cli/args.ts` — flags
 
-- `VERSION = "1.0.8"` — single source of truth for `--version`; pinned to `package.json` by a test.
+- `VERSION = "1.0.9"` — single source of truth for `--version`; pinned to `package.json` by a test.
 - `parseArgs(argv): CliArgs` — `{ help, version, verbose }` (`-h`/`--help`, `-V`/`--version`, `--verbose`; unknown flags are ignored).
 - `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
@@ -411,7 +411,7 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | `upgrade-pr-body.test.ts` | `upgradePrTitle`; `upgradePrBody` (empty plan, section order, all file statuses, counts table, notes with/without `action`, unmatched overwritten file, no-content diff placeholder, pipe/newline escaping, CRLF normalisation, action items derived from notes and from Biome/testing/CI files); `unifiedDiff` (identical → `""`, single change, insertions/deletions, line and character caps), `diffLineCounts`/`diffCounts`; `truncateForGithub` (short body untouched, limit enforced, summary/⚠️/tables/action items preserved, note inserted, idempotent) |
 | `github.test.ts` | Arg builders (`gh auth status`, `gh pr list`, `gh pr create` with `--body-file` and no `--draft`, `gh repo view`); `requireGhAuth` (`GhAuthError`, `gh auth login`, missing-binary message); `findOpenPullRequest` with mocked `exec` (url, `[]`, empty, garbage, entry without url, non-zero exit → `null`); `createPullRequest` (temp file written with the exact body and removed afterwards even on failure, URL extraction, error when `gh` prints no URL); `repoDefaultBranch` (value, empty, failure) |
 | `upgrade-contract.test.ts` | Versions (`X.Y.Z`, `(from, to]` range, `notesBetween` ordering), manifest (`MANIFEST_FILE`, serialize/parse round trip with sorted maps, sha256, Spanish validation errors), managed files (exact templates, per selection and framework, never application code or user-owned docs, `managedPackageJson`/`managedDependencyPins` vs `pinnedPackages`) |
-| `upgrade-notes.test.ts` | Rendered managed-template snapshot equals `src/upgrade/__snapshots__/templates.json` (deterministic key order, no `\r`, no absolute paths, sorted maps, trailing `\n`), every managed path in `UPGRADE_NOTES` exists in the snapshot, every note/change is documented (`version`, `summary`, `changes[].files`, `what`, `why`), and `UPGRADE_NOTES` is still empty at the 1.0.8 baseline. Regenerate the snapshot with `UPDATE_TEMPLATE_SNAPSHOT=1 pnpm test --run tests/upgrade-notes.test.ts`; without the env var a mismatch fails listing the changed case/file/pin and demanding the matching `UpgradeNotes` entry for the version in `src/cli/args.ts` |
+| `upgrade-notes.test.ts` | Rendered managed-template snapshot equals `src/upgrade/__snapshots__/templates.json` (deterministic key order, no `\r`, no absolute paths, sorted maps, trailing `\n`), every managed path in `UPGRADE_NOTES` exists in the snapshot, every note/change is documented (`version`, `summary`, `changes[].files`, `what`, `why`), and the 1.0.9 release notes are present. Regenerate the snapshot with `UPDATE_TEMPLATE_SNAPSHOT=1 pnpm test --run tests/upgrade-notes.test.ts`; without the env var a mismatch fails listing the changed case/file/pin and demanding the matching `UpgradeNotes` entry for the version in `src/cli/args.ts` |
 | `upgrade-e2e.test.ts` | Opt-in (same `E2E_FRAMEWORK` gate): real `run()` creates the project against a local bare remote (`ls-remote`/`remote get-url` intercepted, `remote add` rewritten), then a real `runUpgrade()` with an injected `gh` client and default branch: manifest tracked in the initial commit, rewound `cliVersion` + stale `AGENTS.md` hash, locally edited `AGENTS.md` overwritten in place (no `.new`), branch `chore/raulmoracode-update-<version>` pushed to the bare remote, two commits in order (`chore: upgrade raulmoracode-create to <version>` then `chore: overwrite locally modified files` carrying only `AGENTS.md`), PR title/body asserted (⚠️ section, no `--draft`), and a second run reported as already up to date |
 | `e2e.test.ts` | Opt-in with `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`); full `run()` with mocked Clack (incl. `multiselect` → full preset with theme) and real `exec` except `ls-remote` (empty) and `remote add` (rewritten to a local bare repo): official scaffold, pins (incl. `tw-animate-css`), files (incl. `.husky/`, `commitlint.config.ts`, `.github/workflows/ci.yml`, `CHANGELOG.md`), themed entry CSS with nature tokens, no theme junk under `src/`, `node_modules`+`pnpm-lock.yaml` (no other lockfiles), workspace, per-framework branding/starter, `AGENTS.md` Git-hooks section, generated `README.md` (project name + generator credit), `pnpm check` + `vitest run` + `build`, initial commit and push to the bare repo. Runs in both variants (`E2E_FRAMEWORK=next` for Next) |
 
@@ -419,7 +419,7 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 
 ## 13. Root config files
 
-- **`package.json`**: `name @raulmoracode/create`, `version 1.0.8`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
+- **`package.json`**: `name @raulmoracode/create`, `version 1.0.9`, `description`, 12 `keywords`, `homepage`/`bugs`/`repository` (git+https to `raulmoracode/raulmoracode-create`), `license MIT`, `author raulmoracode`, `type module`, `main`+`exports` to `./dist/index.js`, single `bin`, `files: [dist, README.md, LICENSE]`, scripts (`build/check/format/lint/test/prepublishOnly`), 1 dependency + 4 exact devDeps, `engines node >=24`, `packageManager pnpm@12.6.0`, npmjs `publishConfig` with `access public`.
 - **`tsconfig.json`**: `target ES2022`, `module/moduleResolution NodeNext` (imports with `.js` extension), `outDir dist`, `rootDir src`, `strict` + `noUncheckedIndexedAccess`, `types: [node]`, `include: [src]`.
 - **`vitest.config.ts`**: `node` environment, `include tests/**/*.test.ts`.
 - **`biome.json`** (own): local schema, `files.includes ["**", "!dist"]` (native `tsc` emits with its own formatting), 2-space formatter, `assist` organize imports, linter.

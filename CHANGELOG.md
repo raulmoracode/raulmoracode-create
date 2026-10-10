@@ -9,6 +9,53 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Nothing pending yet.
 
+## [1.0.9] - 2026-10-10
+
+### Added
+
+- Pull request template (`.github/pull_request_template.md`) in every generated
+  project, so every PR opened against the scaffolded repo starts with a
+  structured body (Summary, Changes, How to test, Validation checklist, Breaking
+  changes).
+- Upgrade migrations framework: `upgrade/` now ships an ordered, per-version
+  migration registry (`upgrade/migrations/`) that `applyUpgradeFiles` runs after
+  writing the templates, so a release can move or reshape files that the simple
+  re-render cannot reach. `runUpgrade` executes them in ascending version order
+  between the manifest's `cliVersion` and the current one.
+
+### Changed
+
+- `AGENTS.md` now renders the project structure tree dynamically from the
+  framework and the tech selection instead of shipping a static tree, so the
+  generated guide always matches the files actually on disk. The CI section is
+  also conditional: it only mentions steps and files that the selected preset
+  produces.
+- `.github/workflows/ci.yml` template now adapts its steps to the selected
+  preset: `pnpm check` is only emitted when Biome is selected, and `pnpm test`
+  only when testing is selected, so a core-only project does not ship a CI
+  workflow that runs commands whose scripts are absent.
+- Synced `docs/PROJECT_SPEC.md` and `README.md` with the current run
+  flow: branding, starter and theme steps now match what `run.ts` actually
+  executes, and the theme pin references the exact `shadcn@4.21.0` /
+  `tw-animate-css@1.4.0` pair used by the scaffolder.
+
+### Fixed
+
+- `raulmoracode.json` manifest now records the sha256 of every managed file
+  that is actually present on disk for the chosen selection, so projects
+  generated without Husky, testing or VS Code no longer carry hashes for files
+  that do not exist. The `dependencies` map also matches the exact set of pins
+  the CLI wrote, not the full preset.
+- Generated `README.md` now ships the gated structure tree that the CI,
+  CHANGELOG and site-identity sections already promised: `.github/workflows/`,
+  `CHANGELOG.md`, framework-specific files, and the per-preset optional files
+  (`commitlint.config.ts`, `.husky/`, `vitest.config.ts`, `.vscode/`,
+  `LICENSE`, `src/config/site.ts`, Next error pages) only appear when the
+  matching technology is selected.
+- Vite `siteHead()` plugin no longer injects the Tailwind entry CSS import or
+  references the Tailwind plugin when Tailwind is not selected, so a core-only
+  Vite scaffold builds without a missing-module error.
+
 ## [1.0.8] - 2026-10-07
 
 ### Added
@@ -230,7 +277,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.5...v1.0.6
