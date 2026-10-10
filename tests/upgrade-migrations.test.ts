@@ -415,12 +415,21 @@ describe("README.md structure migration", () => {
     selection: SELECTION,
   } as const;
 
+  /**
+   * A line only the stale fixture contains: no tree `structure()` renders can
+   * ever produce it, so the assertions below never depend on which entries the
+   * current tree happens to list.
+   */
+  const STALE_MARKER = "├── stale-tree-marker";
+
   const STALE_STRUCTURE = [
     "## Project structure",
     "",
     "```text",
-    "├── index.html",
-    "└── README.md",
+    "├── removed-file.ts",
+    "│   └── gone.ts",
+    STALE_MARKER,
+    "└── obsolete-entry.js",
     "```",
     "",
   ];
@@ -441,35 +450,47 @@ describe("README.md structure migration", () => {
     ].join("\n");
   }
 
-  it("regenerates the structure section and preserves the rest", async () => {
-    const projectDir = join(workDir, "readme-regenerate");
-    const staleLines = readmeWithStaleStructure().split("\n");
-    const staleStart = staleLines.findIndex(
-      (line) => line.trim() === "## Project structure",
-    );
-    const staleEnd = staleLines.findIndex(
-      (line, index) => index > staleStart && line.startsWith("## "),
-    );
-    await writeProject(projectDir, README_PATH, readmeWithStaleStructure());
-
-    const result = await migrateReadmeStructure.run(context(projectDir));
-
-    expect(result).toEqual({ touched: [README_PATH], removed: [] });
-    const lines = (await readProject(projectDir, README_PATH)).split("\n");
+  /** The bounds of the `## Project structure` block of a rendered README. */
+  function structureSection(lines: readonly string[]): {
+    start: number;
+    end: number;
+  } {
     const start = lines.findIndex(
       (line) => line.trim() === "## Project structure",
     );
     const end = lines.findIndex(
       (line, index) => index > start && line.startsWith("## "),
     );
-    expect(lines.slice(0, start)).toEqual(staleLines.slice(0, staleStart));
-    expect(lines.slice(end)).toEqual(staleLines.slice(staleEnd));
+    return { start, end };
+  }
+
+  it("regenerates the structure section and preserves the rest", async () => {
+    const projectDir = join(workDir, "readme-regenerate");
+    const staleLines = readmeWithStaleStructure().split("\n");
+    const stale = structureSection(staleLines);
+    // The fixture has to be genuinely stale, or the test proves nothing.
+    expect(staleLines.slice(stale.start, stale.end)).toContain(STALE_MARKER);
+    // And the sentinel has to stay one no tree the CLI renders can produce.
+    expect(readmeMd(options)).not.toContain(STALE_MARKER);
+    await writeProject(projectDir, README_PATH, staleLines.join("\n"));
+
+    const result = await migrateReadmeStructure.run(context(projectDir));
+
+    expect(result).toEqual({ touched: [README_PATH], removed: [] });
+    const lines = (await readProject(projectDir, README_PATH)).split("\n");
+    const { start, end } = structureSection(lines);
+    // The title and every section before and after the block survive verbatim.
+    expect(lines.slice(0, start)).toEqual(staleLines.slice(0, stale.start));
+    expect(lines.slice(end)).toEqual(staleLines.slice(stale.end));
+    // The block becomes the tree `readmeMd()` renders today, never a frozen copy.
+    const current = structureSection(readmeMd(options).split("\n"));
     expect(lines.slice(start, end)).toEqual(
-      currentReadmeStructure(options) ?? [],
+      readmeMd(options).split("\n").slice(current.start, current.end),
     );
-    expect(await readProject(projectDir, README_PATH)).toContain("AGENTS.md");
-    expect(await readProject(projectDir, README_PATH)).not.toContain(
-      "├── README.md",
+    // The sentinel the stale block planted is gone, so the block was rewritten.
+    expect(lines.slice(start, end)).not.toContain(STALE_MARKER);
+    expect(lines.slice(start, end).length).toBeGreaterThan(
+      stale.end - stale.start,
     );
   });
 
