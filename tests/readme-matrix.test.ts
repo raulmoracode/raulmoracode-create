@@ -317,7 +317,7 @@ describe("README matrix (every snapshot selection x framework)", () => {
             expect(treeHas(tree, "index.html")).toBe(true);
             expect(treeHas(tree, "main.tsx")).toBe(true);
             expect(treeHas(tree, "App.tsx")).toBe(true);
-            expect(treeHas(tree, "tab title + favicon")).toBe(true);
+            expect(treeHas(tree, "head tags injected")).toBe(true);
             expect(treeHas(tree, "layout.tsx")).toBe(false);
             expect(treeHas(tree, "page.tsx")).toBe(false);
             expect(treeHas(tree, "app/")).toBe(false);

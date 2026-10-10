@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { agentsMd } from "../src/config/agents.js";
+import { FULL_TECH_SELECTION } from "../src/config/tech.js";
 import { managedFiles } from "../src/upgrade/managed-files.js";
 import { SNAPSHOT_SELECTIONS } from "../src/upgrade/template-snapshot.js";
 import type { Framework } from "../src/utils/validation.js";
@@ -45,10 +46,13 @@ const EXPECTED_AGENTS_MD = [
   "- `package.json`",
   "- `pnpm-lock.yaml`",
   "- `tsconfig.json`",
+  "- `raulmoracode.json`",
   "- `biome.json`",
   "- `components.json`",
   "- `.nvmrc`",
   "- framework-specific configuration files",
+  "",
+  "`raulmoracode.json` is the CLI manifest (framework, tech selection and managed-file hashes); treat it as the source of truth for upgrades.",
   "",
   "Use the package manager already configured by the project.",
   "",
@@ -57,47 +61,51 @@ const EXPECTED_AGENTS_MD = [
   "## Project structure",
   "",
   "```text",
-  ".",
+  "├── index.html            # tab title + favicon (raulmoracode branding)",
+  "├── .github/workflows/    # CI (install, check, test, build)",
   "├── src/",
-  "│   ├── app/                # Next.js only (pages, layouts, globals.css)",
-  "│   ├── components/         # shadcn components (added via registry)",
-  "│   ├── hooks/              # shadcn hooks (added via registry)",
-  "│   ├── lib/                # utilities (cn(), query-client.ts)",
-  "│   ├── test/               # smoke test",
+  "│   ├── main.tsx     # entry point (QueryClientProvider wired)",
+  "│   ├── App.tsx      # root component",
+  "│   ├── index.css    # Tailwind entry point",
+  "│   ├── App.css      # root styles",
+  "│   ├── components/  # shadcn components land here",
+  "│   ├── hooks/       # registry hooks land here",
+  "│   ├── lib/",
+  "│   │   ├── utils.ts         # cn()",
+  "│   │   └── query-client.ts  # QueryClient",
   "│   ├── config/",
-  "│   │   └── site.ts         # site identity (title, description, favicon, social)",
-  "│   ├── App.tsx             # Vite only (root component)",
-  "│   ├── main.tsx            # Vite only (entry point)",
-  "│   └── index.css           # Vite only (Tailwind entry point)",
-  "├── .github/workflows/      # CI workflow",
-  "├── .husky/                 # Git hooks",
-  "├── .vscode/                # VS Code settings and extensions",
-  "├── AGENTS.md               # this file",
-  "├── CHANGELOG.md            # project changelog",
-  "├── biome.json              # formatter and linter configuration",
-  "├── commitlint.config.ts    # commit message validation",
-  "├── components.json         # shadcn configuration",
-  "├── index.html              # Vite only (entry HTML)",
-  "├── package.json",
-  "├── pnpm-workspace.yaml     # pnpm configuration",
-  "├── postcss.config.mjs      # Next.js only (PostCSS with Tailwind)",
-  "├── tsconfig.json           # TypeScript configuration",
-  "├── vite.config.ts          # Vite only (Vite configuration)",
-  "└── vitest.config.ts        # test configuration",
+  "│   │   └── site.ts  # site identity",
+  "│   └── test/        # smoke test",
+  "├── components.json       # shadcn config (includes the @raulmoracode registry)",
+  "├── .husky/               # Git hooks",
+  "├── commitlint.config.ts  # commit message validation",
+  "├── biome.json            # formatter + linter config",
+  "├── vitest.config.ts      # test config",
+  "├── .vscode/              # VS Code settings + extensions",
+  "├── vite.config.ts        # Vite configuration",
+  "├── tsconfig.json         # TypeScript configuration",
+  "├── package.json          # scripts and dependencies (exact versions)",
+  "├── pnpm-workspace.yaml   # minimumReleaseAge policy + excludes",
+  "├── raulmoracode.json     # CLI manifest (framework, selection, hashes)",
+  "├── LICENSE               # MIT license",
+  "├── CHANGELOG.md          # project changelog",
+  "└── AGENTS.md             # guidelines for AI coding agents",
   "```",
   "",
   "## Project tooling",
   "",
   "This project uses pnpm exclusively. Never use npm or yarn.",
   "",
+  "`raulmoracode.json` records the CLI version, framework, tech selection and managed-file hashes.",
+  "",
   "Available scripts (see `package.json` for the full list):",
   "",
   "- `pnpm dev` — start the development server.",
   "- `pnpm build` — create a production build.",
-  "- `pnpm test` — run the test suite in watch mode (use `CI=true pnpm test` for single run).",
   "- `pnpm check` — run the formatter and linter check.",
   "- `pnpm format` — apply formatting.",
   "- `pnpm lint` — run the linter.",
+  "- `pnpm test` — run the test suite in watch mode (use `CI=true pnpm test` for single run).",
   "",
   "UI components come from shadcn. Add new components with:",
   "",
@@ -236,6 +244,48 @@ const EXPECTED_AGENTS_MD = [
   "pnpm build",
   "```",
   "",
+  "## Pull requests",
+  "",
+  "Create branches from an up-to-date `main`:",
+  "",
+  "```bash",
+  "git fetch origin",
+  "git switch -c <type>/<short-name> origin/main",
+  "```",
+  "",
+  "Use `<type>/<short-name>` branch names (for example `feat/user-profile`, `fix/invalid-input`).",
+  "",
+  "Titles follow Conventional Commits: `<type>: <description>` (same types as commits).",
+  "",
+  "Keep the branch focused and open the pull request against `main`.",
+  "",
+  "Use this body template:",
+  "",
+  "```markdown",
+  "## Summary",
+  "",
+  "<1-2 sentences>",
+  "",
+  "## Changes",
+  "",
+  "- ...",
+  "",
+  "## How to test",
+  "",
+  "1. ...",
+  "2. ...",
+  "",
+  "## Validation",
+  "",
+  "- [ ] `pnpm check`",
+  "- [ ] `pnpm test`",
+  "- [ ] `pnpm build`",
+  "",
+  "## Breaking changes",
+  "",
+  "None (or describe the migration).",
+  "```",
+  "",
   "## Changelog",
   "",
   "Keep `CHANGELOG.md` updated with every notable change to the project.",
@@ -253,6 +303,8 @@ const EXPECTED_AGENTS_MD = [
   "`src/config/site.ts` is the single source of truth for the site title, description, favicon and social preview.",
   "",
   "Edit that file instead of `index.html` or `src/app/layout.tsx` when changing them.",
+  "",
+  "On Vite the `siteHead()` plugin in `vite.config.ts` injects those values into `index.html`; on Next.js the `metadata` export in `src/app/layout.tsx` does. Both are always wired, whichever techs were selected.",
   "",
   "## Security",
   "",
@@ -307,7 +359,6 @@ const EXPECTED_AGENTS_MD = [
   "Deployment is manual. Once CI passes, deploy to your preferred hosting provider.",
   "",
   "For Vite projects: deploy the `dist/` folder to any static hosting.",
-  "For Next.js projects: deploy to a Node.js-capable platform or use `next start`.",
   "",
   "## Working with existing code",
   "",
@@ -381,21 +432,17 @@ describe("AGENTS.md in the managed tree", () => {
     for (const framework of FRAMEWORKS) {
       it(`is byte-identical to the template for ${id}/${framework}`, () => {
         const files = managedFiles(framework, selection);
-        expect(files["AGENTS.md"]).toBe(EXPECTED_AGENTS_MD);
-        expect(files["AGENTS.md"]).toBe(agentsMd());
+        expect(files["AGENTS.md"]).toBe(agentsMd(framework, selection));
         expect(files["AGENTS.md"]?.endsWith("\n")).toBe(true);
       });
     }
   }
 
-  it("renders the same guide for every selection and framework", () => {
-    const rendered = new Set(
-      SNAPSHOT_SELECTIONS.flatMap(({ selection }) =>
-        FRAMEWORKS.map(
-          (framework) => managedFiles(framework, selection)["AGENTS.md"],
-        ),
-      ),
-    );
-    expect([...rendered]).toEqual([EXPECTED_AGENTS_MD]);
+  it("renders framework-specific guides", () => {
+    const viteFull = agentsMd("vite", FULL_TECH_SELECTION);
+    const nextFull = agentsMd("next", FULL_TECH_SELECTION);
+    expect(viteFull).not.toBe(nextFull);
+    expect(viteFull).toContain("vite.config.ts");
+    expect(nextFull).toContain("postcss.config.mjs");
   });
 });
