@@ -224,10 +224,10 @@ Internal functions:
 
 - `PNPM_VERSION = "12.6.0"` — version pinned in `packageManager` of generated projects.
 - `REQUIRED_PNPM_MAJOR` — major derived from `PNPM_VERSION` (`12`); the preflight requires the user's pnpm to match it.
-- `HUSKY_VERSION = "9.1.7"`, `COMMITLINT_CLI_VERSION = "21.2.3"`, `COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3"`, `CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1"`.
+- `HUSKY_VERSION = "9.1.7"`, `COMMITLINT_CLI_VERSION = "21.2.3"`, `COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3"`, `CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1"`, `TW_ANIMATE_CSS_VERSION = "1.4.0"` (only with the `theme` preset).
 - `PROJECT_AUTHOR = { name: "Raul Mora", url: "https://raulmoracode.com" }`.
 - `runtimeDependencies(selection = FULL_TECH_SELECTION): Record<string,string>` — exact pins filtered by selection: `zustand 5.0.15` (only if `zustand`), `react-hook-form 7.89.0` + `zod 4.6.5` (only if `forms`), `@tanstack/react-query 5.104.0` (only if `tanstack-query`).
-- `devDependencies(framework, selection = FULL_TECH_SELECTION): Record<string,string>` — common filtered by selection: `@biomejs/biome 2.5.14` (only if `biome`), `vitest 5.0.2` + `@testing-library/react 16.3.3` + `@testing-library/dom 10.4.2` + `jsdom 30.1.1` (only if `testing`), `clsx 2.1.1` + `tailwind-merge 3.7.0` + `class-variance-authority 0.7.1` (only if `shadcn`), `husky` + `@commitlint/cli` + `@commitlint/config-conventional` (only if `husky`), `tailwindcss 4.3.3` (only if `tailwind`); plus `@tailwindcss/vite 4.3.3` (vite, only if `tailwind`) or `@tailwindcss/postcss 4.3.3` + `postcss 8.5.6` (next, only if `tailwind`).
+- `devDependencies(framework, selection = FULL_TECH_SELECTION): Record<string,string>` — common filtered by selection: `@biomejs/biome 2.5.14` (only if `biome`), `vitest 5.0.2` + `@testing-library/react 16.3.3` + `@testing-library/dom 10.4.2` + `jsdom 30.1.1` (only if `testing`), `clsx 2.1.1` + `tailwind-merge 3.7.0` + `class-variance-authority 0.7.1` (only if `shadcn`), `husky` + `@commitlint/cli` + `@commitlint/config-conventional` (only if `husky`), `tailwindcss 4.3.3` (only if `tailwind`), `tw-animate-css 1.4.0` (`TW_ANIMATE_CSS_VERSION`, only if `theme`); plus `@tailwindcss/vite 4.3.3` (vite, only if `tailwind`) or `@tailwindcss/postcss 4.3.3` + `postcss 8.5.6` (next, only if `tailwind`).
 - `pnpmInstallArgs(): string[]` → `["install"]`.
 - `pnpmAddArgs(deps) / pnpmAddDevArgs(deps)` — build `["add", …"name@version"]` (plus `"-D"`).
 - `stripRangePrefix(version)` (private) — removes leading `^`/`~`.
@@ -260,7 +260,7 @@ Internal functions:
 
 - `configure-shadcn.ts` — `configureShadcn(projectDir, framework)`: writes `components.json` (with `framework.componentsJsonOptions()`), `src/lib/utils.ts` (`cn()`) and the `@raulmoracode` registry path aliases in every tsconfig present (`ensureRegistryAliases`, merged via pure `withRegistryAliases()`, missing files skipped).
 - `configure-readme.ts` — `configureReadme(projectDir, framework, projectName, githubUrl, selection = FULL_TECH_SELECTION)`: overwrites the scaffold `README.md` with `readmeMd(...)` using the final `package.json` scripts plus framework pins and `runtime/devDependencies` versions.
-- `configure-theme.ts` — `themeAddArgs()` (pure `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`) + `applyRegistryTheme(projectDir, framework, verbose)`: runs the shadcn CLI, removes its `src/`-prefixed junk (`src/package.json`, `src/tsconfig.json`, `src/postcss.config.mjs`, plus `src/app/globals.css` on Vite where tokens already landed in the entry CSS) and restores registry aliases. Runs after shadcn, before `patchPackageJson`.
+- `configure-theme.ts` — `themeAddArgs()` (pure `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`) + `applyRegistryTheme(projectDir, framework, verbose)`: runs the shadcn CLI, removes its `src/`-prefixed junk (`src/package.json`, `src/tsconfig.json`, `src/postcss.config.mjs`, plus `src/app/globals.css` on Vite where tokens already landed in the entry CSS) and restores registry aliases. `REGISTRY_THEME_SPEC = "@raulmoracode/theme"` carries no version pin (registry item, not an npm package); `SHADCN_VERSION = "4.21.0"` is the pinned shadcn CLI tool version used for the `dlx` call. The preset also pins `tw-animate-css@1.4.0` (`TW_ANIMATE_CSS_VERSION`, only with `theme`). Runs after shadcn, before `patchPackageJson`.
 - `configure-testing.ts` — `configureTesting(projectDir)`: writes `vitest.config.ts` and `src/test/smoke.test.tsx`.
 - `configure-vscode.ts` — `configureVscode(projectDir)`: writes `.vscode/settings.json` and `.vscode/extensions.json`.
 - `configure-git-hooks.ts` — `configureGitHooks(projectDir, selection = FULL_TECH_SELECTION)`: writes `.husky/pre-commit` (`huskyPreCommit(selection)`), `.husky/commit-msg`, marks both executable, and writes `commitlint.config.ts`.
@@ -349,7 +349,7 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | `commitlint.ts` | `commitlintConfig()` | `commitlint.config.ts` (`{ extends: ["@commitlint/config-conventional"] }`) |
 | `changelog.ts` | `changelogMd()` | `CHANGELOG.md` (Keep a Changelog: header + `[Unreleased]` with `Added`/`Changed`/`Fixed`) |
 | `ci.ts` | `ciWorkflowYaml()` | `.github/workflows/ci.yml` (validate-only CI: `install`/`check`/`test`/`build` on push and PR, no deploys) |
-| `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `REGISTRY_THEME_SPEC`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn) |
+| `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `SHADCN_VERSION`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `REGISTRY_THEME_SPEC`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn). `SHADCN_VERSION = "4.21.0"` is the pinned shadcn CLI tool version used in every `pnpm dlx shadcn@… add` command; `REGISTRY_THEME_SPEC = "@raulmoracode/theme"` is the registry item applied by the optional theme preset and carries no version pin |
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
@@ -441,8 +441,10 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | clsx | 2.1.1 | | tailwind-merge | 3.7.0 |
 | class-variance-authority | 0.7.1 | | Husky | 9.1.7 |
 | @commitlint/cli | 21.2.3 | | @commitlint/config-conventional | 21.2.3 |
-| pnpm | 12.6.0 | | | |
+| pnpm | 12.6.0 | | tw-animate-css (only with theme) | 1.4.0 |
 | postcss (Next only) | 8.5.6 | | @tailwindcss/vite or /postcss | 4.3.3 |
+
+`shadcn` is the pinned CLI tool version (`SHADCN_VERSION = "4.21.0"`) used for every `pnpm dlx shadcn@… add` command. The optional theme applies the registry item `@raulmoracode/theme` (`REGISTRY_THEME_SPEC`, no version pin) via `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite` and pins `tw-animate-css@1.4.0`.
 
 ### 14.2 Generated files (full preset)
 

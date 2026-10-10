@@ -60,6 +60,9 @@ vi.mock("../src/upgrade/pr-body.js", () => ({
 import { confirm, log } from "@clack/prompts";
 import { VERSION } from "../src/cli/args.js";
 import { runUpgrade } from "../src/cli/upgrade.js";
+import { viteFramework } from "../src/frameworks/vite.js";
+import { collectManagedFileHashes } from "../src/generators/configure-manifest.js";
+import { writeProjectManifest } from "../src/upgrade/apply.js";
 import {
   managedDependencyPins,
   managedFiles,
@@ -69,6 +72,8 @@ import {
   parseManifest,
   serializeManifest,
 } from "../src/upgrade/manifest.js";
+import { buildUpgradePlan } from "../src/upgrade/plan.js";
+import { readProjectState } from "../src/upgrade/state.js";
 import {
   MANIFEST_FILE,
   MANIFEST_VERSION,
@@ -181,6 +186,8 @@ interface FixtureOptions {
   selection?: TechSelection;
   files?: Record<string, string>;
   staleFiles?: string[];
+  /** Managed paths recorded in the manifest but absent from disk. */
+  missingFiles?: string[];
   packageJson?: PackageJson;
   skipManifest?: boolean;
   skipFiles?: boolean;
@@ -192,9 +199,13 @@ async function createProjectFixture(
   const selection = options.selection ?? SELECTION;
   const templates = managedFiles("vite", selection);
   const files = options.files ?? templates;
+  const missing = new Set(options.missingFiles ?? []);
 
   if (!options.skipFiles) {
     for (const [path, content] of Object.entries(files)) {
+      if (missing.has(path)) {
+        continue;
+      }
       await writeFileAt(join(projectDir, path), content);
     }
   }
@@ -685,5 +696,121 @@ describe("runUpgrade", () => {
       Object.keys(managedDependencyPins("vite", SELECTION)).sort(),
     );
     expect(rewritten.dependencies["@biomejs/biome"]).toBe("2.5.14");
+  });
+
+  it("keeps locally deleted managed files out of the rewritten manifest", async () => {
+    await createProjectFixture({ missingFiles: ["AGENTS.md", ".nvmrc"] });
+    const before = await listProjectFiles();
+
+    await runUpgrade({ verbose: false, deps });
+
+    const rewritten = parseManifest(
+      await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
+    );
+    expect(rewritten.files["AGENTS.md"]).toBeUndefined();
+    expect(rewritten.files[".nvmrc"]).toBeUndefined();
+    expect(rewritten.files).toEqual(
+      await collectManagedFileHashes(projectDir, viteFramework, SELECTION),
+    );
+    expect(await listProjectFiles()).toEqual(before);
+    expect(before).not.toContain("AGENTS.md");
+    expect(
+      calledCommands().filter((line) => line.startsWith("git commit")),
+    ).toEqual([
+      `git commit -m chore: upgrade raulmoracode-create to ${VERSION}`,
+    ]);
+  });
+});
+
+describe("writeProjectManifest", () => {
+  it("mirrors collectManagedFileHashes and skips the files absent from disk", async () => {
+    const manifest = await createProjectFixture({
+      missingFiles: ["AGENTS.md", ".github/workflows/ci.yml"],
+      staleFiles: [".editorconfig"],
+    });
+
+    const state = await readProjectState(projectDir, manifest);
+    const plan = buildUpgradePlan({
+      manifest,
+      toVersion: VERSION,
+      state,
+      templates: managedFiles("vite", SELECTION),
+      migrations: [],
+      notes: [],
+    });
+    const next = await writeProjectManifest(projectDir, plan);
+
+    expect(next.files["AGENTS.md"]).toBeUndefined();
+    expect(next.files[".github/workflows/ci.yml"]).toBeUndefined();
+    expect(Object.keys(next.files).sort()).toEqual(
+      Object.keys(
+        await collectManagedFileHashes(projectDir, viteFramework, SELECTION),
+      ).sort(),
+    );
+    expect(next.files).toEqual(
+      await collectManagedFileHashes(projectDir, viteFramework, SELECTION),
+    );
+    // A file the user edited keeps the hash of what is on disk, not the template.
+    expect(next.files[".editorconfig"]).toBe(
+      hashContent(await readFile(join(projectDir, ".editorconfig"), "utf8")),
+    );
+    expect(next.cliVersion).toBe(VERSION);
+    expect(next.framework).toBe("vite");
+    expect(next.projectName).toBe(manifest.projectName);
+    expect(next.githubUrl).toBe(manifest.githubUrl);
+
+    const written = parseManifest(
+      await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
+    );
+    expect(written).toEqual(next);
+  });
+
+  it("does not record a hash for a file a migration removed from the project", async () => {
+    const manifest = await createProjectFixture();
+    // A migration drops `.nvmrc`: the path leaves the templates the CLI renders
+    // and the upgrade deletes the file from disk.
+    const templates = Object.fromEntries(
+      Object.entries(managedFiles("vite", SELECTION)).filter(
+        ([path]) => path !== ".nvmrc",
+      ),
+    );
+
+    const state = await readProjectState(projectDir, manifest);
+    const plan = buildUpgradePlan({
+      manifest,
+      toVersion: VERSION,
+      state,
+      templates,
+      migrations: [
+        {
+          id: "drop-nvmrc",
+          version: "1.0.9",
+          description: "drop .nvmrc",
+          why: "no longer needed",
+          handles: [".nvmrc"],
+          run: async () => ({}),
+        },
+      ],
+      notes: [],
+    });
+    expect(plan.files).toEqual([
+      {
+        path: ".nvmrc",
+        status: "removed",
+        previousContent: "24\n",
+        nextContent: null,
+      },
+    ]);
+    await rm(join(projectDir, ".nvmrc"), { force: true });
+
+    const next = await writeProjectManifest(projectDir, plan);
+
+    expect(next.files[".nvmrc"]).toBeUndefined();
+    expect(next.files).toEqual(
+      await collectManagedFileHashes(projectDir, viteFramework, SELECTION),
+    );
+    const raw = await readFile(join(projectDir, MANIFEST_FILE), "utf8");
+    expect(raw).not.toContain(hashContent(""));
+    expect(raw).not.toContain(hashContent("24\n"));
   });
 });
