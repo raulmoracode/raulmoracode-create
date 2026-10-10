@@ -234,7 +234,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
           }
           if (framework.configureStarter) {
             message("Configuring starter");
-            await framework.configureStarter(projectDir);
+            await framework.configureStarter(projectDir, selection);
           }
           if (selection.biome) {
             message("Configuring Biome");

@@ -3,6 +3,7 @@ import { nextErrorPage, nextNotFoundPage } from "../config/error-pages.js";
 import { queryClientConfig } from "../config/query.js";
 import { nextSiteMetadata } from "../config/site.js";
 import { nextPostcssConfig, tailwindCss } from "../config/tailwind.js";
+import { FULL_TECH_SELECTION, type TechSelection } from "../config/tech.js";
 import { exec } from "../utils/exec.js";
 import {
   isDirectory,
@@ -96,7 +97,10 @@ export const nextFramework: ProjectFramework = {
     return { rsc: true, tailwindCssPath: "src/app/globals.css" };
   },
 
-  async configureStarter(projectDir) {
+  async configureStarter(
+    projectDir,
+    selection: TechSelection = FULL_TECH_SELECTION,
+  ) {
     const publicDir = joinPath(projectDir, "public");
     if (await isDirectory(publicDir)) {
       for (const entry of await listDirEntries(publicDir)) {
@@ -117,7 +121,10 @@ export const nextFramework: ProjectFramework = {
       nextNotFoundPage(),
     );
     await removeIfExists(joinPath(projectDir, "CLAUDE.md"));
-    await writeTextFile(joinPath(projectDir, "AGENTS.md"), agentsMd());
+    await writeTextFile(
+      joinPath(projectDir, "AGENTS.md"),
+      agentsMd("next", selection),
+    );
   },
 
   async configureBranding(projectDir) {
