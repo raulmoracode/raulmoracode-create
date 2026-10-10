@@ -276,7 +276,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await configureChangelog(projectDir);
           await augmentGitignore(projectDir);
           message("Configuring CI");
-          await configureCi(projectDir);
+          await configureCi(projectDir, selection);
           return "Project created";
         },
       },
