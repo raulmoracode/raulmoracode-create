@@ -1,4 +1,14 @@
-export function ciWorkflowYaml(): string {
+import { FULL_TECH_SELECTION, type TechSelection } from "./tech.js";
+
+export function ciWorkflowYaml(
+  selection: TechSelection = FULL_TECH_SELECTION,
+): string {
+  const steps = [
+    "      - run: pnpm install --no-frozen-lockfile",
+    ...(selection.biome ? ["      - run: pnpm check"] : []),
+    ...(selection.testing ? ["      - run: pnpm test"] : []),
+    "      - run: pnpm build",
+  ];
   return [
     "name: CI",
     "",
@@ -21,10 +31,7 @@ export function ciWorkflowYaml(): string {
     "          node-version: 24",
     "          cache: pnpm",
     "",
-    "      - run: pnpm install --no-frozen-lockfile",
-    "      - run: pnpm check",
-    "      - run: pnpm test",
-    "      - run: pnpm build",
+    ...steps,
     "",
   ].join("\n");
 }

@@ -13,6 +13,7 @@ import {
   configureEditorconfig,
   configureNode,
 } from "../generators/configure-node.js";
+import { configurePrTemplate } from "../generators/configure-pr-template.js";
 import {
   installDependencies,
   normalizePackageJson,
@@ -234,7 +235,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
           }
           if (framework.configureStarter) {
             message("Configuring starter");
-            await framework.configureStarter(projectDir);
+            await framework.configureStarter(projectDir, selection);
           }
           if (selection.biome) {
             message("Configuring Biome");
@@ -276,7 +277,9 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await configureChangelog(projectDir);
           await augmentGitignore(projectDir);
           message("Configuring CI");
-          await configureCi(projectDir);
+          await configureCi(projectDir, selection);
+          message("Configuring pull request template");
+          await configurePrTemplate(projectDir);
           return "Project created";
         },
       },

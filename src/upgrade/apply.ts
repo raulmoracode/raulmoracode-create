@@ -1,6 +1,7 @@
 import { getFramework } from "../frameworks/index.js";
 import type { PackageJson } from "../frameworks/types.js";
 import { formatProject } from "../generators/configure-biome.js";
+import { collectManagedFileHashes } from "../generators/configure-manifest.js";
 import {
   normalizePackageJson,
   pnpmInstallArgs,
@@ -26,10 +27,9 @@ import {
 import {
   EXECUTABLE_MANAGED_FILES,
   managedDependencyPins,
-  managedFiles,
   managedPackageJson,
 } from "./managed-files.js";
-import { hashContent, serializeManifest } from "./manifest.js";
+import { serializeManifest } from "./manifest.js";
 import { patchManagedPackageJson } from "./package-json.js";
 import type { UpgradePlan } from "./plan.js";
 import {
@@ -124,33 +124,25 @@ async function patchProjectPackageJson(
   await writeTextFile(packageJsonPath, `${JSON.stringify(patched, null, 2)}\n`);
 }
 
-async function readIfExists(path: string): Promise<string | null> {
-  try {
-    return await readTextFile(path);
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Rewrites the manifest with the CLI version just applied and the hashes of
  * the files **as they are on disk after formatting**: the next upgrade must
  * compare against what this CLI left, not against the raw template, otherwise
- * Biome's own formatting would look like a local edit.
+ * Biome's own formatting would look like a local edit. Managed files that are
+ * not on disk (deleted locally and left alone, or removed by a migration) are
+ * omitted, the same rule `collectManagedFileHashes` applies when the project is
+ * created: recording a template hash for an absent file would make the next
+ * upgrade classify it as `new` instead of `deleted-locally`.
  */
 export async function writeProjectManifest(
   projectDir: string,
   plan: UpgradePlan,
 ): Promise<ProjectManifest> {
-  const templates = managedFiles(plan.framework, plan.selection);
-  const files: Record<string, string> = {};
-  for (const path of Object.keys(templates).sort()) {
-    const onDisk = await readIfExists(joinPath(projectDir, path));
-    files[path] =
-      onDisk === null
-        ? hashContent(templates[path] ?? "")
-        : hashContent(onDisk);
-  }
+  const files = await collectManagedFileHashes(
+    projectDir,
+    getFramework(plan.framework),
+    plan.selection,
+  );
   const next: ProjectManifest = {
     manifestVersion: MANIFEST_VERSION,
     cliVersion: plan.toVersion,
