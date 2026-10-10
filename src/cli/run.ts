@@ -13,6 +13,7 @@ import {
   configureEditorconfig,
   configureNode,
 } from "../generators/configure-node.js";
+import { configurePrTemplate } from "../generators/configure-pr-template.js";
 import {
   installDependencies,
   normalizePackageJson,
@@ -277,6 +278,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await augmentGitignore(projectDir);
           message("Configuring CI");
           await configureCi(projectDir);
+          message("Configuring pull request template");
+          await configurePrTemplate(projectDir);
           return "Project created";
         },
       },
