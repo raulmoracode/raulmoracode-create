@@ -2,6 +2,7 @@ import { agentsMd } from "../config/agents.js";
 import { queryClientConfig } from "../config/query.js";
 import { SITE_HEAD_COMMENT } from "../config/site.js";
 import { tailwindCss, viteTailwindConfig } from "../config/tailwind.js";
+import { FULL_TECH_SELECTION, type TechSelection } from "../config/tech.js";
 import { exec } from "../utils/exec.js";
 import {
   isDirectory,
@@ -147,7 +148,10 @@ export const viteFramework: ProjectFramework = {
     return { rsc: false, tailwindCssPath: "src/index.css" };
   },
 
-  async configureStarter(projectDir) {
+  async configureStarter(
+    projectDir,
+    selection: TechSelection = FULL_TECH_SELECTION,
+  ) {
     for (const dir of [
       joinPath(projectDir, "public"),
       joinPath(projectDir, "src", "assets"),
@@ -161,7 +165,10 @@ export const viteFramework: ProjectFramework = {
     }
     await writeTextFile(joinPath(projectDir, "src", "App.tsx"), VITE_APP_TSX);
     await writeTextFile(joinPath(projectDir, "src", "App.css"), "");
-    await writeTextFile(joinPath(projectDir, "AGENTS.md"), agentsMd());
+    await writeTextFile(
+      joinPath(projectDir, "AGENTS.md"),
+      agentsMd("vite", selection),
+    );
     await ensurePathAlias(projectDir);
   },
 
