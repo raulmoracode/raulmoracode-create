@@ -1,3 +1,4 @@
+import type { TechSelection } from "../config/tech.js";
 import type { Framework } from "../utils/validation.js";
 
 export interface PackageJson {
@@ -28,5 +29,8 @@ export interface ProjectFramework {
   configureTailwind(projectDir: string): Promise<void>;
   configureTanStackQuery(projectDir: string): Promise<void>;
   configureBranding(projectDir: string): Promise<void>;
-  configureStarter?(projectDir: string): Promise<void>;
+  configureStarter?(
+    projectDir: string,
+    selection?: TechSelection,
+  ): Promise<void>;
 }

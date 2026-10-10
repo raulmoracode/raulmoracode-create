@@ -33,6 +33,7 @@ import {
   PNPM_MINIMUM_RELEASE_AGE,
   pnpmWorkspaceYaml,
 } from "../src/config/pnpm-workspace.js";
+import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { queryClientConfig } from "../src/config/query.js";
 import {
   CREATE_REPO_URL,
@@ -43,6 +44,7 @@ import {
 import {
   nextPostcssConfig,
   tailwindCss,
+  viteBaseConfig,
   viteTailwindConfig,
 } from "../src/config/tailwind.js";
 import {
@@ -399,6 +401,7 @@ describe("agents guide", () => {
     );
     expect(content).toContain("## Project tooling");
     expect(content).toContain("uses pnpm exclusively");
+    expect(content).toContain("siteHead()");
     expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);
     expect(content).not.toContain("shadcn@latest");
     expect(content).toContain("https://registry.raulmoracode.com");
@@ -462,6 +465,16 @@ describe("Tailwind configuration", () => {
     const content = nextPostcssConfig();
     expect(content).toContain('plugins: ["@tailwindcss/postcss"]');
     expect(content).not.toContain("tailwind.config");
+  });
+
+  it("vite config without tailwind still wires the site head and the alias", () => {
+    const content = viteBaseConfig();
+    expect(content).toContain('import { site } from "./src/config/site";');
+    expect(content).toContain("plugins: [react(), siteHead()]");
+    expect(content).toContain("transformIndexHtml");
+    expect(content).toContain('"@": fileURLToPath(new URL("./src"');
+    expect(content).not.toContain("tailwindcss");
+    expect(content.endsWith("\n")).toBe(true);
   });
 });
 
@@ -627,6 +640,84 @@ describe("CI workflow template", () => {
   });
 });
 
+describe("Pull request template", () => {
+  it("generates the five GitHub sections", () => {
+    const content = pullRequestTemplate();
+    expect(content).toContain("## Summary");
+    expect(content).toContain("## Changes");
+    expect(content).toContain("## How to test");
+    expect(content).toContain("## Validation");
+    expect(content).toContain("## Breaking changes");
+  });
+
+  it("keeps every heading as an HTML comment or a list", () => {
+    const content = pullRequestTemplate();
+    expect(content).toContain("Briefly describe what this PR does and why");
+    expect(content).toContain("- [ ] `pnpm check`");
+    expect(content).toContain("- [ ] `pnpm test`");
+    expect(content).toContain("- [ ] `pnpm build`");
+    expect(content).toContain('or write "None"');
+    expect(content).not.toContain("TODO");
+    expect(content).not.toContain("FIXME");
+  });
+
+  it("is written in English for the PR reviewer", () => {
+    const content = pullRequestTemplate();
+    for (const spanish of [
+      "Resumen",
+      "Cambios",
+      "Validación",
+      "Ruptura",
+      "Probar",
+    ]) {
+      expect(content).not.toContain(spanish);
+    }
+  });
+
+  it("pins the exact bytes", () => {
+    expect(pullRequestTemplate()).toBe(
+      [
+        "## Summary",
+        "",
+        "<!-- Briefly describe what this PR does and why. -->",
+        "",
+        "## Changes",
+        "",
+        "- ",
+        "",
+        "## How to test",
+        "",
+        "1. ",
+        "2. ",
+        "",
+        "## Validation",
+        "",
+        "- [ ] `pnpm check`",
+        "- [ ] `pnpm test`",
+        "- [ ] `pnpm build`",
+        "",
+        "## Breaking changes",
+        "",
+        '<!-- List any breaking changes, or write "None". -->',
+        "",
+        "None",
+        "",
+      ].join("\n"),
+    );
+    expect(pullRequestTemplate().endsWith("\n")).toBe(true);
+  });
+
+  it("contains no tokens, credentials or machine-specific paths", () => {
+    const content = pullRequestTemplate();
+    expect(content).not.toMatch(/ghp_/);
+    expect(content).not.toMatch(/github_pat_/);
+    expect(content).not.toMatch(/_authToken/);
+    expect(content).not.toMatch(/\/Users\//);
+    expect(content).not.toMatch(/\/home\//);
+    expect(content).not.toMatch(/[A-Z]:\\/);
+  });
+});
+
 describe("CHANGELOG template", () => {
   it("generates CHANGELOG.md following Keep a Changelog", () => {
     const content = changelogMd();
@@ -760,6 +851,8 @@ describe("Generated README", () => {
     expect(vite).toContain("biome.json");
     expect(vite).toContain("vitest.config.ts");
     expect(vite).toContain(".vscode/");
+    expect(vite).toContain("vite.config.ts");
+    expect(vite).toContain("siteHead");
     const next = readmeMd({
       ...viteOptions(),
       frameworkId: "next",
@@ -769,6 +862,7 @@ describe("Generated README", () => {
     expect(next).toContain("error.tsx");
     expect(next).toContain("not-found.tsx");
     expect(next).toContain("LICENSE");
+    expect(next).not.toContain("vite.config.ts");
   });
 
   it("omits deselected tooling files from the tree", () => {

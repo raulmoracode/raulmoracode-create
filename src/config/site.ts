@@ -123,6 +123,9 @@ export function siteConfigTs(values: SiteValues): string {
  * Vite plugin injected into `vite.config.ts`. Vite owns `index.html`, so the
  * head tags are produced from `src/config/site.ts` at dev and build time via
  * `transformIndexHtml` instead of being hardcoded in the HTML.
+ *
+ * It is always wired, with or without Tailwind (`viteBaseConfig()` /
+ * `viteTailwindConfig()`), otherwise the site identity would have no consumer.
  */
 export function viteSiteHeadPlugin(): string {
   return [

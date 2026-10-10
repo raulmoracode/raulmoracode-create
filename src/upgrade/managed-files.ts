@@ -6,6 +6,7 @@ import { componentsJson } from "../config/components.js";
 import { editorconfigContent } from "../config/editorconfig.js";
 import { huskyCommitMsg, huskyPreCommit } from "../config/husky.js";
 import { nvmrcContent } from "../config/nvmrc.js";
+import { pullRequestTemplate } from "../config/pull-request.js";
 import { nextPostcssConfig, viteTailwindConfig } from "../config/tailwind.js";
 import type { TechSelection } from "../config/tech.js";
 import { vitestConfig } from "../config/testing.js";
@@ -42,8 +43,9 @@ export function managedFiles(
   const files: Record<string, string> = {
     ".editorconfig": editorconfigContent(),
     ".nvmrc": nvmrcContent(),
-    ".github/workflows/ci.yml": ciWorkflowYaml(),
-    "AGENTS.md": agentsMd(),
+    ".github/workflows/ci.yml": ciWorkflowYaml(selection),
+    ".github/pull_request_template.md": pullRequestTemplate(),
+    "AGENTS.md": agentsMd(frameworkId, selection),
   };
   if (selection.biome) {
     files["biome.json"] = biomeConfig();
