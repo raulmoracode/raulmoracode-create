@@ -43,9 +43,9 @@ export function managedFiles(
   const files: Record<string, string> = {
     ".editorconfig": editorconfigContent(),
     ".nvmrc": nvmrcContent(),
-    ".github/workflows/ci.yml": ciWorkflowYaml(),
+    ".github/workflows/ci.yml": ciWorkflowYaml(selection),
     ".github/pull_request_template.md": pullRequestTemplate(),
-    "AGENTS.md": agentsMd(),
+    "AGENTS.md": agentsMd(frameworkId, selection),
   };
   if (selection.biome) {
     files["biome.json"] = biomeConfig();

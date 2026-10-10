@@ -73,7 +73,7 @@ Requirements: Node 24, pnpm 12, a clean working tree, a GitHub remote and the Gi
 - Installs dependencies with **pnpm** and pins exact versions (no `^` or `~`).
 - Configures **Tailwind CSS 4.3.3** (CSS-first configuration, `@tailwindcss/vite` for Vite and `@tailwindcss/postcss` for Next.js).
 - Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry), the `cn()` helper (`src/lib/utils.ts`) and the registry path aliases (`@components/*`, `@lib/*`, `@hooks/*` in the tsconfigs) so `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` resolves file targets out of the box. No components are preinstalled; add them later with `pnpm dlx shadcn@4.21.0 add <component>`.
-- Optionally applies the **Raulmoracode nature theme** from the registry (requires shadcn): nature tokens land in the Tailwind entry CSS, `tw-animate-css` is pinned, and the CLI removes the Next-oriented leftovers the shadcn CLI drops into `src/` on Vite projects.
+- Optionally applies the **Raulmoracode nature theme** from the registry (`@raulmoracode/theme`, no version pin — registry item, not an npm package — applied via `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`, requires shadcn): nature tokens land in the Tailwind entry CSS, `tw-animate-css@1.4.0` is pinned, and the CLI removes the Next-oriented leftovers the shadcn CLI drops into `src/` on Vite projects.
 - Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5** and **TanStack Query 5.104.0**, and wires the TanStack Query provider.
 - Configures **Biome 2.5.14** (formatter, linter and organize imports) and removes the ESLint/Oxlint leftovers from the official templates.
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
@@ -101,7 +101,7 @@ Every generated project includes:
 - React + Vite or Next.js (official structure)
 - Tailwind CSS 4
 - shadcn ready (`components.json` with the `@raulmoracode` registry and the `cn()` helper)
-- Raulmoracode nature theme (optional, applied from the registry)
+- Raulmoracode nature theme (optional, `@raulmoracode/theme` via `shadcn@4.21.0`; pins `tw-animate-css@1.4.0`)
 - Zustand
 - React Hook Form + Zod
 - TanStack Query (provider included)

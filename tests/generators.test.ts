@@ -865,6 +865,32 @@ describe("configureCi", () => {
     expect(workflow).toContain("pnpm build");
     expect(workflow.endsWith("\n")).toBe(true);
   });
+
+  it("omits pnpm check and pnpm test without Biome or testing", async () => {
+    const dir = await makeTempDir();
+    await configureCi(dir, {
+      ...FULL_TECH_SELECTION,
+      biome: false,
+      testing: false,
+    });
+    const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
+    expect(workflow).toContain("pnpm install --no-frozen-lockfile");
+    expect(workflow).not.toContain("pnpm check");
+    expect(workflow).not.toContain("pnpm test");
+    expect(workflow).toContain("pnpm build");
+  });
+
+  it("keeps pnpm check and pnpm test with Biome and testing selected", async () => {
+    const dir = await makeTempDir();
+    await configureCi(dir, {
+      ...FULL_TECH_SELECTION,
+      biome: true,
+      testing: true,
+    });
+    const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
+    expect(workflow).toContain("pnpm check");
+    expect(workflow).toContain("pnpm test");
+  });
 });
 
 describe("configurePrTemplate", () => {
