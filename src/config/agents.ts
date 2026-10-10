@@ -245,6 +245,8 @@ export function agentsMd(): string {
     "",
     "Edit that file instead of `index.html` or `src/app/layout.tsx` when changing them.",
     "",
+    "On Vite the `siteHead()` plugin in `vite.config.ts` injects those values into `index.html`; on Next.js the `metadata` export in `src/app/layout.tsx` does. Both are always wired, whichever techs were selected.",
+    "",
     "## Security",
     "",
     "Do not expose, commit, or hard-code secrets, API keys, access tokens, passwords, or credentials.",

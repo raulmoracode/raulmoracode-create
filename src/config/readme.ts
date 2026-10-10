@@ -241,7 +241,11 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
   if (frameworkId === "vite") {
     root.push({
       name: "index.html",
-      comment: "tab title + favicon (raulmoracode branding)",
+      comment: "entry HTML (head tags injected by vite.config.ts)",
+    });
+    root.push({
+      name: "vite.config.ts",
+      comment: "react plugin + siteHead + @ alias",
     });
   }
   root.push({

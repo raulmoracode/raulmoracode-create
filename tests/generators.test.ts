@@ -13,6 +13,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 import { SHADCN_VERSION } from "../src/config/components.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
+import { viteTailwindConfig } from "../src/config/tailwind.js";
 import { FULL_TECH_SELECTION } from "../src/config/tech.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
@@ -160,6 +161,48 @@ describe("configureBranding (vite)", () => {
     const dir = await makeTempDir();
     await writeFile(join(dir, "index.html"), "<html></html>", "utf8");
     await expect(viteFramework.configureBranding(dir)).rejects.toThrow();
+  });
+
+  it("writes a siteHead vite.config.ts when the scaffold has none", async () => {
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "index.html"),
+      "<html><head></head></html>",
+      "utf8",
+    );
+    await writeTextFile(
+      join(dir, "vite.config.ts"),
+      [
+        'import { defineConfig } from "vite";',
+        'import react from "@vitejs/plugin-react";',
+        "",
+        "export default defineConfig({ plugins: [react()] });",
+        "",
+      ].join("\n"),
+    );
+
+    await viteFramework.configureBranding(dir);
+
+    const viteConfig = await readFromFile(dir, "vite.config.ts");
+    expect(viteConfig).toContain('import { site } from "./src/config/site";');
+    expect(viteConfig).toContain("plugins: [react(), siteHead()]");
+    expect(viteConfig).toContain('"@": fileURLToPath(new URL("./src"');
+    expect(viteConfig).not.toContain("tailwind");
+  });
+
+  it("keeps the Tailwind vite.config.ts written before it", async () => {
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "index.html"),
+      "<html><head></head></html>",
+      "utf8",
+    );
+    await viteFramework.configureTailwind(dir);
+
+    await viteFramework.configureBranding(dir);
+
+    const viteConfig = await readFromFile(dir, "vite.config.ts");
+    expect(viteConfig).toBe(viteTailwindConfig());
   });
 });
 
