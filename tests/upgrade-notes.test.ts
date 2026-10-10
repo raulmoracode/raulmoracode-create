@@ -161,7 +161,10 @@ describe("UPGRADE_NOTES", () => {
     }
   });
 
-  it("is empty while 1.0.8 is the manifest baseline", () => {
-    expect(UPGRADE_NOTES).toEqual([]);
+  it("includes the 1.0.9 release notes", () => {
+    const v109 = UPGRADE_NOTES.find((note) => note.version === "1.0.9");
+    expect(v109).toBeDefined();
+    expect(v109?.summary.trim()).not.toBe("");
+    expect(v109?.changes.length).toBeGreaterThan(0);
   });
 });
