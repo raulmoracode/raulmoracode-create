@@ -52,6 +52,7 @@ import {
   managedFiles,
 } from "../src/upgrade/managed-files.js";
 import { hashContent, parseManifest } from "../src/upgrade/manifest.js";
+import { SNAPSHOT_SELECTIONS } from "../src/upgrade/template-snapshot.js";
 import { MANIFEST_FILE } from "../src/upgrade/types.js";
 import { listDirEntries, writeTextFile } from "../src/utils/filesystem.js";
 
@@ -1093,4 +1094,45 @@ describe("configureManifest", () => {
     expect((await stat(hook)).mode).toBe(modeBefore);
     expect(manifest.files[".husky/pre-commit"]).toBe(hashContent(before));
   });
+});
+
+describe("configureManifest managed-file parity", () => {
+  for (const { id, selection } of SNAPSHOT_SELECTIONS) {
+    for (const framework of [viteFramework, nextFramework]) {
+      it(`records exactly the managed files of a full ${id}/${framework.id} project`, async () => {
+        const dir = await makeTempDir();
+        const templates = managedFiles(framework.id, selection);
+        // "Full project": every managed template the selection renders is on
+        // disk, so no managed file may be missing from the manifest.
+        for (const [path, content] of Object.entries(templates)) {
+          await writeTextFile(join(dir, ...path.split("/")), content);
+        }
+
+        const manifest = await configureManifest(dir, {
+          framework,
+          projectName: "my-project",
+          githubUrl: "https://github.com/raulmoracode/my-project",
+          selection,
+          cliVersion: "1.0.8",
+        });
+
+        expect(Object.keys(manifest.files).sort()).toEqual(
+          Object.keys(templates).sort(),
+        );
+        for (const [path, content] of Object.entries(templates)) {
+          expect(manifest.files[path], path).toBe(hashContent(content));
+        }
+        expect(manifest.dependencies).toEqual(
+          managedDependencyPins(framework.id, selection),
+        );
+        expect(manifest.framework).toBe(framework.id);
+        expect(manifest.selection).toEqual(selection);
+
+        const parsed = parseManifest(await readFromFile(dir, MANIFEST_FILE));
+        expect(Object.keys(parsed.files).sort()).toEqual(
+          Object.keys(manifest.files).sort(),
+        );
+      });
+    }
+  }
 });
