@@ -12,6 +12,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 
 import { SHADCN_VERSION } from "../src/config/components.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
+import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
 import { FULL_TECH_SELECTION } from "../src/config/tech.js";
 import { nextFramework } from "../src/frameworks/next.js";
@@ -30,6 +31,7 @@ import {
   configureNode,
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
+import { configurePrTemplate } from "../src/generators/configure-pr-template.js";
 import {
   PROJECT_AUTHOR,
   refreshPnpmWorkspaceExcludes,
@@ -888,6 +890,37 @@ describe("configureCi", () => {
     const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
     expect(workflow).toContain("pnpm check");
     expect(workflow).toContain("pnpm test");
+  });
+});
+
+describe("configurePrTemplate", () => {
+  it("writes .github/pull_request_template.md with the exact template", async () => {
+    const dir = await makeTempDir();
+    await configurePrTemplate(dir);
+    const template = await readFromFile(
+      dir,
+      ".github",
+      "pull_request_template.md",
+    );
+    expect(template).toBe(pullRequestTemplate());
+    expect(template).toContain("## Summary");
+    expect(template).toContain("## How to test");
+    expect(template.endsWith("\n")).toBe(true);
+  });
+
+  it("keeps the file registered as a managed file", async () => {
+    const dir = await makeTempDir();
+    await configurePrTemplate(dir);
+    const written = await readFromFile(
+      dir,
+      ".github",
+      "pull_request_template.md",
+    );
+    expect(written).toBe(
+      managedFiles("vite", FULL_TECH_SELECTION)[
+        ".github/pull_request_template.md"
+      ],
+    );
   });
 });
 

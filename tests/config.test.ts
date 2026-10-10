@@ -33,6 +33,7 @@ import {
   PNPM_MINIMUM_RELEASE_AGE,
   pnpmWorkspaceYaml,
 } from "../src/config/pnpm-workspace.js";
+import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { queryClientConfig } from "../src/config/query.js";
 import {
   CREATE_REPO_URL,
@@ -624,6 +625,84 @@ describe("CI workflow template", () => {
     expect(content).toContain("pnpm build");
     expect(content).not.toContain("deploy");
     expect(content.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("Pull request template", () => {
+  it("generates the five GitHub sections", () => {
+    const content = pullRequestTemplate();
+    expect(content).toContain("## Summary");
+    expect(content).toContain("## Changes");
+    expect(content).toContain("## How to test");
+    expect(content).toContain("## Validation");
+    expect(content).toContain("## Breaking changes");
+  });
+
+  it("keeps every heading as an HTML comment or a list", () => {
+    const content = pullRequestTemplate();
+    expect(content).toContain("Briefly describe what this PR does and why");
+    expect(content).toContain("- [ ] `pnpm check`");
+    expect(content).toContain("- [ ] `pnpm test`");
+    expect(content).toContain("- [ ] `pnpm build`");
+    expect(content).toContain('or write "None"');
+    expect(content).not.toContain("TODO");
+    expect(content).not.toContain("FIXME");
+  });
+
+  it("is written in English for the PR reviewer", () => {
+    const content = pullRequestTemplate();
+    for (const spanish of [
+      "Resumen",
+      "Cambios",
+      "Validación",
+      "Ruptura",
+      "Probar",
+    ]) {
+      expect(content).not.toContain(spanish);
+    }
+  });
+
+  it("pins the exact bytes", () => {
+    expect(pullRequestTemplate()).toBe(
+      [
+        "## Summary",
+        "",
+        "<!-- Briefly describe what this PR does and why. -->",
+        "",
+        "## Changes",
+        "",
+        "- ",
+        "",
+        "## How to test",
+        "",
+        "1. ",
+        "2. ",
+        "",
+        "## Validation",
+        "",
+        "- [ ] `pnpm check`",
+        "- [ ] `pnpm test`",
+        "- [ ] `pnpm build`",
+        "",
+        "## Breaking changes",
+        "",
+        '<!-- List any breaking changes, or write "None". -->',
+        "",
+        "None",
+        "",
+      ].join("\n"),
+    );
+    expect(pullRequestTemplate().endsWith("\n")).toBe(true);
+  });
+
+  it("contains no tokens, credentials or machine-specific paths", () => {
+    const content = pullRequestTemplate();
+    expect(content).not.toMatch(/ghp_/);
+    expect(content).not.toMatch(/github_pat_/);
+    expect(content).not.toMatch(/_authToken/);
+    expect(content).not.toMatch(/\/Users\//);
+    expect(content).not.toMatch(/\/home\//);
+    expect(content).not.toMatch(/[A-Z]:\\/);
   });
 });
 
