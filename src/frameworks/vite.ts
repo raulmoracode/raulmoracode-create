@@ -1,7 +1,11 @@
 import { agentsMd } from "../config/agents.js";
 import { queryClientConfig } from "../config/query.js";
 import { SITE_HEAD_COMMENT } from "../config/site.js";
-import { tailwindCss, viteTailwindConfig } from "../config/tailwind.js";
+import {
+  tailwindCss,
+  viteBaseConfig,
+  viteTailwindConfig,
+} from "../config/tailwind.js";
 import { FULL_TECH_SELECTION, type TechSelection } from "../config/tech.js";
 import { exec } from "../utils/exec.js";
 import {
@@ -66,6 +70,31 @@ async function ensurePathAlias(projectDir: string): Promise<void> {
     tsconfig.compilerOptions = compilerOptions;
     await writeTextFile(tsconfigPath, `${JSON.stringify(tsconfig, null, 2)}\n`);
   }
+}
+
+/**
+ * Guarantees a `vite.config.ts` that consumes `src/config/site.ts`.
+ *
+ * `configureTailwind` writes the Tailwind variant (which also carries the
+ * `siteHead()` plugin and the `@` alias), but it only runs when Tailwind is
+ * selected. Without it the scaffold's own config would survive untouched, the
+ * `siteHead()` plugin would never run and the site identity would stay dead in
+ * `src/config/site.ts`, so the minimal template is written instead. A config
+ * that already wires `siteHead()` (the Tailwind one, or a hand-edited variant)
+ * is left as it is.
+ */
+async function ensureSiteHeadConfig(projectDir: string): Promise<void> {
+  const viteConfigPath = joinPath(projectDir, "vite.config.ts");
+  let current: string | null = null;
+  try {
+    current = await readTextFile(viteConfigPath);
+  } catch {
+    current = null;
+  }
+  if (current?.includes("siteHead")) {
+    return;
+  }
+  await writeTextFile(viteConfigPath, viteBaseConfig());
 }
 
 const VITE_APP_TSX = [
@@ -173,6 +202,7 @@ export const viteFramework: ProjectFramework = {
   },
 
   async configureBranding(projectDir) {
+    await ensureSiteHeadConfig(projectDir);
     const indexPath = joinPath(projectDir, "index.html");
     const html = await readTextFile(indexPath);
     // The title, favicon and social tags are injected by the siteHead() plugin
