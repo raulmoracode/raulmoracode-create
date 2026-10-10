@@ -296,6 +296,12 @@ remote. PR bodies are English; CLI messages are Spanish.
   new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode":
   "https://registry.raulmoracode.com/r/{name}.json"}`); the minimum with only `registries` is
   rejected. `cn()` requires `clsx` + `tailwind-merge`.
+- Theme (`@raulmoracode/theme`, optional preset, requires shadcn): `REGISTRY_THEME_SPEC`
+  carries no version pin (registry item, not an npm package), applied via
+  `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite` (`SHADCN_VERSION`
+  is the pinned shadcn CLI tool version in `config/components.ts`); the preset pins
+  `tw-animate-css@1.4.0` (`TW_ANIMATE_CSS_VERSION` in `generators/configure-project.ts`,
+  only with `theme`).
 - shadcn on Vite needs the `@/*` alias in **three** places: `vite.config.ts` (via
   `fileURLToPath`), `tsconfig.app.json` and the root `tsconfig.json` (the shadcn CLI only reads the
   root one; without it, a literal `@/` folder is created). Tsconfigs are parsed as JSONC.
