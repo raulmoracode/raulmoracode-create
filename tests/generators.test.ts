@@ -12,7 +12,9 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 
 import { SHADCN_VERSION } from "../src/config/components.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
+import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
+import { viteTailwindConfig } from "../src/config/tailwind.js";
 import { FULL_TECH_SELECTION } from "../src/config/tech.js";
 import { nextFramework } from "../src/frameworks/next.js";
 import { viteFramework } from "../src/frameworks/vite.js";
@@ -30,6 +32,7 @@ import {
   configureNode,
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
+import { configurePrTemplate } from "../src/generators/configure-pr-template.js";
 import {
   PROJECT_AUTHOR,
   refreshPnpmWorkspaceExcludes,
@@ -161,6 +164,48 @@ describe("configureBranding (vite)", () => {
     const dir = await makeTempDir();
     await writeFile(join(dir, "index.html"), "<html></html>", "utf8");
     await expect(viteFramework.configureBranding(dir)).rejects.toThrow();
+  });
+
+  it("writes a siteHead vite.config.ts when the scaffold has none", async () => {
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "index.html"),
+      "<html><head></head></html>",
+      "utf8",
+    );
+    await writeTextFile(
+      join(dir, "vite.config.ts"),
+      [
+        'import { defineConfig } from "vite";',
+        'import react from "@vitejs/plugin-react";',
+        "",
+        "export default defineConfig({ plugins: [react()] });",
+        "",
+      ].join("\n"),
+    );
+
+    await viteFramework.configureBranding(dir);
+
+    const viteConfig = await readFromFile(dir, "vite.config.ts");
+    expect(viteConfig).toContain('import { site } from "./src/config/site";');
+    expect(viteConfig).toContain("plugins: [react(), siteHead()]");
+    expect(viteConfig).toContain('"@": fileURLToPath(new URL("./src"');
+    expect(viteConfig).not.toContain("tailwind");
+  });
+
+  it("keeps the Tailwind vite.config.ts written before it", async () => {
+    const dir = await makeTempDir();
+    await writeFile(
+      join(dir, "index.html"),
+      "<html><head></head></html>",
+      "utf8",
+    );
+    await viteFramework.configureTailwind(dir);
+
+    await viteFramework.configureBranding(dir);
+
+    const viteConfig = await readFromFile(dir, "vite.config.ts");
+    expect(viteConfig).toBe(viteTailwindConfig());
   });
 });
 
@@ -863,6 +908,63 @@ describe("configureCi", () => {
     expect(workflow).toContain("pnpm test");
     expect(workflow).toContain("pnpm build");
     expect(workflow.endsWith("\n")).toBe(true);
+  });
+
+  it("omits pnpm check and pnpm test without Biome or testing", async () => {
+    const dir = await makeTempDir();
+    await configureCi(dir, {
+      ...FULL_TECH_SELECTION,
+      biome: false,
+      testing: false,
+    });
+    const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
+    expect(workflow).toContain("pnpm install --no-frozen-lockfile");
+    expect(workflow).not.toContain("pnpm check");
+    expect(workflow).not.toContain("pnpm test");
+    expect(workflow).toContain("pnpm build");
+  });
+
+  it("keeps pnpm check and pnpm test with Biome and testing selected", async () => {
+    const dir = await makeTempDir();
+    await configureCi(dir, {
+      ...FULL_TECH_SELECTION,
+      biome: true,
+      testing: true,
+    });
+    const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
+    expect(workflow).toContain("pnpm check");
+    expect(workflow).toContain("pnpm test");
+  });
+});
+
+describe("configurePrTemplate", () => {
+  it("writes .github/pull_request_template.md with the exact template", async () => {
+    const dir = await makeTempDir();
+    await configurePrTemplate(dir);
+    const template = await readFromFile(
+      dir,
+      ".github",
+      "pull_request_template.md",
+    );
+    expect(template).toBe(pullRequestTemplate());
+    expect(template).toContain("## Summary");
+    expect(template).toContain("## How to test");
+    expect(template.endsWith("\n")).toBe(true);
+  });
+
+  it("keeps the file registered as a managed file", async () => {
+    const dir = await makeTempDir();
+    await configurePrTemplate(dir);
+    const written = await readFromFile(
+      dir,
+      ".github",
+      "pull_request_template.md",
+    );
+    expect(written).toBe(
+      managedFiles("vite", FULL_TECH_SELECTION)[
+        ".github/pull_request_template.md"
+      ],
+    );
   });
 });
 

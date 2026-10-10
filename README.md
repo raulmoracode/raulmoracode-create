@@ -73,14 +73,14 @@ Requirements: Node 24, pnpm 12, a clean working tree, a GitHub remote and the Gi
 - Installs dependencies with **pnpm** and pins exact versions (no `^` or `~`).
 - Configures **Tailwind CSS 4.3.3** (CSS-first configuration, `@tailwindcss/vite` for Vite and `@tailwindcss/postcss` for Next.js).
 - Prepares **shadcn**: writes a complete `components.json` (including the `@raulmoracode` registry), the `cn()` helper (`src/lib/utils.ts`) and the registry path aliases (`@components/*`, `@lib/*`, `@hooks/*` in the tsconfigs) so `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>` resolves file targets out of the box. No components are preinstalled; add them later with `pnpm dlx shadcn@4.21.0 add <component>`.
-- Optionally applies the **Raulmoracode nature theme** from the registry (requires shadcn): nature tokens land in the Tailwind entry CSS, `tw-animate-css` is pinned, and the CLI removes the Next-oriented leftovers the shadcn CLI drops into `src/` on Vite projects.
+- Optionally applies the **Raulmoracode nature theme** from the registry (`@raulmoracode/theme`, no version pin — registry item, not an npm package — applied via `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`, requires shadcn): nature tokens land in the Tailwind entry CSS, `tw-animate-css@1.4.0` is pinned, and the CLI removes the Next-oriented leftovers the shadcn CLI drops into `src/` on Vite projects.
 - Installs **Zustand 5.0.15**, **React Hook Form 7.89.0**, **Zod 4.6.5** and **TanStack Query 5.104.0**, and wires the TanStack Query provider.
 - Configures **Biome 2.5.14** (formatter, linter and organize imports) and removes the ESLint/Oxlint leftovers from the official templates.
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
 - Configures **VS Code** (`.vscode/settings.json` and `.vscode/extensions.json`).
 - Pins **Node.js 24** via `.nvmrc` and writes `.editorconfig`.
 - Writes the **MIT `LICENSE`** with the project author and the current year, and sets `license: "MIT"` in `package.json`, so the project is publishable as it comes out.
-- Applies **branding**: tab title `raulmoracode` and favicon `https://cdn.raulmoracode.com/icons/favicon.ico` (in `index.html` for Vite, in the root layout metadata for Next.js).
+- Applies **branding**: removes the template's own `<title>` and favicon link and injects nothing in their place, so the tab title, favicon and social tags come from `src/config/site.ts` (see below) instead of being hardcoded in `index.html` for Vite or in the root layout metadata for Next.js.
 - Ships a minimal **starter** for React + Vite: `public/` and `src/assets/` are emptied, `App.tsx` renders a simple hello and `App.css` starts empty.
 - Ships a minimal **starter** for Next.js: `public/` is emptied and `page.tsx` renders a simple hello (its orphaned `page.module.css` is removed). `AGENTS.md` is kept and `CLAUDE.md` is removed. Adds `src/app/error.tsx` and `src/app/not-found.tsx`, which are Next.js file conventions, so they need no wiring. They deliberately use only Tailwind utilities that exist everywhere instead of theme tokens, so the registry theme cannot leave them unstyled.
 - Fills in **project metadata** in `package.json`: `author` (Raul Mora, https://raulmoracode.com), `homepage` and `repository` with the GitHub URL you enter at the start.
@@ -101,19 +101,24 @@ Every generated project includes:
 - React + Vite or Next.js (official structure)
 - Tailwind CSS 4
 - shadcn ready (`components.json` with the `@raulmoracode` registry and the `cn()` helper)
-- Raulmoracode nature theme (optional, applied from the registry)
+- Raulmoracode nature theme (optional, `@raulmoracode/theme` via `shadcn@4.21.0`; pins `tw-animate-css@1.4.0`)
 - Zustand
 - React Hook Form + Zod
 - TanStack Query (provider included)
 - Biome (format, lint, organize imports)
 - Vitest + Testing Library
 - VS Code settings
-- Branding (`raulmoracode` tab title and CDN favicon)
+- Husky + Commitlint (`.husky/pre-commit` and `.husky/commit-msg`, both executable, plus `commitlint.config.ts`)
+- Continuous integration (`.github/workflows/ci.yml`)
+- Branding driven by `src/config/site.ts` (tab title, favicon and social preview)
 - `README.md` (overview, scripts, tech stack, registry workflow)
+- `CHANGELOG.md` (Keep a Changelog)
+- MIT `LICENSE`
 - `pnpm-workspace.yaml` with `minimumReleaseAge: 10080`
 - `raulmoracode.json`: the CLI version, framework, selected tech, project identity and a hash per managed file, so `raulmoracode-create upgrade` can tell your edits from the CLI's
-- Node.js 24 (`.nvmrc`)
+- Node.js 24 (`.nvmrc`) and `.editorconfig`
 - pnpm (`pnpm-lock.yaml`, no `package-lock.json` or `yarn.lock`)
+- Next.js error pages (`src/app/error.tsx` and `src/app/not-found.tsx`), which are file conventions and need no wiring
 - Git initialized and pushed to GitHub
 
 ### Commands in a generated project
@@ -190,8 +195,8 @@ pnpm test
 Plain `pnpm test` skips the network E2E. To run one framework's E2E (Node 24 and network required):
 
 ```bash
-E2E_FRAMEWORK=vite pnpm test --run tests/e2e.test.ts
-E2E_FRAMEWORK=next pnpm test --run tests/e2e.test.ts
+E2E_FRAMEWORK=vite pnpm test --run tests/e2e.test.ts tests/upgrade-e2e.test.ts
+E2E_FRAMEWORK=next pnpm test --run tests/e2e.test.ts tests/upgrade-e2e.test.ts
 ```
 
 Other useful scripts:

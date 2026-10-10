@@ -66,6 +66,8 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   │   ├── configure-site.ts     # src/config/site.ts (site identity)
 │   │   ├── configure-changelog.ts# CHANGELOG.md
 │   │   ├── configure-ci.ts       # .github/workflows/ci.yml
+│   │   ├── configure-readme.ts   # project README.md
+│   │   ├── configure-theme.ts    # registry theme via the shadcn CLI
 │   │   └── configure-manifest.ts # raulmoracode.json (project manifest)
 │   ├── frameworks/
 │   │   ├── types.ts              # PackageJson, ProjectFramework
@@ -100,16 +102,20 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │   ├── config/
 │   │   ├── agents.ts             # AGENTS.md content
 │   │   ├── biome.ts              # biome.json content
-│   │   ├── branding.ts           # title and favicon (constants)
+│   │   ├── branding.ts           # site constants (title, favicon, card, handles)
 │   │   ├── changelog.ts          # CHANGELOG.md content
 │   │   ├── ci.ts                 # .github/workflows/ci.yml content
 │   │   ├── components.ts         # components.json + utils.ts (cn)
 │   │   ├── commitlint.ts         # commitlint.config.ts content
 │   │   ├── editorconfig.ts       # .editorconfig content
+│   │   ├── error-pages.ts        # Next.js error.tsx + not-found.tsx
 │   │   ├── husky.ts              # .husky hook contents
+│   │   ├── license.ts            # MIT LICENSE text
 │   │   ├── nvmrc.ts              # .nvmrc content
 │   │   ├── pnpm-workspace.ts     # pnpm-workspace.yaml + merge + excludes
 │   │   ├── query.ts              # query-client.ts
+│   │   ├── readme.ts             # project README.md content
+│   │   ├── site.ts               # src/config/site.ts + head/metadata renderers
 │   │   ├── tailwind.ts           # CSS, vite.config.ts, postcss.config.mjs
 │   │   ├── tech.ts               # tech preset options, selection, resolvers
 │   │   ├── testing.ts            # vitest.config.ts + smoke test
@@ -129,7 +135,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 └── dist/                         # compiled output (generated, not versioned)
 ```
 
-Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O. `upgrade/pr-body.ts` is pure (markdown out, nothing in but the report) and therefore **English**, like every other file in the repo; only the CLI messages the user sees are in Spanish.Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, `config/` holds pure templates with no I/O, and `upgrade/` is a pure contract (manifest, managed files, notes, snapshot) with no Clack, no I/O and no processes.
+Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O. `upgrade/` is a pure contract (manifest, managed files, notes, snapshot) with no Clack, no I/O and no processes; `upgrade/pr-body.ts` is pure (markdown out, nothing in but the report) and therefore **English**, like every other file in the repo — only the CLI messages the user sees are in Spanish.
 
 ---
 
@@ -178,8 +184,8 @@ Internal functions:
 3. Prompts in order: `promptFramework()` → `promptTechPreset()` (multiselect with everything preselected by default; `resolveTechSelection` forces Tailwind back on if shadcn is left selected without it, with a warning) → `promptProjectName()` → `promptGitHubUrl()`.
 4. `checkDestination` + `checkRemoteAccess`.
 5. `getFramework(frameworkId)` and the Clack `tasks([...])` block (each task records its title in `failedStep` first):
-   - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); branding (always); shadcn (only if `selection.shadcn`); theme (only if `selection.theme`, via `applyRegistryTheme` after shadcn and before `patchPackageJson`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `configureReadme(..., selection)` (always, after the patch so the scripts table matches); `augmentGitignore` (always); license, changelog and CI; `configureManifest(...)` (always, last: writes `raulmoracode.json` with the sha256 of the managed files as they are on disk, before the initial commit). Returns `"Project created"`.
-   - **"Installing dependencies"** → `installDependencies(..., selection)` (`pnpm install`, `pnpm add` runtime unless empty, `pnpm add -D` dev unless empty — a bare `add` with no packages would fail, hence they are skipped); `normalizePackageJson`; `formatProject` only with Biome (it would fail without the binary); `refreshPnpmWorkspaceExcludes(..., selection)`. Returns `"Dependencies installed"`.
+   - **"Creating project"** → official scaffold; Tailwind (only if `selection.tailwind`); site config (`configureSite`, always); branding (always); shadcn (only if `selection.shadcn`); theme (only if `selection.theme`, via `applyRegistryTheme` after shadcn and before `patchPackageJson`); TanStack Query (only if `selection.tanstack-query`); starter (only if the framework implements it, `configureStarter?.()`, always); Biome (only if `selection.biome`); testing (only if `selection.testing`); VS Code (only if `selection.vscode`); Node (`.nvmrc` + `.editorconfig`, always); Git hooks (only if `selection.husky`, with adapted `pre-commit`: `pnpm check` line only with Biome, `pnpm test` line only with testing); `patchPackageJson(..., selection)` (`check/format/lint` scripts only with Biome, `test` only with testing, `prepare` only with Husky; Husky/Commitlint devDeps only with Husky); `configureReadme(..., selection)` (always, after the patch so the scripts table matches); `augmentGitignore` (always); license, changelog and CI. Returns `"Project created"`.
+   - **"Installing dependencies"** → `installDependencies(..., selection)` (`pnpm install`, `pnpm add` runtime unless empty, `pnpm add -D` dev unless empty — a bare `add` with no packages would fail, hence they are skipped); `normalizePackageJson`; `formatProject` only with Biome (it would fail without the binary); `refreshPnpmWorkspaceExcludes(..., selection)`; `configureManifest(...)` (always, last: writes `raulmoracode.json` with the sha256 of the managed files as they are on disk after `formatProject`, before the initial commit). Returns `"Dependencies installed"`.
    - **"Initializing Git"** → `initRepository` + `pnpm exec husky` only with Husky. **"Configuring remote"** → `addRemote`. **"Creating initial commit"** → `createCommit`. **"Pushing to GitHub"** → `remoteHasDivergentCommits` (if `true`, error with `REMOTE_CONFLICT_MESSAGE`) otherwise `push` (`push -u origin main`, never `--force`).
 6. `showSummary({ projectName, githubUrl, frameworkLabel, shadcn: selection.shadcn })` (registry hint only with shadcn).
 7. `promptOpenInVscode()`; if yes, `exec("code", ["."], { cwd: projectDir })`. If `code` is missing → warning (not fatal); on any other failure → generic warning (not fatal).
@@ -224,10 +230,10 @@ Internal functions:
 
 - `PNPM_VERSION = "12.6.0"` — version pinned in `packageManager` of generated projects.
 - `REQUIRED_PNPM_MAJOR` — major derived from `PNPM_VERSION` (`12`); the preflight requires the user's pnpm to match it.
-- `HUSKY_VERSION = "9.1.7"`, `COMMITLINT_CLI_VERSION = "21.2.3"`, `COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3"`, `CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1"`.
+- `HUSKY_VERSION = "9.1.7"`, `COMMITLINT_CLI_VERSION = "21.2.3"`, `COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3"`, `CLASS_VARIANCE_AUTHORITY_VERSION = "0.7.1"`, `TW_ANIMATE_CSS_VERSION = "1.4.0"` (the last one only with the `theme` preset).
 - `PROJECT_AUTHOR = { name: "Raul Mora", url: "https://raulmoracode.com" }`.
 - `runtimeDependencies(selection = FULL_TECH_SELECTION): Record<string,string>` — exact pins filtered by selection: `zustand 5.0.15` (only if `zustand`), `react-hook-form 7.89.0` + `zod 4.6.5` (only if `forms`), `@tanstack/react-query 5.104.0` (only if `tanstack-query`).
-- `devDependencies(framework, selection = FULL_TECH_SELECTION): Record<string,string>` — common filtered by selection: `@biomejs/biome 2.5.14` (only if `biome`), `vitest 5.0.2` + `@testing-library/react 16.3.3` + `@testing-library/dom 10.4.2` + `jsdom 30.1.1` (only if `testing`), `clsx 2.1.1` + `tailwind-merge 3.7.0` + `class-variance-authority 0.7.1` (only if `shadcn`), `husky` + `@commitlint/cli` + `@commitlint/config-conventional` (only if `husky`), `tailwindcss 4.3.3` (only if `tailwind`); plus `@tailwindcss/vite 4.3.3` (vite, only if `tailwind`) or `@tailwindcss/postcss 4.3.3` + `postcss 8.5.6` (next, only if `tailwind`).
+- `devDependencies(framework, selection = FULL_TECH_SELECTION): Record<string,string>` — common filtered by selection: `@biomejs/biome 2.5.14` (only if `biome`), `vitest 5.0.2` + `@testing-library/react 16.3.3` + `@testing-library/dom 10.4.2` + `jsdom 30.1.1` (only if `testing`), `clsx 2.1.1` + `tailwind-merge 3.7.0` + `class-variance-authority 0.7.1` (only if `shadcn`), `husky` + `@commitlint/cli` + `@commitlint/config-conventional` (only if `husky`), `tailwindcss 4.3.3` (only if `tailwind`), `tw-animate-css 1.4.0` (only if `theme`); plus `@tailwindcss/vite 4.3.3` (vite, only if `tailwind`) or `@tailwindcss/postcss 4.3.3` + `postcss 8.5.6` (next, only if `tailwind`).
 - `pnpmInstallArgs(): string[]` → `["install"]`.
 - `pnpmAddArgs(deps) / pnpmAddDevArgs(deps)` — build `["add", …"name@version"]` (plus `"-D"`).
 - `stripRangePrefix(version)` (private) — removes leading `^`/`~`.
@@ -260,17 +266,18 @@ Internal functions:
 
 - `configure-shadcn.ts` — `configureShadcn(projectDir, framework)`: writes `components.json` (with `framework.componentsJsonOptions()`), `src/lib/utils.ts` (`cn()`) and the `@raulmoracode` registry path aliases in every tsconfig present (`ensureRegistryAliases`, merged via pure `withRegistryAliases()`, missing files skipped).
 - `configure-readme.ts` — `configureReadme(projectDir, framework, projectName, githubUrl, selection = FULL_TECH_SELECTION)`: overwrites the scaffold `README.md` with `readmeMd(...)` using the final `package.json` scripts plus framework pins and `runtime/devDependencies` versions.
+- `configure-site.ts` — `configureSite(projectDir, projectName)`: writes `src/config/site.ts` from `siteValues({ projectName, packageJson })` (`siteConfigTs()`), seeding the title from the project name and the description from the stack actually pinned in `package.json`. Runs before the framework branding so both consumers can read it.
 - `configure-theme.ts` — `themeAddArgs()` (pure `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`) + `applyRegistryTheme(projectDir, framework, verbose)`: runs the shadcn CLI, removes its `src/`-prefixed junk (`src/package.json`, `src/tsconfig.json`, `src/postcss.config.mjs`, plus `src/app/globals.css` on Vite where tokens already landed in the entry CSS) and restores registry aliases. Runs after shadcn, before `patchPackageJson`.
 - `configure-testing.ts` — `configureTesting(projectDir)`: writes `vitest.config.ts` and `src/test/smoke.test.tsx`.
 - `configure-vscode.ts` — `configureVscode(projectDir)`: writes `.vscode/settings.json` and `.vscode/extensions.json`.
 - `configure-git-hooks.ts` — `configureGitHooks(projectDir, selection = FULL_TECH_SELECTION)`: writes `.husky/pre-commit` (`huskyPreCommit(selection)`), `.husky/commit-msg`, marks both executable, and writes `commitlint.config.ts`.
 - `configure-changelog.ts` — `configureChangelog(projectDir)`: writes `CHANGELOG.md` (`changelogMd()`).
 - `configure-ci.ts` — `configureCi(projectDir)`: writes `.github/workflows/ci.yml` (`ciWorkflowYaml()`).
-- `configure-manifest.ts` — `buildProjectManifest(identity, files)` (pure) + `collectManagedFileHashes(projectDir, framework, selection)` + `configureManifest(projectDir, identity)`: writes `raulmoracode.json`, the last step of the "Creating project" task (so it is part of the initial commit). `identity` is `{ framework, projectName, githubUrl, selection, cliVersion }` (`cliVersion` = `VERSION`). The `files` map is hashed from the content **on disk** (read after every generator ran, never from the freshly rendered template, because Biome reformats afterwards); managed files that do not exist for the selection are skipped. `dependencies` is `managedDependencyPins(framework.id, selection)`, the exact versions the CLI pinned.
+- `configure-manifest.ts` — `buildProjectManifest(identity, files)` (pure) + `collectManagedFileHashes(projectDir, framework, selection)` + `configureManifest(projectDir, identity)`: writes `raulmoracode.json`, the last step of the "Installing dependencies" task (after `formatProject` and the workspace, so it is part of the initial commit and the hashes describe the committed bytes). `identity` is `{ framework, projectName, githubUrl, selection, cliVersion }` (`cliVersion` = `VERSION`). The `files` map is hashed from the content **on disk** (read after every generator ran and after Biome reformatted it, never from the freshly rendered template, because Biome rewrites JSON/TS); managed files that do not exist for the selection are skipped. `dependencies` is `managedDependencyPins(framework.id, selection)`, the exact versions the CLI pinned.
 
 ### 7.6 The project manifest — `raulmoracode.json`
 
-Written by `configureManifest()` at the end of the "Creating project" task, therefore present in the initial commit (a commit that a user's project can be upgraded from). It is the only state `raulmoracode-create upgrade` needs to tell the CLI's files from the user's edits:
+Written by `configureManifest()` at the end of the "Installing dependencies" task (after `formatProject` and the workspace, so the hashes describe the committed bytes), therefore present in the initial commit (a commit that a user's project can be upgraded from). It is the only state `raulmoracode-create upgrade` needs to tell the CLI's files from the user's edits:
 
 | Field | Content |
 |---|---|
@@ -311,7 +318,7 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 - `configureTailwind`: rewrites `vite.config.ts` (`react()` + `tailwindcss()` plugins, `@` → `./src` alias via `fileURLToPath`) and `src/index.css` (`@import "tailwindcss";`).
 - `configureTanStackQuery`: writes `src/lib/query-client.ts` and `main.tsx`.
 - `configureStarter`: empties `public/` and `src/assets/` (keeps the directories), writes minimal `App.tsx`, empties `App.css` (kept because `App.tsx` imports it), writes `AGENTS.md`, applies `ensurePathAlias`.
-- `configureBranding`: in `index.html`, replaces `<title>…</title>` with `<title>raulmoracode</title>` and the `<link rel="icon">` with the CDN one (`type="image/x-icon"`); clear error when both patterns are not found.
+- `configureBranding`: removes the template `<title>` and `<link rel="icon">` from `index.html` and leaves `SITE_HEAD_COMMENT` in their place; the title, favicon and social tags are rendered by the `siteHead()` plugin from `src/config/site.ts` (`transformIndexHtml`), never hardcoded in the HTML. Clear error when the head pattern is not found.
 
 ### 8.4 `frameworks/next.ts` (`id: "next"`, label `"Next.js"`)
 
@@ -324,7 +331,7 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 - `PROVIDERS_TSX` (private): `src/app/providers.tsx` (`"use client"`, `Providers` with `QueryClientProvider`).
 - `configureTailwind`: rewrites `src/app/globals.css` (`@import "tailwindcss";`) and `postcss.config.mjs` (`@tailwindcss/postcss` plugin).
 - `configureTanStackQuery`: writes `src/lib/query-client.ts` and `providers.tsx`; patches `src/app/layout.tsx` wrapping `{children}` with `<Providers>` (regex tolerant to `<body>` attributes) and adds the import; clear error on mismatch.
-- `configureBranding`: patches the layout `metadata` (`title: "raulmoracode"` + `icons: { icon: <CDN> }`, regex over any previous `title:`); deletes the default `src/app/favicon.ico`.
+- `configureBranding`: replaces the layout `metadata` export with `nextSiteMetadata()` built from `src/config/site.ts` (plus `import { site } from "@/config/site"`); deletes the default `src/app/favicon.ico`. Clear error when the `metadata` anchor (or the import) is not found.
 - `configureStarter`: empties `public/`; writes minimal `page.tsx`; deletes orphaned `page.module.css` and `CLAUDE.md`; writes `AGENTS.md` (the template's `AGENTS.md` is kept/overwritten with our own).
 
 ---
@@ -345,11 +352,11 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | `agents.ts` | `agentsMd()` | `AGENTS.md`: guidelines (source of truth, principles, dependencies, style, shadcn, architecture, validation `pnpm check/test/build`, non-destructive Git, security, dependencies, working code, final response) + `Project tooling` section (pnpm exclusively, script map, shadcn workflow) + `Git hooks and commits` section (Husky, Commitlint, Conventional Commits with types and style rules) + `Changelog` section (keep `CHANGELOG.md` updated) + `Project structure` tree + `Adding dependencies` (exact versions) + `Environment variables` + `Deployment` (manual, provider-agnostic) |
 | `args.ts` (in `cli/`, not pure-template) | `VERSION`, `parseArgs()`, `helpText()`, `printHelp()` | `--help` / `--version` output |
 | `biome.ts` | `biomeConfig()` | `biome.json`: local `$schema`, `files.includes` (`**`, `!dist`, `!.next`), 2-space formatter, `assist.actions.source.organizeImports: "on"`, linter on with `noSvgWithoutTitle`/`noAmbiguousAnchorText` `off`, `overrides` disabling formatter/linter/assist for the Tailwind entry files (`src/index.css`, `src/app/globals.css`, whose v4 directives Biome cannot parse) |
-| `branding.ts` | `SITE_TITLE = "raulmoracode"`, `FAVICON_URL = "https://cdn.raulmoracode.com/icons/favicon.ico"`, `TWITTER_CARD = "summary_large_image"`, `TWITTER_SITE_HANDLE`/`TWITTER_CREATOR_HANDLE`, `SOCIAL_IMAGE_URL`, `SOCIAL_DESCRIPTION_LIMIT = 200` | — |
+| `branding.ts` | `SITE_TITLE = "raulmoracode"`, `FAVICON_URL = "https://cdn.raulmoracode.com/icons/favicon.ico"`, `TWITTER_CARD = "summary_large_image"`, `TWITTER_SITE_HANDLE`/`TWITTER_CREATOR_HANDLE`, `SOCIAL_DESCRIPTION_LIMIT = 200` | Default constants consumed by `config/site.ts` (title, favicon, Twitter card and handles, social description cap); by itself it renders no file |
 | `commitlint.ts` | `commitlintConfig()` | `commitlint.config.ts` (`{ extends: ["@commitlint/config-conventional"] }`) |
 | `changelog.ts` | `changelogMd()` | `CHANGELOG.md` (Keep a Changelog: header + `[Unreleased]` with `Added`/`Changed`/`Fixed`) |
 | `ci.ts` | `ciWorkflowYaml()` | `.github/workflows/ci.yml` (validate-only CI: `install`/`check`/`test`/`build` on push and PR, no deploys) |
-| `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `REGISTRY_THEME_SPEC`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn) |
+| `components.ts` | `RAULMORACODE_REGISTRY_NAME/URL/CATALOG_URL/ADD_EXAMPLE`, `SHADCN_VERSION = "4.21.0"`, `REGISTRY_PATH_ALIASES`, `REGISTRY_SCOPE_EXCLUDE`, `REGISTRY_THEME_SPEC = "@raulmoracode/theme"`, `ComponentsJsonOptions`, `componentsJson({rsc, tailwindCssPath})`, `utilsTs()`, `withRegistryAliases(existing?)`, `registryScopeExcludes(selection?)` | full `components.json` (`$schema`, `new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode": "https://registry.raulmoracode.com/r/{name}.json"}`) and `cn()` with `clsx`+`tailwind-merge`; registry tsconfig aliases (`@components/*`, `@lib/*`, `@hooks/*` → `src/...`, existing entries win); scope maturity exclusion (`@raulmoracode/*`, only with shadcn). `SHADCN_VERSION` is the pinned **CLI tool** version used by every `pnpm dlx shadcn@… add` command (it is not an installed dependency); `REGISTRY_THEME_SPEC` is a registry item, so it carries no version pin |
 | `editorconfig.ts` | `editorconfigContent()` | `.editorconfig` (`root`, utf-8, lf, 2 spaces, final newline, trim) |
 | `husky.ts` | `huskyPreCommit(selection?)`, `huskyCommitMsg()` | `.husky/pre-commit` (`pnpm check` only with Biome, `pnpm test` only with testing) and `.husky/commit-msg` (`pnpm exec commitlint --edit "$1"`), always ending in `\n` |
 | `nvmrc.ts` | `NODE_VERSION = "24"`, `nvmrcContent()` | `.nvmrc` with `24` |
@@ -398,6 +405,9 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
 | `preflight.test.ts` | Full `run()` preflight with mocked Clack/exec (Node 24 only): `REQUIRED_PNPM_MAJOR` derived from `PNPM_VERSION`; pnpm 13.x or unparsable output → exact actionable error + exit 1 before any prompt; pnpm 12.x proceeds with a single `pnpm --version` call in the order pnpm → git → identity |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: weekly `schedule` + `workflow_dispatch` (no push/PR), read-only permissions, `[vite, next]` matrix with `fail-fast: false`, Node 24 + pnpm cache, frozen-lockfile install, E2E command with `E2E_FRAMEWORK: ${{ matrix.framework }}` (`tests/e2e.test.ts` + `tests/upgrade-e2e.test.ts`), observe-only (no updates, pushes or secrets) |
+| `ci-workflow.test.ts` | `.github/workflows/ci.yml`: `main` pushes + pull requests, read-only permissions, Node 24 + pnpm store cache, frozen-lockfile install, every validation step in order across all jobs, one E2E job per framework, no `--force`/history rewriting |
+| `publish-workflow.test.ts` | `.github/workflows/publish.yml`: `v*` tags only, read-only permissions, strict-semver/tag/npm-version gates, build + test before publishing, build-output and tarball verification, `gitHead` check after publishing, `npm publish --access public` with `NPM_TOKEN`, no `--force`/history rewriting |
+| `upgrade-plan.test.ts` / `upgrade-engine.test.ts` | pure `buildUpgradePlan`/`classifyManagedFiles`/`classifyDependencies` (updated/overwritten/new/removed, `hadLocalVersion`, `keptDependencies`, migration order, up-to-date and CLI-outdated) + `runUpgrade()` with mocked Clack/`exec`/`gh`: exact command order (fetch → switch → commits → push), never `--force`/`reset`/`clean`, rollback, no writes on preflight failure |
 | `upgrade-pr-body.test.ts` | `upgradePrTitle`; `upgradePrBody` (empty plan, section order, all file statuses, counts table, notes with/without `action`, unmatched overwritten file, no-content diff placeholder, pipe/newline escaping, CRLF normalisation, action items derived from notes and from Biome/testing/CI files); `unifiedDiff` (identical → `""`, single change, insertions/deletions, line and character caps), `diffLineCounts`/`diffCounts`; `truncateForGithub` (short body untouched, limit enforced, summary/⚠️/tables/action items preserved, note inserted, idempotent) |
 | `github.test.ts` | Arg builders (`gh auth status`, `gh pr list`, `gh pr create` with `--body-file` and no `--draft`, `gh repo view`); `requireGhAuth` (`GhAuthError`, `gh auth login`, missing-binary message); `findOpenPullRequest` with mocked `exec` (url, `[]`, empty, garbage, entry without url, non-zero exit → `null`); `createPullRequest` (temp file written with the exact body and removed afterwards even on failure, URL extraction, error when `gh` prints no URL); `repoDefaultBranch` (value, empty, failure) |
 | `upgrade-contract.test.ts` | Versions (`X.Y.Z`, `(from, to]` range, `notesBetween` ordering), manifest (`MANIFEST_FILE`, serialize/parse round trip with sorted maps, sha256, Spanish validation errors), managed files (exact templates, per selection and framework, never application code or user-owned docs, `managedPackageJson`/`managedDependencyPins` vs `pinnedPackages`) |
@@ -439,8 +449,10 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | clsx | 2.1.1 | | tailwind-merge | 3.7.0 |
 | class-variance-authority | 0.7.1 | | Husky | 9.1.7 |
 | @commitlint/cli | 21.2.3 | | @commitlint/config-conventional | 21.2.3 |
-| pnpm | 12.6.0 | | | |
+| pnpm | 12.6.0 | | tw-animate-css (only with theme) | 1.4.0 |
 | postcss (Next only) | 8.5.6 | | @tailwindcss/vite or /postcss | 4.3.3 |
+
+`shadcn 4.21.0` is the pinned **CLI tool** version (`SHADCN_VERSION` in `config/components.ts`), used for every `pnpm dlx shadcn@… add` command; it is never added to `package.json`. The optional theme preset applies the registry item `@raulmoracode/theme` (`REGISTRY_THEME_SPEC`, no version pin, because registry items are not npm packages) with `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite`, and pins `tw-animate-css@1.4.0` (`TW_ANIMATE_CSS_VERSION`, only when `theme` is selected).
 
 ### 14.2 Generated files (full preset)
 
@@ -450,11 +462,11 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 
 ### 14.3 Vite specifics
 
-`index.html` (`raulmoracode` title, CDN favicon), `vite.config.ts` (react + tailwind + `@` alias), `src/index.css`, `src/main.tsx` (provider), minimal `src/App.tsx` + empty `App.css`, emptied `public/` and `src/assets/`, `tsconfig.app.json` and root `tsconfig.json` with `paths @/*` (no `baseUrl`: removed in TypeScript 7).
+`index.html` (the template's `<title>` and favicon link removed, only `SITE_HEAD_COMMENT` left; the title, favicon and social tags are rendered by the `siteHead()` plugin from `src/config/site.ts`), `vite.config.ts` (react + tailwind + `@` alias), `src/config/site.ts`, `src/index.css`, `src/main.tsx` (provider), minimal `src/App.tsx` + empty `App.css`, emptied `public/` and `src/assets/`, `tsconfig.app.json` and root `tsconfig.json` with `paths @/*` (no `baseUrl`: removed in TypeScript 7).
 
 ### 14.4 Next.js specifics
 
-`src/app/{layout.tsx` (title+icons CDN, wrapped in `Providers`), minimal `page.tsx`, `providers.tsx`, `globals.css`, `postcss.config.mjs`, `error.tsx`, `not-found.tsx`}; deleted default `page.module.css`, `favicon.ico` and `CLAUDE.md`; the template's `AGENTS.md` kept and overwritten with our own.
+`src/app/{layout.tsx` (`metadata` built from `nextSiteMetadata()`/`src/config/site.ts`, wrapped in `Providers`), `src/config/site.ts`, minimal `page.tsx`, `providers.tsx`, `globals.css`, `postcss.config.mjs`, `error.tsx`, `not-found.tsx`}; deleted default `page.module.css`, `favicon.ico` and `CLAUDE.md`; the template's `AGENTS.md` kept and overwritten with our own.
 
 ---
 
@@ -465,7 +477,7 @@ Deselected techs leave no trace: no files, no scripts, no dependencies. Vite scr
 3. Prompts: framework → tech preset → name → GitHub URL (normalized without trailing `/` or `.git`).
 4. Destination: `<cwd>/<name>` (empty→reused and removed; with content→error, never deletes).
 5. `git ls-remote <url>` (access to the already-existing remote).
-6. Tasks: scaffold gated by selection → `package.json` → `.gitignore` → `raulmoracode.json` (manifest with the sha256 of the managed files on disk) → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
+6. Tasks: scaffold gated by selection (Tailwind → site config → branding → shadcn → theme → query → starter → Biome → testing → VS Code → Node → hooks → `package.json` → README → LICENSE → CHANGELOG → `.gitignore` → CI) → installs (`install`+`add`+`add -D`, skipping empty adds) → normalization → `biome check --write` (only with Biome) → pnpm workspace → `raulmoracode.json` (manifest with the sha256 of the managed files on disk after formatting) → git init/`-M main` (+ `pnpm exec husky` only with Husky) → remote → `add .`+commit → fetch+divergence check → `push -u origin main`.
 7. Summary (framework, `./<name>`, URL) → `¿Quieres abrir el proyecto ahora?` → `code .` (tolerant) → farewell.
 8. Errors: `failedStep` recorded per task; cleanup when everything was CLI-created (never on push failure; empty-dir restore on pre-task failures) + actionable hint → exit 1 (130 on SIGINT/SIGTERM); Clack cancellation → clean exit 0.
 

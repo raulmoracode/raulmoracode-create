@@ -11,7 +11,7 @@ CLI published as `@raulmoracode/create` on npmjs (`https://registry.npmjs.org`).
 It exposes a single binary: `raulmoracode-create` (`./dist/index.js`).
 
 What it does: asks for framework (React+Vite / Next.js) → name → GitHub URL,
-scaffolds with the official generator (`create-vite` / `create-next-app`), applies ~12
+scaffolds with the official generator (`create-vite` / `create-next-app`), applies ~20
 configuration steps, installs dependencies with pnpm, initializes Git on `main`, creates the
 `chore: initial project setup` commit and pushes it (`push -u origin main`, never `--force`).
 
@@ -117,9 +117,11 @@ failures → `PreflightError`.
 
 **Exact order inside `tasks` (do not change without reason):**
 
-1. `Creating project`: `createProject` (delegates to the framework) → `configureTailwind`
-   (only if `selection.tailwind`) → `configureBranding` (always) → `configureShadcn` (only if
-   `selection.shadcn`) → `applyRegistryTheme` (only if `selection.theme`; needs shadcn via the
+1. `Creating project`: `createProject` (delegates to the framework) → `configureSite` (always,
+   writes `src/config/site.ts`) → `configureTailwind` (only if `selection.tailwind`) →
+   `configureBranding` (always; removes the template's own `<title>`/favicon link and lets
+   `siteHead()`/`nextSiteMetadata()` render the head from `src/config/site.ts`) →
+   `configureShadcn` (only if `selection.shadcn`) → `applyRegistryTheme` (only if `selection.theme`; needs shadcn via the
    tech cascade; removes the CLI's `src/`-prefixed junk and restores aliases; must run before
    `patchPackageJson` because the theme overwrites `package.json`) → `configureTanStackQuery` (only if `selection.tanstack-query`) → `configureStarter?.()`
    (optional, always) → `configureBiome` (only if `selection.biome`) → `configureTesting`
@@ -131,12 +133,13 @@ failures → `PreflightError`.
    Husky/Commitlint devDeps without Husky) → `configureReadme(...)` (always, after the
    patch so the scripts table matches the final `package.json`) → `writeProjectLicense(...)`
    (always, current year from `run.ts`) → `configureChangelog(...)` (always) →
-    `augmentGitignore` (always) → `configureCi(...)` (always, `.github/workflows/ci.yml`) →
-   `configureManifest(...)` (always, last step: writes `raulmoracode.json` with the sha256 of the
-   managed files as they are on disk, before the initial commit).
+   `augmentGitignore` (always) → `configureCi(...)` (always, `.github/workflows/ci.yml`).
 2. `Installing dependencies`: `installDependencies` (`pnpm install --no-frozen-lockfile` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
-   `formatProject` (`pnpm exec biome check --write .`) → `refreshPnpmWorkspaceExcludes`.
+   `formatProject` (only if `selection.biome`, it would fail without the binary: `pnpm exec biome check --write .`) →
+   `refreshPnpmWorkspaceExcludes` → **`configureManifest(...)`** (always, last step: writes
+   `raulmoracode.json` with the sha256 of the managed files **as they are on disk after
+   Biome reformatted them**, so the manifest is part of the initial commit).
 3. `Initializing Git`: `initRepository` (`git init` + `branch -M main`) → **`pnpm exec husky`**
    (sets `core.hooksPath=.husky/_`; must run AFTER init — the install-time `prepare`
    runs without `.git` and only warns `.git can't be found`).
@@ -296,6 +299,12 @@ remote. PR bodies are English; CLI messages are Spanish.
   new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode":
   "https://registry.raulmoracode.com/r/{name}.json"}`); the minimum with only `registries` is
   rejected. `cn()` requires `clsx` + `tailwind-merge`.
+- Theme (`@raulmoracode/theme`, optional preset, requires shadcn): `REGISTRY_THEME_SPEC`
+  carries no version pin (registry item, not an npm package), applied via
+  `pnpm dlx shadcn@4.21.0 add @raulmoracode/theme --yes --overwrite` (`SHADCN_VERSION`
+  is the pinned shadcn CLI tool version in `config/components.ts`); the preset pins
+  `tw-animate-css@1.4.0` (`TW_ANIMATE_CSS_VERSION` in `generators/configure-project.ts`,
+  only with `theme`).
 - shadcn on Vite needs the `@/*` alias in **three** places: `vite.config.ts` (via
   `fileURLToPath`), `tsconfig.app.json` and the root `tsconfig.json` (the shadcn CLI only reads the
   root one; without it, a literal `@/` folder is created). Tsconfigs are parsed as JSONC.
@@ -318,13 +327,20 @@ remote. PR bodies are English; CLI messages are Spanish.
 | `generators.test.ts` | each `configure*` against temp dirs (+ executable bit except win32), `configureManifest` (identity, pins, sha256 taken from disk, missing files skipped, hooks untouched) |
 | `install.test.ts` | `installDependencies` with mocked `exec`: `install`→`add`→`add -D` order, `cwd`, PostCSS variant on Next |
 | `package-metadata.test.ts` | own metadata + `prepare: husky` and exact pins of generated projects |
-| `git/exec/error-handling.test.ts` | git constructors, real `exec`, remote divergence, `PreflightError`, `REMOTE_CONFLICT_MESSAGE` |
+| `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ `--version`), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
+| `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/`exec`, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
+| `git.test.ts` | git arg builders (init, `branch -M main`, `remote add`, `add .`, `commit`, push without force) + real Git in temp dirs: init on `main`, remote, initial commit, push to a bare repo |
+| `exec.test.ts` | real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
+| `error-handling.test.ts` | mocked `exec` (`importOriginal` + override): missing pnpm/git, non-zero exits, `remoteHasDivergentCommits` (diverge / ancestor / no branch / same), `PreflightError`, invalid URLs, `REMOTE_CONFLICT_MESSAGE` |
 | `upgrade-pr-body.test.ts` | `upgradePrBody` (empty plan, all statuses, notes with/without `action`, unmatched overwritten file, CRLF, pipe escaping), `unifiedDiff`/`diffLineCounts`/`diffCounts` on small inputs and caps, `truncateForGithub` (summary/⚠️/tables/action items survive, diffs trimmed, under the limit, idempotent) |
 | `github.test.ts` | `gh` arg builders (never `--draft`), `requireGhAuth` (`GhAuthError`, `gh auth login`), `findOpenPullRequest` with mocked `exec` (JSON, empty, garbage, no url, non-zero exit → `null`), `createPullRequest` (`--body-file`, temp file written and removed, URL extraction), `repoDefaultBranch` |
 | `upgrade-contract.test.ts` | manifest contract (hash/serialize/parse), `managedFiles()`, `managedPackageJson()`, `managedDependencyPins()`, `notesBetween()` |
 | `upgrade-notes.test.ts` | rendered managed-template snapshot vs `src/upgrade/__snapshots__/templates.json` (deterministic, no absolute paths), `UPGRADE_NOTES` shape, every note file exists in the snapshot, notes still empty at the 1.0.8 baseline |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: schedule + `workflow_dispatch`, read-only permissions, `[vite, next]` matrix, Node 24, frozen-lockfile install, E2E command with `E2E_FRAMEWORK` from the matrix, observe-only |
+| `ci-workflow.test.ts` | `.github/workflows/ci.yml`: `main` pushes + PRs, read-only permissions, Node 24 + pnpm store cache, frozen-lockfile install, every validation step in order across all jobs, one E2E job per framework, never `--force`/history rewriting |
+| `publish-workflow.test.ts` | `.github/workflows/publish.yml`: `v*` tags only, read-only permissions, strict-semver / tag / npm-version gates, build + test before publish, build-output and tarball verification, `gitHead` check, `npm publish --access public` with `NPM_TOKEN`, never `--force`/history rewriting |
 | `upgrade-plan.test.ts` / `upgrade-engine.test.ts` | pure `buildUpgradePlan`/`classifyManagedFiles`/`classifyDependencies` (updated/overwritten/new/removed, `hadLocalVersion`, `keptDependencies`, migration order, up-to-date and CLI-outdated) + `runUpgrade()` with mocked Clack/`exec`/gh: exact command order (fetch → switch → commits → push), never `--force`/`reset`/`clean`, rollback, no writes on preflight failure |
+| `upgrade-migrations.test.ts` | the write-once migrations (`.gitignore` entries, `src/config/site.ts` fields, `README.md` structure): what each merges, idempotency (a second run writes nothing), absent and user-reshaped files left untouched, registry selection per version range |
 | `upgrade-e2e.test.ts` | opt-in: real `run()` (mocked Clack) creates the project against a local bare remote, then a real `runUpgrade()` rewinds the manifest, overwrites a locally edited managed file, creates `chore/raulmoracode-update-<version>`, commits twice (`chore: upgrade …` + `chore: overwrite locally modified files` carrying only that file), pushes it and produces the PR body; no `.new` file is left behind and a second run is a no-op |
 | `e2e.test.ts` | opt-in via `E2E_FRAMEWORK=vite` or `next` (skipped by plain `pnpm test`): full `run()` with mocked Clack and real `exec` (except `ls-remote` and remote rewrite to local bare): pins, files, `node_modules`, workspace, branding/starter per framework, `pnpm check` + `vitest run` + `build`, initial commit and push |
 

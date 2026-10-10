@@ -325,8 +325,14 @@ describe("dependency classification", () => {
 });
 
 describe("migrations", () => {
-  it("keeps the registry empty until a version needs one", () => {
+  it("selects nothing when the target is not newer than the manifest", () => {
     expect(selectMigrations("1.0.8", "1.0.7")).toEqual([]);
+    expect(selectMigrations("1.0.8", "1.0.8")).toEqual([]);
+  });
+
+  it("selects the registered migrations once the project crosses their version", () => {
+    expect(selectMigrations("1.0.8", "1.0.9").length).toBeGreaterThan(0);
+    expect(selectMigrations("1.0.8", "1.0.8")).toEqual([]);
   });
 
   it("selects the migrations in (from, to] ascending", () => {

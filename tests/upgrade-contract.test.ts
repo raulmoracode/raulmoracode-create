@@ -3,6 +3,7 @@ import { agentsMd } from "../src/config/agents.js";
 import { biomeConfig } from "../src/config/biome.js";
 import { componentsJson } from "../src/config/components.js";
 import { huskyPreCommit } from "../src/config/husky.js";
+import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { FULL_TECH_SELECTION, type TechSelection } from "../src/config/tech.js";
 import { getFramework } from "../src/frameworks/index.js";
 import {
@@ -137,6 +138,9 @@ describe("managed files", () => {
     const files = managedFiles("vite", FULL_TECH_SELECTION);
     expect(files["biome.json"]).toBe(biomeConfig());
     expect(files["AGENTS.md"]).toBe(agentsMd());
+    expect(files[".github/pull_request_template.md"]).toBe(
+      pullRequestTemplate(),
+    );
     expect(files[".husky/pre-commit"]).toBe(
       huskyPreCommit(FULL_TECH_SELECTION),
     );
@@ -150,6 +154,7 @@ describe("managed files", () => {
   it("follows the tech selection and framework", () => {
     expect(Object.keys(managedFiles("vite", NONE)).sort()).toEqual([
       ".editorconfig",
+      ".github/pull_request_template.md",
       ".github/workflows/ci.yml",
       ".nvmrc",
       "AGENTS.md",
