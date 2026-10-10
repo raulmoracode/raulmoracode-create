@@ -245,6 +245,26 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
     });
   }
   root.push({
+    name: "package.json",
+    comment: "scripts + exact pinned versions",
+  });
+  root.push({
+    name: "tsconfig.json",
+    comment: "TypeScript config (@/* alias)",
+  });
+  if (frameworkId === "vite" && selection.tailwind) {
+    root.push({
+      name: "vite.config.ts",
+      comment: "Vite + Tailwind + site head",
+    });
+  }
+  if (frameworkId === "next" && selection.tailwind) {
+    root.push({
+      name: "postcss.config.mjs",
+      comment: "Tailwind PostCSS plugin",
+    });
+  }
+  root.push({
     name: ".github/workflows/",
     comment: "CI (install, check, test, build)",
   });
@@ -278,9 +298,13 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
       name: "pnpm-workspace.yaml",
       comment: "minimumReleaseAge policy + excludes",
     },
+    { name: ".nvmrc", comment: "pinned Node version" },
+    { name: ".editorconfig", comment: "editor defaults" },
     { name: "LICENSE", comment: "MIT license" },
     { name: "CHANGELOG.md", comment: "project changelog" },
+    { name: "README.md", comment: "project guide" },
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },
+    { name: "raulmoracode.json", comment: "CLI manifest (upgrade tracking)" },
   );
   return ["```text", ...renderTree(root), "```"];
 }
