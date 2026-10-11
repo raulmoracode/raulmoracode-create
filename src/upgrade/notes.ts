@@ -37,6 +37,11 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         what: "Every generated project now ships a .github/dependabot.yml that opens weekly npm-ecosystem update PRs with `versioning-strategy: increase` (exact versions stay exact, never ranges), a 7-day cooldown that mirrors the `minimumReleaseAge: 10080` gate in pnpm-workspace.yaml, and one grouped PR for minor and patch bumps. Majors stay individual PRs.",
         why: "Updating dependencies was manual, and naive automation broke against the maturity gate: Dependabot would propose a release younger than 7 days that pnpm refuses to install. The cooldown mirrors the gate so Dependabot only proposes versions pnpm accepts, while security updates (exempt from the cooldown) still open immediately.",
       },
+      {
+        files: ["playwright.config.ts"],
+        what: "A new optional Playwright tech preset (E2E browser testing) ships `playwright.config.ts` (Chromium project, `webServer` on the framework dev server, `e2e/*.e2e.ts` in `testDir`), an `e2e` script (`playwright test`), the `@playwright/test` dev dependency pinned to `1.64.0`, an example `e2e/smoke.e2e.ts`, and a CI step that installs Chromium (`pnpm exec playwright install --with-deps chromium`) and runs `pnpm e2e`.",
+        why: "Projects wanted end-to-end browser coverage on top of the Vitest unit tests; Playwright is the standard E2E runner for both Vite and Next.js, with exact-version pins consistent with the rest of the generated stack and the browser binary downloaded per the pinned package version.",
+      },
     ],
   },
   {

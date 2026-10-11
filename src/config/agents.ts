@@ -141,6 +141,12 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
   if (selection.testing) {
     root.push({ name: "vitest.config.ts", comment: "test config" });
   }
+  if (selection.playwright) {
+    root.push(
+      { name: "playwright.config.ts", comment: "E2E config" },
+      { name: "e2e/", comment: "Playwright E2E tests" },
+    );
+  }
   if (selection.vscode) {
     root.push({ name: ".vscode/", comment: "VS Code settings + extensions" });
   }
@@ -198,6 +204,11 @@ function toolingScriptLines(
       "- `pnpm test` — run the test suite in watch mode (use `CI=true pnpm test` for single run).",
     );
   }
+  if (selection.playwright) {
+    lines.push(
+      "- `pnpm e2e` — run browser E2E tests with Playwright (install browsers first with `pnpm exec playwright install chromium`).",
+    );
+  }
   return lines;
 }
 
@@ -208,6 +219,9 @@ function validationCommands(selection: TechSelection): string[] {
   }
   if (selection.testing) {
     commands.push("pnpm test");
+  }
+  if (selection.playwright) {
+    commands.push("pnpm e2e");
   }
   commands.push("pnpm build");
   return commands;
@@ -231,6 +245,9 @@ function prValidationChecklist(selection: TechSelection): string[] {
   }
   if (selection.testing) {
     items.push("- [ ] `pnpm test`");
+  }
+  if (selection.playwright) {
+    items.push("- [ ] `pnpm e2e`");
   }
   items.push("- [ ] `pnpm build`");
   return items;
@@ -581,6 +598,7 @@ export function agentsMd(
     "- `pnpm typecheck` — the TypeScript checker passes",
     "- `pnpm test` — tests pass",
     "- `pnpm build` — production build succeeds",
+    ...(selection.playwright ? ["- `pnpm e2e` — browser E2E tests pass"] : []),
     "",
     "Deployment is manual. Once CI passes, deploy to your preferred hosting provider.",
     "",

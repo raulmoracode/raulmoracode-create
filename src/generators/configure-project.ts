@@ -33,6 +33,8 @@ export const HUSKY_VERSION = "9.1.7";
 export const COMMITLINT_CLI_VERSION = "21.2.3";
 export const COMMITLINT_CONFIG_CONVENTIONAL_VERSION = "21.2.3";
 
+export const PLAYWRIGHT_VERSION = "1.64.0";
+
 export function runtimeDependencies(
   selection: TechSelection = FULL_TECH_SELECTION,
 ): Record<string, string> {
@@ -63,6 +65,9 @@ export function devDependencies(
     common["@testing-library/react"] = "16.3.3";
     common["@testing-library/dom"] = "10.4.2";
     common.jsdom = "30.1.1";
+  }
+  if (selection.playwright) {
+    common["@playwright/test"] = PLAYWRIGHT_VERSION;
   }
   if (selection.shadcn) {
     common.clsx = "2.1.1";
@@ -148,6 +153,9 @@ export function projectScripts(
   }
   if (!selection.testing) {
     delete scripts.test;
+  }
+  if (!selection.playwright) {
+    delete scripts.e2e;
   }
   if (selection.husky) {
     scripts.prepare = "husky";

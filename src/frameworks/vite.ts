@@ -133,6 +133,7 @@ export const viteFramework: ProjectFramework = {
       format: "biome format --write .",
       lint: "biome lint .",
       test: "vitest",
+      e2e: "playwright test",
     };
   },
 
