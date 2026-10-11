@@ -142,7 +142,7 @@ async function projectFileExists(
 }
 
 describe("migration registry", () => {
-it("registers every write-once migration at the version it ships in", () => {
+  it("registers every write-once migration at the version it ships in", () => {
     expect(
       MIGRATIONS.map((migration) => [migration.id, migration.version]),
     ).toEqual([
@@ -157,7 +157,7 @@ it("registers every write-once migration at the version it ships in", () => {
     }
   });
 
-it("selects the migrations when the project crosses their version", () => {
+  it("selects the migrations when the project crosses their version", () => {
     // The gitignore and vscode-settings migrations ship in 1.1.0; a project
     // crossing 1.0.9 only fires the two 1.0.9 migrations.
     expect(selectMigrations("1.0.8", "1.0.9").map((entry) => entry.id)).toEqual(
@@ -174,11 +174,11 @@ it("selects the migrations when the project crosses their version", () => {
         "vscode-settings-tracked",
       ],
     );
-    // The vscode-settings-tracked migration stays dormant below 1.1.0, so the
-    // current CLI (1.0.9) never re-touches a .gitignore that already ignores
-    // `.vscode/settings.json`.
+    // The gitignore migration was bumped to 1.1.0 (for the `.env.example`
+    // negation), so a project crossing 1.0.9→1.1.0 fires it together with
+    // the vscode-settings one; the 1.0.9 CLI still re-touches nothing.
     expect(selectMigrations("1.0.9", "1.1.0").map((entry) => entry.id)).toEqual(
-      ["vscode-settings-tracked"],
+      ["gitignore-required-entries", "vscode-settings-tracked"],
     );
   });
 
