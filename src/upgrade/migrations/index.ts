@@ -3,6 +3,7 @@ import { compareVersions, isVersionInRange } from "../version.js";
 import { migrateGitignore } from "./gitignore.js";
 import { migrateReadmeStructure } from "./readme.js";
 import { migrateSiteConfig } from "./site-config.js";
+import { migrateVscodeSettingsTracked } from "./vscode-settings.js";
 
 export interface UpgradeMigration extends Migration {
   /**
@@ -27,6 +28,7 @@ export const MIGRATIONS: UpgradeMigration[] = [
   migrateGitignore,
   migrateSiteConfig,
   migrateReadmeStructure,
+  migrateVscodeSettingsTracked,
 ];
 
 export function isUpgradeMigration(

@@ -42,3 +42,39 @@ export function mergeGitignoreEntries(
     ? `${merged}\n${missing.join("\n")}\n`
     : `${missing.join("\n")}\n`;
 }
+
+/**
+ * The negation that makes `.vscode/settings.json` trackable despite the
+ * `.vscode/*` exclusion `create-vite` ships (its template only excepts
+ * `extensions.json`). `create-next-app` never ignores `.vscode`, so the
+ * exception only ever matters for Vite projects.
+ */
+export const VSCODE_SETTINGS_EXCEPTION = "!.vscode/settings.json";
+
+/** The exclusion this negation counteracts. */
+export const VSCODE_EDITOR_EXCLUSION = ".vscode/*";
+
+/**
+ * Makes `.vscode/settings.json` trackable by appending `VSCODE_SETTINGS_EXCEPTION`
+ * when the project's `.gitignore` excludes the `.vscode` directory with
+ * `VSCODE_EDITOR_EXCLUSION`. A `!` for a direct child DOES work under
+ * `.vscode/*`: that glob only excludes the entries inside the directory (git
+ * keeps descending), unlike a directory pattern like `.vscode/`, under which
+ * no exception can re-include anything. Adding the exception (instead of
+ * removing the exclusion) keeps every other editor file ignored, mirroring the
+ * template's own `!.vscode/extensions.json`. Returns `null` when there is
+ * nothing to do: no `.vscode/*` exclusion, or the exception already present.
+ */
+export function ensureVscodeSettingsTracked(content: string): string | null {
+  const lines = content.split("\n");
+  if (!lines.some((line) => line.trim() === VSCODE_EDITOR_EXCLUSION)) {
+    return null;
+  }
+  if (lines.some((line) => line.trim() === VSCODE_SETTINGS_EXCEPTION)) {
+    return null;
+  }
+  const merged = content.replace(/\s+$/, "");
+  return merged
+    ? `${merged}\n${VSCODE_SETTINGS_EXCEPTION}\n`
+    : `${VSCODE_SETTINGS_EXCEPTION}\n`;
+}

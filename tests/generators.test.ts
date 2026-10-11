@@ -110,6 +110,35 @@ describe("configureNode", () => {
     expect(second).toBe(first);
   });
 
+  it("adds the settings.json exception under the create-vite .vscode/* exclusion", async () => {
+    const dir = await makeTempDir();
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(
+      join(dir, ".gitignore"),
+      "node_modules\n\n# Editor directories and files\n.vscode/*\n!.vscode/extensions.json\n.idea\n",
+      "utf8",
+    );
+    await augmentGitignore(dir);
+    const content = await readFromFile(dir, ".gitignore");
+    expect(content).toContain(".vscode/*");
+    expect(content).toContain("!.vscode/extensions.json");
+    expect(content).toContain("!.vscode/settings.json");
+    expect(content).toContain(".env.*");
+
+    await augmentGitignore(dir);
+    expect(await readFromFile(dir, ".gitignore")).toBe(content);
+  });
+
+  it("never adds the exception when .gitignore does not exclude .vscode", async () => {
+    const dir = await makeTempDir();
+    const { writeFile } = await import("node:fs/promises");
+    await writeFile(join(dir, ".gitignore"), "node_modules\n", "utf8");
+    await augmentGitignore(dir);
+    expect(await readFromFile(dir, ".gitignore")).not.toContain(
+      "!.vscode/settings.json",
+    );
+  });
+
   it("requires at least the base ignore entries", () => {
     const entries = requiredGitignoreEntries();
     for (const required of [

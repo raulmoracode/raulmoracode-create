@@ -3,8 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  ensureVscodeSettingsTracked,
   mergeGitignoreEntries,
   REQUIRED_GITIGNORE_ENTRIES,
+  VSCODE_EDITOR_EXCLUSION,
+  VSCODE_SETTINGS_EXCEPTION,
 } from "../src/config/gitignore.js";
 import { readmeMd } from "../src/config/readme.js";
 import {
@@ -38,6 +41,7 @@ import {
   migrateSiteConfig,
   siteConfigTemplateFields,
 } from "../src/upgrade/migrations/site-config.js";
+import { migrateVscodeSettingsTracked } from "../src/upgrade/migrations/vscode-settings.js";
 import {
   MANIFEST_VERSION,
   type MigrationContext,
@@ -138,13 +142,14 @@ async function projectFileExists(
 }
 
 describe("migration registry", () => {
-  it("registers every write-once migration at its release version", () => {
+it("registers every write-once migration at the version it ships in", () => {
     expect(
       MIGRATIONS.map((migration) => [migration.id, migration.version]),
     ).toEqual([
       ["gitignore-required-entries", "1.1.0"],
       ["site-config-missing-fields", "1.0.9"],
       ["readme-project-structure", "1.0.9"],
+      ["vscode-settings-tracked", "1.1.0"],
     ]);
     for (const migration of MIGRATIONS) {
       expect(migration.description.trim(), migration.id).not.toBe("");
@@ -152,18 +157,28 @@ describe("migration registry", () => {
     }
   });
 
-  it("selects the migrations when the project crosses their version", () => {
-    // 1.0.9 only fires the two 1.0.9 migrations; the gitignore one was bumped
-    // to 1.1.0 so 1.0.9-created projects also receive the `.env.example` negation.
+it("selects the migrations when the project crosses their version", () => {
+    // The gitignore and vscode-settings migrations ship in 1.1.0; a project
+    // crossing 1.0.9 only fires the two 1.0.9 migrations.
     expect(selectMigrations("1.0.8", "1.0.9").map((entry) => entry.id)).toEqual(
       ["site-config-missing-fields", "readme-project-structure"],
     );
+  });
+
+  it("selects every registered migration when the project crosses 1.1.0", () => {
     expect(selectMigrations("1.0.6", "1.1.0").map((entry) => entry.id)).toEqual(
       [
         "site-config-missing-fields",
         "readme-project-structure",
         "gitignore-required-entries",
+        "vscode-settings-tracked",
       ],
+    );
+    // The vscode-settings-tracked migration stays dormant below 1.1.0, so the
+    // current CLI (1.0.9) never re-touches a .gitignore that already ignores
+    // `.vscode/settings.json`.
+    expect(selectMigrations("1.0.9", "1.1.0").map((entry) => entry.id)).toEqual(
+      ["vscode-settings-tracked"],
     );
   });
 
@@ -290,6 +305,121 @@ describe(".gitignore migration", () => {
       mergeGitignoreEntries(`${REQUIRED_GITIGNORE_ENTRIES.join("\n")}\n`),
     ).toBeNull();
     expect(mergeGitignoreEntries("a\nb\n", [])).toBeNull();
+  });
+});
+
+describe(".vscode/settings.json migration", () => {
+  /** Exactly what create-vite@9.2.1 ships: every editor file ignored but extensions.json. */
+  const VITE_GITIGNORE =
+    "# Logs\nlogs\n*.log\n\nnode_modules\ndist\n\n# Editor directories and files\n.vscode/*\n!.vscode/extensions.json\n.idea\n.DS_Store\n*.sw?\n";
+
+  it("adds the exception for settings.json under the template .vscode/* exclusion", async () => {
+    const projectDir = join(workDir, "vscode-tracked-add");
+    await writeProject(projectDir, GITIGNORE_PATH, VITE_GITIGNORE);
+
+    const result = await migrateVscodeSettingsTracked.run(context(projectDir));
+
+    expect(result).toEqual({ touched: [GITIGNORE_PATH], removed: [] });
+    const content = await readProject(projectDir, GITIGNORE_PATH);
+    expect(content).toBe(`${VITE_GITIGNORE}${VSCODE_SETTINGS_EXCEPTION}\n`);
+    // Every other line survives: the exception is appended, nothing is removed.
+    expect(content).toContain(".vscode/*");
+    expect(content).toContain("!.vscode/extensions.json");
+    expect(content).toContain("node_modules");
+    expect(content).toContain("*.sw?");
+  });
+
+  it("is idempotent: the second run writes nothing", async () => {
+    const projectDir = join(workDir, "vscode-tracked-idempotent");
+    await writeProject(projectDir, GITIGNORE_PATH, VITE_GITIGNORE);
+    await migrateVscodeSettingsTracked.run(context(projectDir));
+    const first = await readProject(projectDir, GITIGNORE_PATH);
+
+    const second = await migrateVscodeSettingsTracked.run(context(projectDir));
+
+    expect(second).toEqual({ touched: [], removed: [] });
+    expect(await readProject(projectDir, GITIGNORE_PATH)).toBe(first);
+  });
+
+  it("leaves a .gitignore without the .vscode/* exclusion alone", async () => {
+    // create-next-app's template never ignores `.vscode`, so settings.json is
+    // already trackable and the migration must not add any noise.
+    const projectDir = join(workDir, "vscode-tracked-next");
+    const nextGitignore =
+      "# deps\n/node_modules\n\n# next.js\n/.next/\n/out/\n";
+    await writeProject(projectDir, GITIGNORE_PATH, nextGitignore);
+
+    const result = await migrateVscodeSettingsTracked.run(context(projectDir));
+
+    expect(result).toEqual({ touched: [], removed: [] });
+    expect(await readProject(projectDir, GITIGNORE_PATH)).toBe(nextGitignore);
+  });
+
+  it("does not resurrect a .gitignore the project deleted", async () => {
+    const projectDir = join(workDir, "vscode-tracked-deleted");
+    await mkdir(projectDir, { recursive: true });
+
+    const result = await migrateVscodeSettingsTracked.run(context(projectDir));
+
+    expect(result).toEqual({ touched: [], removed: [] });
+    expect(await projectFileExists(projectDir, GITIGNORE_PATH)).toBe(false);
+  });
+
+  it("keeps local entries when appending the exception", async () => {
+    const projectDir = join(workDir, "vscode-tracked-local");
+    const content = ".vscode/*\n# mi regla\nmi-cache\n";
+    await writeProject(projectDir, GITIGNORE_PATH, content);
+
+    await migrateVscodeSettingsTracked.run(context(projectDir));
+
+    expect(await readProject(projectDir, GITIGNORE_PATH)).toBe(
+      `${content}${VSCODE_SETTINGS_EXCEPTION}\n`,
+    );
+  });
+
+  it("merges exactly what project creation would have written", async () => {
+    const fixture =
+      "node_modules\nsecret.txt\n# Editor\n.vscode/*\n!.vscode/extensions.json\n";
+
+    const createdDir = join(workDir, "vscode-tracked-parity-create");
+    await writeProject(createdDir, GITIGNORE_PATH, fixture);
+    await augmentGitignore(createdDir);
+    const created = await readProject(createdDir, GITIGNORE_PATH);
+
+    // The upgrade replays creation in two migrations: the required entries
+    // (migrateGitignore) and the .vscode/settings.json exception.
+    const upgradedDir = join(workDir, "vscode-tracked-parity-upgrade");
+    await writeProject(upgradedDir, GITIGNORE_PATH, fixture);
+    await migrateGitignore.run(context(upgradedDir));
+    await migrateVscodeSettingsTracked.run(context(upgradedDir));
+
+    expect(await readProject(upgradedDir, GITIGNORE_PATH)).toBe(created);
+  });
+});
+
+describe("ensureVscodeSettingsTracked", () => {
+  it("returns null when the exclusion is absent or the exception is present", () => {
+    expect(ensureVscodeSettingsTracked("node_modules\n")).toBeNull();
+    expect(
+      ensureVscodeSettingsTracked(`.vscode/*\n${VSCODE_SETTINGS_EXCEPTION}\n`),
+    ).toBeNull();
+    expect(ensureVscodeSettingsTracked("")).toBeNull();
+  });
+
+  it("appends the exception to an empty-ish file that still excludes .vscode", () => {
+    expect(ensureVscodeSettingsTracked(VSCODE_EDITOR_EXCLUSION)).toBe(
+      `${VSCODE_EDITOR_EXCLUSION}\n${VSCODE_SETTINGS_EXCEPTION}\n`,
+    );
+  });
+
+  it("counteracts the very exclusion create-vite ships", () => {
+    const next = ensureVscodeSettingsTracked(
+      `# Editor directories and files\n${VSCODE_EDITOR_EXCLUSION}\n!.vscode/extensions.json\n`,
+    );
+    expect(next).toContain(VSCODE_SETTINGS_EXCEPTION);
+    expect(next?.indexOf(VSCODE_SETTINGS_EXCEPTION) ?? -1).toBeGreaterThan(
+      next?.indexOf(VSCODE_EDITOR_EXCLUSION) ?? -1,
+    );
   });
 });
 
