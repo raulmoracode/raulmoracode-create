@@ -874,6 +874,8 @@ describe("Pull request template", () => {
     expect(content).toContain("Briefly describe what this PR does and why");
     expect(content).toContain("- [ ] `pnpm check`");
     expect(content).toContain("- [ ] `pnpm test`");
+    expect(content).toContain("- [ ] `pnpm e2e`");
+    expect(content).toContain("- [ ] `pnpm typecheck`");
     expect(content).toContain("- [ ] `pnpm build`");
     expect(content).toContain('or write "None"');
     expect(content).not.toContain("TODO");
@@ -893,9 +895,47 @@ describe("Pull request template", () => {
     }
   });
 
+  it("tells the author to write the PR body in English", () => {
+    expect(pullRequestTemplate()).toContain(
+      "<!-- Write the PR body in English -->",
+    );
+  });
+
+  it("gates the checklist on the tech selection", () => {
+    const noBiome = pullRequestTemplate({
+      ...FULL_TECH_SELECTION,
+      biome: false,
+    });
+    expect(noBiome).not.toContain("`pnpm check`");
+    expect(noBiome).toContain("- [ ] `pnpm test`");
+    expect(noBiome).toContain("- [ ] `pnpm typecheck`");
+    expect(noBiome).toContain("- [ ] `pnpm build`");
+
+    const bare = pullRequestTemplate({
+      tailwind: false,
+      shadcn: false,
+      theme: false,
+      "tanstack-query": false,
+      zustand: false,
+      forms: false,
+      biome: false,
+      testing: false,
+      playwright: false,
+      husky: false,
+      vscode: false,
+    });
+    expect(bare).not.toContain("`pnpm check`");
+    expect(bare).not.toContain("`pnpm test`");
+    expect(bare).not.toContain("`pnpm e2e`");
+    expect(bare).toContain("- [ ] `pnpm typecheck`");
+    expect(bare).toContain("- [ ] `pnpm build`");
+  });
+
   it("pins the exact bytes", () => {
     expect(pullRequestTemplate()).toBe(
       [
+        "<!-- Write the PR body in English -->",
+        "",
         "## Summary",
         "",
         "<!-- Briefly describe what this PR does and why. -->",
@@ -913,6 +953,8 @@ describe("Pull request template", () => {
         "",
         "- [ ] `pnpm check`",
         "- [ ] `pnpm test`",
+        "- [ ] `pnpm e2e`",
+        "- [ ] `pnpm typecheck`",
         "- [ ] `pnpm build`",
         "",
         "## Breaking changes",

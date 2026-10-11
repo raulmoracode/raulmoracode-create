@@ -52,6 +52,16 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         what: "The project structure tree in AGENTS.md (and the shared renderer that also feeds README.md) now reflects the files actually present on disk: `raulmoracode-create upgrade` detects the tree paths that exist in the project and re-renders AGENTS.md without the paths that no longer exist (a file the user deleted disappears from the tree instead of being resurrected; a directory is only kept when it exists or still has existing children).",
         why: "AGENTS.md is a managed file re-rendered on every upgrade, but it was rebuilt from the framework and the tech selection alone, so a user who deleted a file saw it reappear in the tree after the upgrade, contradicting the repository state the document itself tells agents to trust. Pruning the tree by what is on disk makes the guide match the project it documents.",
       },
+      {
+        files: [".github/pull_request_template.md"],
+        what: "The pull request template is now selection-aware: `pnpm check` only appears when Biome is selected, `pnpm test` only with testing and `pnpm e2e` only with Playwright, while `pnpm typecheck` and `pnpm build` always appear. It also starts with a `<!-- Write the PR body in English -->` comment.",
+        why: "The template hardcoded `pnpm check` and `pnpm test` in every project, so the checklist listed commands whose scripts did not exist in projects without Biome or testing; and pull request bodies were being written in Spanish while the project language is English.",
+      },
+      {
+        files: ["AGENTS.md"],
+        what: "The `## Pull requests` section now embeds the exact pull request body template through the same single source as `.github/pull_request_template.md` (selection-aware checklist) and explicitly tells agents to write pull request titles and bodies in English.",
+        why: "The AGENTS.md embedded copy duplicated the template file and could diverge from it, and agents were generating pull request bodies in Spanish; the shared source keeps both copies in sync and the language rule makes PRs reviewable by anyone.",
+      },
     ],
   },
   {

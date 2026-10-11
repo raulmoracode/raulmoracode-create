@@ -300,7 +300,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
           message("Configuring Dependabot");
           await configureDependabot(projectDir);
           message("Configuring pull request template");
-          await configurePrTemplate(projectDir);
+          await configurePrTemplate(projectDir, selection);
           return "Project created";
         },
       },
