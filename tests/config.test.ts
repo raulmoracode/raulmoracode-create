@@ -452,7 +452,7 @@ describe("Tailwind configuration", () => {
     const content = viteTailwindConfig();
     expect(content).toContain('import tailwindcss from "@tailwindcss/vite"');
     expect(content).toContain("plugins: [react(), tailwindcss(), siteHead()]");
-    expect(content).toContain('import { site } from "./src/config/site";');
+    expect(content).toContain('import { site } from "./src/config/site.js";');
     expect(content).toContain("transformIndexHtml");
   });
 
@@ -469,7 +469,7 @@ describe("Tailwind configuration", () => {
 
   it("vite config without tailwind still wires the site head and the alias", () => {
     const content = viteBaseConfig();
-    expect(content).toContain('import { site } from "./src/config/site";');
+    expect(content).toContain('import { site } from "./src/config/site.js";');
     expect(content).toContain("plugins: [react(), siteHead()]");
     expect(content).toContain("transformIndexHtml");
     expect(content).toContain('"@": fileURLToPath(new URL("./src"');
@@ -627,12 +627,13 @@ describe("Commitlint configuration", () => {
 });
 
 describe("CI workflow template", () => {
-  it("generates ci.yml with install, check, test and build steps", () => {
+  it("generates ci.yml with install, check, typecheck, test and build steps", () => {
     const content = ciWorkflowYaml();
     expect(content).toContain("name: CI");
     expect(content).toContain("pull_request:");
     expect(content).toContain("pnpm install --no-frozen-lockfile");
     expect(content).toContain("pnpm check");
+    expect(content).toContain("pnpm typecheck");
     expect(content).toContain("pnpm test");
     expect(content).toContain("pnpm build");
     expect(content).not.toContain("deploy");
@@ -750,7 +751,8 @@ describe("Generated README", () => {
 
   const viteScripts: Record<string, string> = {
     dev: "vite",
-    build: "vite build",
+    build: "tsc -b && vite build",
+    typecheck: "tsc -b",
     check: "biome check .",
     format: "biome format --write .",
     lint: "biome lint .",
@@ -799,6 +801,7 @@ describe("Generated README", () => {
     expect(rows.map((row) => /`pnpm (\w+)`/.exec(row)?.[1])).toEqual([
       "dev",
       "build",
+      "typecheck",
       "check",
       "format",
       "lint",

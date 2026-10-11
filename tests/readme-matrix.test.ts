@@ -27,6 +27,7 @@ const SCRIPT_ORDER = [
   "dev",
   "build",
   "start",
+  "typecheck",
   "check",
   "format",
   "lint",
@@ -39,6 +40,7 @@ const SCRIPT_DESCRIPTIONS: Record<string, string> = {
   format: "Apply formatting",
   lint: "Run the linter",
   test: "Run the test suite (watch mode)",
+  typecheck: "Run the TypeScript type checker",
 };
 
 /**

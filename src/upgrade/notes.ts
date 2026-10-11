@@ -8,6 +8,28 @@ import { compareVersions, isVersionInRange } from "./version.js";
  */
 export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
+    version: "1.1.0",
+    summary:
+      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI, so type errors always fail the pipeline.",
+    changes: [
+      {
+        files: [".github/workflows/ci.yml"],
+        what: "The CI workflow now runs `pnpm typecheck` on every push and PR, and the Vite build script is `tsc -b && vite build` again (as create-vite ships it), so TypeScript errors fail the pipeline instead of being erased by esbuild.",
+        why: "The generated Vite projects had `vite build` as the build script, which transpiles with esbuild without type checking, so a TypeScript error never broke `pnpm build` nor CI.",
+      },
+      {
+        files: ["AGENTS.md"],
+        what: "AGENTS.md documents the new `pnpm typecheck` script and mentions it in the CI workflow description.",
+        why: "The generated project guide must list the actual scripts and CI steps so coding agents run and expect the type checker.",
+      },
+      {
+        files: ["vite.config.ts"],
+        what: 'The `vite.config.ts` template now imports the site config with an explicit `.js` extension (`import { site } from "./src/config/site.js"`).',
+        why: "create-vite's `tsconfig.node.json` type-checks `vite.config.ts` with `moduleResolution: nodenext`, which requires explicit extensions on relative imports; the extensionless import made the restored `tsc -b` type check fail.",
+      },
+    ],
+  },
+  {
     version: "1.0.9",
     summary:
       "Dynamic AGENTS.md and CI workflow that adapt to the selected tech preset, new pull request template, upgrade migrations framework, and fixes for manifest parity, README structure tree and Vite siteHead without Tailwind.",

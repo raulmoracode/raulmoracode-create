@@ -187,7 +187,9 @@ describe("configureBranding (vite)", () => {
     await viteFramework.configureBranding(dir);
 
     const viteConfig = await readFromFile(dir, "vite.config.ts");
-    expect(viteConfig).toContain('import { site } from "./src/config/site";');
+    expect(viteConfig).toContain(
+      'import { site } from "./src/config/site.js";',
+    );
     expect(viteConfig).toContain("plugins: [react(), siteHead()]");
     expect(viteConfig).toContain('"@": fileURLToPath(new URL("./src"');
     expect(viteConfig).not.toContain("tailwind");
@@ -619,7 +621,8 @@ describe("configureReadme", () => {
         name: "my-project",
         scripts: {
           dev: "vite",
-          build: "vite build",
+          build: "tsc -b && vite build",
+          typecheck: "tsc -b",
           check: "biome check .",
           test: "vitest",
           prepare: "husky",

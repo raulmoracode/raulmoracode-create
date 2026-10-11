@@ -196,6 +196,9 @@ e2e("end-to-end project creation", () => {
     expect(pkg.scripts.test).toBe("vitest");
     expect(pkg.scripts.check).toBe("biome check .");
     expect(pkg.scripts.prepare).toBe("husky");
+    expect(pkg.scripts.typecheck).toBe(
+      process.env.E2E_FRAMEWORK === "next" ? "tsc --noEmit" : "tsc -b",
+    );
     expect(pkg.dependencies.react).toBe("19.3.0");
     expect(pkg.dependencies.zustand).toBe("5.0.15");
     expect(pkg.devDependencies.husky).toBe("9.1.7");
@@ -296,6 +299,7 @@ e2e("end-to-end project creation", () => {
     );
     expect(ciWorkflow).toContain("name: CI");
     expect(ciWorkflow).toContain("pnpm check");
+    expect(ciWorkflow).toContain("pnpm typecheck");
     expect(ciWorkflow).toContain("pnpm test");
     expect(ciWorkflow).toContain("pnpm build");
     const changelog = await readFile(join(projectDir, "CHANGELOG.md"), "utf8");
@@ -409,7 +413,7 @@ e2e("end-to-end project creation", () => {
       expect(indexHtml).toContain("src/config/site.ts");
       expect(
         await readFile(join(projectDir, "vite.config.ts"), "utf8"),
-      ).toContain('import { site } from "./src/config/site";');
+      ).toContain('import { site } from "./src/config/site.js";');
       const { readdir } = await import("node:fs/promises");
       expect(await readdir(join(projectDir, "public"))).toEqual([]);
       expect(await readdir(join(projectDir, "src", "assets"))).toEqual([]);
@@ -458,6 +462,7 @@ e2e("end-to-end project creation", () => {
     }
 
     await runCommand("pnpm", ["check"], projectDir);
+    await runCommand("pnpm", ["typecheck"], projectDir);
     await runCommand("pnpm", ["exec", "vitest", "run"], projectDir, {
       CI: "true",
     });
