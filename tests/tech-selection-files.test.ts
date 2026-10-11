@@ -9,6 +9,7 @@ import { frameworks } from "../src/frameworks/index.js";
 import {
   devDependencies,
   pinnedPackages,
+  projectScripts,
   runtimeDependencies,
 } from "../src/generators/configure-project.js";
 import {
@@ -96,6 +97,61 @@ describe("dev pin: theme", () => {
       );
       expect(
         managedDependencyPins(framework.id, without("theme"))["tw-animate-css"],
+      ).toBeUndefined();
+    }
+  });
+});
+
+describe("dev pin and managed file: playwright", () => {
+  it("pins @playwright/test only with playwright", () => {
+    for (const framework of Object.values(frameworks)) {
+      expect(devDependencies(framework, withOnly("playwright"))).toEqual({
+        "@playwright/test": "1.64.0",
+      });
+      expect(
+        devDependencies(framework, {
+          ...FULL_TECH_SELECTION,
+          playwright: false,
+        })["@playwright/test"],
+      ).toBeUndefined();
+    }
+  });
+
+  it("surfaces the playwright pin through the manifest pins and workspace excludes", () => {
+    for (const framework of Object.values(frameworks)) {
+      const pins = managedDependencyPins(framework.id, FULL_TECH_SELECTION);
+      expect(pins["@playwright/test"]).toBe("1.64.0");
+      expect(pinnedPackages(framework, FULL_TECH_SELECTION)).toContain(
+        "@playwright/test@1.64.0",
+      );
+      expect(
+        managedDependencyPins(framework.id, without("playwright"))[
+          "@playwright/test"
+        ],
+      ).toBeUndefined();
+    }
+  });
+
+  it("writes playwright.config.ts only with playwright, for every framework", () => {
+    for (const framework of Object.values(frameworks)) {
+      const withOnlyFiles = managedFiles(framework.id, withOnly("playwright"));
+      expect(withOnlyFiles["playwright.config.ts"]).toBeDefined();
+      expect(withOnlyFiles["vitest.config.ts"]).toBeUndefined();
+      const withoutPlaywright = managedFiles(
+        framework.id,
+        without("playwright"),
+      );
+      expect(withoutPlaywright["playwright.config.ts"]).toBeUndefined();
+    }
+  });
+
+  it("keeps the e2e script only with playwright", () => {
+    for (const framework of Object.values(frameworks)) {
+      expect(projectScripts(framework, withOnly("playwright")).e2e).toBe(
+        "playwright test",
+      );
+      expect(
+        projectScripts(framework, without("playwright")).e2e,
       ).toBeUndefined();
     }
   });

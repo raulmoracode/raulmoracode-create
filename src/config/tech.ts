@@ -7,6 +7,7 @@ export const TECH_IDS = [
   "forms",
   "biome",
   "testing",
+  "playwright",
   "husky",
   "vscode",
 ] as const;
@@ -55,6 +56,11 @@ export const TECH_OPTIONS: TechOption[] = [
     hint: "Vitest + Testing Library y script test",
   },
   {
+    id: "playwright",
+    label: "Playwright",
+    hint: "E2E tests con navegador",
+  },
+  {
     id: "husky",
     label: "Husky + Commitlint",
     hint: "Git hooks y Conventional Commits",
@@ -75,6 +81,7 @@ export const FULL_TECH_SELECTION: TechSelection = {
   forms: true,
   biome: true,
   testing: true,
+  playwright: true,
   husky: true,
   vscode: true,
 };

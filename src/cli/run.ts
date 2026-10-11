@@ -15,6 +15,7 @@ import {
   configureEditorconfig,
   configureNode,
 } from "../generators/configure-node.js";
+import { configurePlaywright } from "../generators/configure-playwright.js";
 import { configurePrTemplate } from "../generators/configure-pr-template.js";
 import {
   installDependencies,
@@ -252,6 +253,10 @@ export async function run(options: RunOptions = {}): Promise<void> {
             message("Configuring testing");
             await configureTesting(projectDir);
           }
+          if (selection.playwright) {
+            message("Configuring Playwright");
+            await configurePlaywright(projectDir, framework);
+          }
           if (selection.vscode) {
             message("Configuring VS Code");
             await configureVscode(projectDir);
@@ -331,6 +336,9 @@ export async function run(options: RunOptions = {}): Promise<void> {
           }
           if (selection.testing) {
             message("Testing configured");
+          }
+          if (selection.playwright) {
+            message("Playwright configured");
           }
           message("Writing project manifest");
           await configureManifest(projectDir, {

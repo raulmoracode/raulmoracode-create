@@ -32,6 +32,11 @@ import {
 } from "../src/config/license.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
 import {
+  playwrightConfig,
+  playwrightPort,
+  playwrightSmokeSpec,
+} from "../src/config/playwright.js";
+import {
   collectLockedPackages,
   mergePnpmWorkspaceYaml,
   PNPM_MINIMUM_RELEASE_AGE,
@@ -536,6 +541,59 @@ describe("TanStack Query and testing configuration", () => {
   });
 });
 
+describe("Playwright configuration", () => {
+  it("pins the framework-specific dev server port", () => {
+    expect(playwrightPort("vite")).toBe(5173);
+    expect(playwrightPort("next")).toBe(3000);
+  });
+
+  it("runs e2e specs in a real Chromium browser", () => {
+    for (const framework of ["vite", "next"] as const) {
+      const content = playwrightConfig(framework);
+      expect(content).toContain('testDir: "./e2e"');
+      expect(content).toContain('testMatch: "**/*.e2e.ts"');
+      expect(content).toContain('name: "chromium"');
+      expect(content).toContain("projects:");
+      expect(content).toContain("webServer:");
+      expect(content).toContain('command: "pnpm dev"');
+      expect(content).toContain("reuseExistingServer: !process.env.CI");
+      expect(content.endsWith("\n")).toBe(true);
+    }
+  });
+
+  it("targets the framework dev server URL", () => {
+    expect(playwrightConfig("vite")).toContain("const port = 5173;");
+    expect(playwrightConfig("vite")).toContain(
+      `baseURL: \`http://localhost:\${port}\``,
+    );
+    expect(playwrightConfig("next")).toContain("const port = 3000;");
+  });
+
+  it("ships an example e2e spec that checks the home page", () => {
+    const spec = playwrightSmokeSpec();
+    expect(spec).toContain('from "@playwright/test"');
+    expect(spec).toContain('test("home page renders"');
+    expect(spec).toContain('await page.goto("/")');
+    expect(spec).toContain('page.getByText("hello")');
+    expect(spec.endsWith("\n")).toBe(true);
+  });
+
+  it("contains no tokens, credentials or machine-specific paths", () => {
+    for (const content of [
+      playwrightConfig("vite"),
+      playwrightConfig("next"),
+      playwrightSmokeSpec(),
+    ]) {
+      expect(content).not.toMatch(/ghp_/);
+      expect(content).not.toMatch(/github_pat_/);
+      expect(content).not.toMatch(/_authToken/);
+      expect(content).not.toMatch(/\/Users\//);
+      expect(content).not.toMatch(/\/home\//);
+      expect(content).not.toMatch(/[A-Z]:\\/);
+    }
+  });
+});
+
 describe("Husky hooks", () => {
   it("generates the exact pre-commit hook with trailing newline", () => {
     expect(huskyPreCommit()).toBe("pnpm check\npnpm test\n");
@@ -567,7 +625,7 @@ describe("Husky hooks", () => {
 
 describe("Tech preset", () => {
   it("full preset selects every technology", () => {
-    expect(TECH_IDS).toHaveLength(10);
+    expect(TECH_IDS).toHaveLength(11);
     for (const id of TECH_IDS) {
       expect(FULL_TECH_SELECTION[id]).toBe(true);
     }
@@ -676,6 +734,15 @@ describe("CI workflow template", () => {
     expect(content).toContain("pnpm build");
     expect(content).not.toContain("deploy");
     expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("runs the Playwright E2E steps only when playwright is selected", () => {
+    const full = ciWorkflowYaml();
+    expect(full).toContain("pnpm exec playwright install --with-deps chromium");
+    expect(full).toContain("pnpm e2e");
+    const none = ciWorkflowYaml({ ...FULL_TECH_SELECTION, playwright: false });
+    expect(none).not.toContain("playwright");
+    expect(none).not.toContain("pnpm e2e");
   });
 });
 
@@ -856,6 +923,7 @@ describe("Generated README", () => {
     zod: "4.6.5",
     "@biomejs/biome": "2.5.14",
     vitest: "5.0.2",
+    "@playwright/test": "1.64.0",
     husky: "9.1.7",
   };
 
@@ -867,6 +935,7 @@ describe("Generated README", () => {
     format: "biome format --write .",
     lint: "biome lint .",
     test: "vitest",
+    e2e: "playwright test",
     prepare: "husky",
   };
 
@@ -916,6 +985,7 @@ describe("Generated README", () => {
       "format",
       "lint",
       "test",
+      "e2e",
     ]);
     expect(content).toContain("(`dist/`)");
     expect(content).not.toContain("pnpm prepare");
@@ -932,6 +1002,7 @@ describe("Generated README", () => {
     expect(content).toContain("**React Hook Form 7.89.0 + Zod 4.6.5**");
     expect(content).toContain("**Biome 2.5.14**");
     expect(content).toContain("**Vitest 5.0.2 + Testing Library**");
+    expect(content).toContain("**Playwright 1.64.0**");
     expect(content).toContain("**Husky 9.1.7 + Commitlint**");
   });
 
@@ -1020,6 +1091,7 @@ describe("Generated README", () => {
         forms: false,
         biome: false,
         testing: false,
+        playwright: false,
         husky: false,
         vscode: false,
       },

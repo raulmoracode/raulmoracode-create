@@ -16,6 +16,7 @@ const NONE: TechSelection = {
   forms: false,
   biome: false,
   testing: false,
+  playwright: false,
   husky: false,
   vscode: false,
 };
@@ -31,6 +32,7 @@ const CORE: TechSelection = {
   testing: true,
   husky: true,
   vscode: false,
+  playwright: false,
 };
 
 /**

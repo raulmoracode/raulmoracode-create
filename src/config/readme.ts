@@ -29,6 +29,7 @@ const SCRIPT_DESCRIPTIONS: Record<string, string> = {
   format: "Apply formatting",
   lint: "Run the linter",
   test: "Run the test suite (watch mode)",
+  e2e: "Run browser E2E tests with Playwright",
   typecheck: "Run the TypeScript type checker",
 };
 
@@ -41,6 +42,7 @@ const SCRIPT_ORDER = [
   "format",
   "lint",
   "test",
+  "e2e",
 ];
 
 function buildDescription(frameworkId: Framework): string {
@@ -124,6 +126,11 @@ function techStack(
   if (selection.testing) {
     rows.push(
       `- **Vitest${versioned(versions, "vitest")} + Testing Library** — tests run in \`jsdom\``,
+    );
+  }
+  if (selection.playwright) {
+    rows.push(
+      `- **Playwright${versioned(versions, "@playwright/test")}** — E2E tests in a real Chromium browser`,
     );
   }
   if (selection.husky) {
@@ -300,6 +307,12 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
   if (selection.testing) {
     root.push({ name: "vitest.config.ts", comment: "test config" });
   }
+  if (selection.playwright) {
+    root.push(
+      { name: "playwright.config.ts", comment: "E2E config" },
+      { name: "e2e/", comment: "Playwright E2E tests" },
+    );
+  }
   if (selection.vscode) {
     root.push({ name: ".vscode/", comment: "VS Code settings + extensions" });
   }
@@ -398,6 +411,11 @@ export function readmeMd(options: ReadmeOptions): string {
     "- `pnpm typecheck` — the TypeScript checker passes",
     "- `pnpm test` — tests pass",
     "- `pnpm build` — production build succeeds",
+    ...(selection.playwright
+      ? [
+          "- `pnpm e2e` — browser E2E tests pass (Playwright installs Chromium on the runner)",
+        ]
+      : []),
     "",
     "Deployment is manual: once CI passes, deploy to your preferred hosting provider.",
   );

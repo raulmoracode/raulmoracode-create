@@ -16,6 +16,12 @@ export function ciWorkflowYaml(
     "      - run: pnpm typecheck",
     ...(selection.testing ? ["      - run: pnpm test"] : []),
     "      - run: pnpm build",
+    ...(selection.playwright
+      ? [
+          "      - run: pnpm exec playwright install --with-deps chromium",
+          "      - run: pnpm e2e",
+        ]
+      : []),
   ];
   return [
     "name: CI",

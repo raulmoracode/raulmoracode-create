@@ -46,6 +46,7 @@ describe("installDependencies", () => {
     expect(third.args).toContain("vitest@5.0.2");
     expect(third.args).toContain("@testing-library/react@16.3.3");
     expect(third.args).toContain("@testing-library/dom@10.4.2");
+    expect(third.args).toContain("@playwright/test@1.64.0");
     expect(third.args).toContain("clsx@2.1.1");
     expect(third.args).toContain("tailwind-merge@3.7.0");
     expect(third.args).toContain("class-variance-authority@0.7.1");
@@ -84,6 +85,7 @@ describe("installDependencies", () => {
       forms: false,
       biome: false,
       testing: false,
+      playwright: false,
       husky: false,
       vscode: false,
     });
@@ -108,6 +110,7 @@ describe("installDependencies", () => {
       forms: false,
       biome: true,
       testing: false,
+      playwright: false,
       husky: false,
       vscode: false,
     });

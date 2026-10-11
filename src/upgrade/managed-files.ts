@@ -7,6 +7,7 @@ import { dependabotYaml } from "../config/dependabot.js";
 import { editorconfigContent } from "../config/editorconfig.js";
 import { huskyCommitMsg, huskyPreCommit } from "../config/husky.js";
 import { nvmrcContent } from "../config/nvmrc.js";
+import { playwrightConfig } from "../config/playwright.js";
 import { pullRequestTemplate } from "../config/pull-request.js";
 import { nextPostcssConfig, viteTailwindConfig } from "../config/tailwind.js";
 import type { TechSelection } from "../config/tech.js";
@@ -59,6 +60,9 @@ export function managedFiles(
   }
   if (selection.testing) {
     files["vitest.config.ts"] = vitestConfig();
+  }
+  if (selection.playwright) {
+    files["playwright.config.ts"] = playwrightConfig(frameworkId);
   }
   if (selection.vscode) {
     files[".vscode/settings.json"] = vscodeSettings();

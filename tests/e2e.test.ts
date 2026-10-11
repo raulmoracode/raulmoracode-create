@@ -80,6 +80,7 @@ vi.mock("@clack/prompts", () => ({
     "forms",
     "biome",
     "testing",
+    "playwright",
     "husky",
     "vscode",
   ]),
