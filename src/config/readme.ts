@@ -29,12 +29,14 @@ const SCRIPT_DESCRIPTIONS: Record<string, string> = {
   format: "Apply formatting",
   lint: "Run the linter",
   test: "Run the test suite (watch mode)",
+  typecheck: "Run the TypeScript type checker",
 };
 
 const SCRIPT_ORDER = [
   "dev",
   "build",
   "start",
+  "typecheck",
   "check",
   "format",
   "lint",
@@ -270,7 +272,7 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
   }
   root.push({
     name: ".github/workflows/",
-    comment: "CI (install, check, test, build)",
+    comment: "CI (install, check, typecheck, test, build)",
   });
   root.push({ name: "src/", children: srcChildren(frameworkId, selection) });
   if (selection.shadcn) {
@@ -389,6 +391,7 @@ export function readmeMd(options: ReadmeOptions): string {
     "",
     "- `pnpm install` — dependencies resolve correctly",
     "- `pnpm check` — code is formatted and linted",
+    "- `pnpm typecheck` — the TypeScript checker passes",
     "- `pnpm test` — tests pass",
     "- `pnpm build` — production build succeeds",
     "",

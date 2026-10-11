@@ -113,7 +113,7 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
   }
   root.push({
     name: ".github/workflows/",
-    comment: "CI (install, check, test, build)",
+    comment: "CI (install, check, typecheck, test, build)",
   });
   root.push({ name: "src/", children: srcChildren(frameworkId, selection) });
   if (selection.shadcn) {
@@ -181,6 +181,7 @@ function toolingScriptLines(
   if (frameworkId === "next") {
     lines.push("- `pnpm start` — start the production server.");
   }
+  lines.push("- `pnpm typecheck` — run the TypeScript type checker.");
   if (selection.biome) {
     lines.push(
       "- `pnpm check` — run the formatter and linter check.",
@@ -573,6 +574,7 @@ export function agentsMd(
     "",
     "- `pnpm install` — dependencies resolve correctly",
     "- `pnpm check` — code is formatted and linted",
+    "- `pnpm typecheck` — the TypeScript checker passes",
     "- `pnpm test` — tests pass",
     "- `pnpm build` — production build succeeds",
     "",
