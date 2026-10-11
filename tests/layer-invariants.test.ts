@@ -52,6 +52,7 @@ const EFFECTFUL_UPGRADE_MODULES = [
   "upgrade/migrations/readme",
   "upgrade/migrations/site-config",
   "upgrade/migrations/support",
+  "upgrade/migrations/vscode-settings",
   "upgrade/preflight",
   "upgrade/state",
 ];

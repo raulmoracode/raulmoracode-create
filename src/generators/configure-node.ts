@@ -1,5 +1,6 @@
 import { editorconfigContent } from "../config/editorconfig.js";
 import {
+  ensureVscodeSettingsTracked,
   mergeGitignoreEntries,
   REQUIRED_GITIGNORE_ENTRIES,
 } from "../config/gitignore.js";
@@ -33,7 +34,8 @@ export async function augmentGitignore(projectDir: string): Promise<void> {
   } catch {
     content = "";
   }
-  const merged = mergeGitignoreEntries(content);
-  if (merged === null) return;
-  await writeTextFile(gitignorePath, merged);
+  const merged = mergeGitignoreEntries(content) ?? content;
+  const next = ensureVscodeSettingsTracked(merged) ?? merged;
+  if (next === content) return;
+  await writeTextFile(gitignorePath, next);
 }
