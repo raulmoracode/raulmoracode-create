@@ -9,6 +9,10 @@ export const REQUIRED_GITIGNORE_ENTRIES = [
   "dist",
   ".env",
   ".env.*",
+  // The negation must follow `.env.*` (git applies the last matching pattern),
+  // otherwise `.env.example` would be ignored and could never be committed.
+  "# Keep .env.example trackable (negates .env.*)",
+  "!.env.example",
   ".next",
   "coverage",
 ] as const;

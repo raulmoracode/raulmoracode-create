@@ -8,6 +8,7 @@ import {
 import { configureChangelog } from "../generators/configure-changelog.js";
 import { configureCi } from "../generators/configure-ci.js";
 import { configureDependabot } from "../generators/configure-dependabot.js";
+import { configureEnvExample } from "../generators/configure-env-example.js";
 import { configureGitHooks } from "../generators/configure-git-hooks.js";
 import { configureManifest } from "../generators/configure-manifest.js";
 import {
@@ -264,6 +265,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
           message("Configuring Node version");
           await configureNode(projectDir);
           await configureEditorconfig(projectDir);
+          message("Writing .env.example");
+          await configureEnvExample(projectDir, frameworkId);
           if (selection.husky) {
             message("Configuring Git hooks");
             await configureGitHooks(projectDir, selection);

@@ -14,10 +14,10 @@ export const GITIGNORE_PATH = ".gitignore";
  */
 export const migrateGitignore: UpgradeMigration = {
   id: "gitignore-required-entries",
-  version: "1.0.9",
+  version: "1.1.0",
   handles: [],
   description: `Merges the required entries into \`${GITIGNORE_PATH}\`, keeping every line the project already has.`,
-  why: "The entries `node_modules`, `dist`, `.env`, `.env.*`, `.next` and `coverage` are not managed files, so an older project never received them and risks committing build output or secrets. Merging (instead of re-rendering) keeps any entry the user added.",
+  why: "The entries `node_modules`, `dist`, `.env`, `.env.*`, `!.env.example`, `.next` and `coverage` are not managed files, so an older project never received them and risks committing build output or secrets (or ignoring `.env.example`, which must stay trackable). Merging (instead of re-rendering) keeps any entry the user added. The version was bumped to 1.1.0 so projects created by 1.0.9 also receive the `.env.example` negation.",
   async run(context): Promise<MigrationResult> {
     const written = await patchProjectFile(
       context.projectDir,

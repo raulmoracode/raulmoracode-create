@@ -26,6 +26,7 @@ import {
 import { configureChangelog } from "../src/generators/configure-changelog.js";
 import { configureCi } from "../src/generators/configure-ci.js";
 import { configureDependabot } from "../src/generators/configure-dependabot.js";
+import { configureEnvExample } from "../src/generators/configure-env-example.js";
 import { configureGitHooks } from "../src/generators/configure-git-hooks.js";
 import { configureManifest } from "../src/generators/configure-manifest.js";
 import {
@@ -111,9 +112,43 @@ describe("configureNode", () => {
 
   it("requires at least the base ignore entries", () => {
     const entries = requiredGitignoreEntries();
-    for (const required of ["node_modules", "dist", ".env", ".env.*"]) {
+    for (const required of [
+      "node_modules",
+      "dist",
+      ".env",
+      ".env.*",
+      "!.env.example",
+    ]) {
       expect(entries).toContain(required);
     }
+  });
+});
+
+describe("configureEnvExample", () => {
+  it("writes .env.example matching the managed template for both frameworks", async () => {
+    for (const framework of [viteFramework, nextFramework]) {
+      const dir = await makeTempDir();
+      await configureEnvExample(dir, framework.id);
+      const written = await readFromFile(dir, ".env.example");
+      expect(written).toBe(
+        managedFiles(framework.id, FULL_TECH_SELECTION)[".env.example"],
+      );
+      expect(written.endsWith("\n")).toBe(true);
+    }
+  });
+
+  it("uses the framework env prefix", async () => {
+    const viteDir = await makeTempDir();
+    await configureEnvExample(viteDir, "vite");
+    const vite = await readFromFile(viteDir, ".env.example");
+    expect(vite).toContain("VITE_API_URL=");
+    expect(vite).not.toContain("NEXT_PUBLIC_");
+
+    const nextDir = await makeTempDir();
+    await configureEnvExample(nextDir, "next");
+    const next = await readFromFile(nextDir, ".env.example");
+    expect(next).toContain("NEXT_PUBLIC_API_URL=");
+    expect(next).not.toContain("VITE_");
   });
 });
 

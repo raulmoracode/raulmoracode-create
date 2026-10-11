@@ -10,8 +10,13 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
     version: "1.1.0",
     summary:
-      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI so type errors always fail the pipeline, ships a Dependabot configuration (.github/dependabot.yml) that keeps dependency updates automatic with exact-version PRs aligned with the pnpm minimumReleaseAge maturity gate, and lets the project author and license be chosen at creation time (with the AGENTS.md tree labelling LICENSE as the project license instead of assuming MIT).",
+      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI so type errors always fail the pipeline, ships a Dependabot configuration (.github/dependabot.yml) that keeps dependency updates automatic with exact-version PRs aligned with the pnpm minimumReleaseAge maturity gate, lets the project author and license be chosen at creation time (with the AGENTS.md tree labelling LICENSE as the project license instead of assuming MIT), and ships a `.env.example` per framework so the environment-variable workflow AGENTS.md documents is actually possible.",
     changes: [
+      {
+        files: [".env.example"],
+        what: "Every generated project now ships a `.env.example` with commented placeholder variables (`VITE_*` on Vite, `NEXT_PUBLIC_*` plus a server-only variable on Next.js), and `.gitignore` keeps it trackable by negating the `.env.*` pattern (`!.env.example`).",
+        why: "AGENTS.md instructed coding agents to copy `.env.example` to `.env`, but no generator wrote the file and the `.env.*` pattern in `.gitignore` matched it, so the template could not even be committed. Generating the file, exempting it from the ignore rules at creation time and adding it to the gitignore upgrade migration make the documented workflow real for new and upgraded projects.",
+      },
       {
         files: ["AGENTS.md"],
         what: 'The project structure tree in AGENTS.md now labels `LICENSE` as "project license" instead of "MIT license".',
