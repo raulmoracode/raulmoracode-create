@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { agentsStructure } from "../src/config/agents.js";
+import { structurePaths } from "../src/config/project-structure.js";
 import type { TechSelection } from "../src/config/tech.js";
 import {
   ghRepoViewDefaultBranchArgs,
@@ -417,6 +419,58 @@ describe("buildUpgradePlan", () => {
       "overwritten",
     ]);
     expect(planOverwrittenFiles(plan)).toEqual(["AGENTS.md"]);
+  });
+});
+
+describe("AGENTS.md tree pruning in the upgrade plan", () => {
+  const full = managedFiles("vite", SELECTION)["AGENTS.md"] ?? "";
+  const allTreePaths = structurePaths(agentsStructure("vite", SELECTION)).map(
+    (path) => (path.endsWith("/") ? path.slice(0, -1) : path),
+  );
+
+  function planWith(existingTreePaths?: string[]) {
+    return buildUpgradePlan({
+      manifest: manifest({ files: { "AGENTS.md": hashContent(full) } }),
+      toVersion: "1.0.9",
+      state: {
+        files: { "AGENTS.md": full },
+        dependencies: { dependencies: {}, devDependencies: {} },
+        existingTreePaths,
+      },
+      notes: [],
+      migrations: [],
+    });
+  }
+
+  it("renders the full tree when the state reports no existing paths", () => {
+    const plan = planWith(undefined);
+    expect(
+      plan.files.find((file) => file.path === "AGENTS.md"),
+    ).toBeUndefined();
+  });
+
+  it("keeps the full tree when every declared path exists", () => {
+    const plan = planWith(allTreePaths);
+    expect(
+      plan.files.find((file) => file.path === "AGENTS.md"),
+    ).toBeUndefined();
+  });
+
+  it("drops the absent paths from the re-rendered AGENTS.md", () => {
+    const plan = planWith(
+      allTreePaths.filter(
+        (path) => path !== "index.html" && path !== "src/App.css",
+      ),
+    );
+    const change = plan.files.find((file) => file.path === "AGENTS.md");
+    expect(change?.status).toBe("updated");
+    const treeBlock = (change?.nextContent ?? "").split("\n");
+    expect(treeBlock.some((line) => line.includes("main.tsx"))).toBe(true);
+    // Prose may mention `index.html`; the tree block is what pruning controls.
+    expect(
+      treeBlock.some((line) => /^(?:[├└]|│\s*[├└])── index\.html/.test(line)),
+    ).toBe(false);
+    expect(treeBlock.some((line) => line.includes("App.css"))).toBe(false);
   });
 });
 

@@ -9,6 +9,8 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { agentsStructure } from "../src/config/agents.js";
+import { structurePaths } from "../src/config/project-structure.js";
 import type { TechSelection } from "../src/config/tech.js";
 import type { PackageJson } from "../src/frameworks/types.js";
 
@@ -212,6 +214,33 @@ async function createProjectFixture(
         continue;
       }
       await writeFileAt(join(projectDir, path), content);
+    }
+    // Materialize the rest of the project tree the AGENTS.md documents
+    // (index.html, src/**, tsconfig.json, LICENSE, …) so the upgrade plan sees
+    // a realistic project: since 1.1.0 the re-rendered tree is pruned to the
+    // paths that exist on disk, so a fixture without the app skeleton would
+    // prune the tree even when the user deleted nothing.
+    const tree = structurePaths(agentsStructure("vite", selection));
+    const alreadyWritten = new Set([
+      ...Object.keys(templates),
+      "package.json",
+      "pnpm-workspace.yaml",
+      MANIFEST_FILE,
+    ]);
+    for (const treePath of tree) {
+      if (treePath.endsWith("/")) {
+        await mkdir(join(projectDir, treePath.slice(0, -1)), {
+          recursive: true,
+        });
+        continue;
+      }
+      if (alreadyWritten.has(treePath)) {
+        continue;
+      }
+      await writeFileAt(
+        join(projectDir, treePath),
+        `placeholder ${treePath}\n`,
+      );
     }
   }
 
@@ -707,7 +736,7 @@ describe("runUpgrade", () => {
   });
 
   it("keeps locally deleted managed files out of the rewritten manifest", async () => {
-    await createProjectFixture({ missingFiles: ["AGENTS.md", ".nvmrc"] });
+    await createProjectFixture({ missingFiles: [".nvmrc", ".editorconfig"] });
     const before = await listProjectFiles();
 
     await runUpgrade({ verbose: false, deps });
@@ -715,18 +744,51 @@ describe("runUpgrade", () => {
     const rewritten = parseManifest(
       await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
     );
-    expect(rewritten.files["AGENTS.md"]).toBeUndefined();
     expect(rewritten.files[".nvmrc"]).toBeUndefined();
+    expect(rewritten.files[".editorconfig"]).toBeUndefined();
     expect(rewritten.files).toEqual(
       await collectManagedFileHashes(projectDir, viteFramework, SELECTION),
     );
     expect(await listProjectFiles()).toEqual(before);
-    expect(before).not.toContain("AGENTS.md");
+    expect(before).not.toContain(".nvmrc");
+    expect(before).not.toContain(".editorconfig");
     expect(
       calledCommands().filter((line) => line.startsWith("git commit")),
     ).toEqual([
       `git commit -m chore: upgrade raulmoracode-create to ${VERSION}`,
     ]);
+  });
+
+  it("does not resurrect a file the user deleted in the re-rendered AGENTS.md tree", async () => {
+    await createProjectFixture();
+    await rm(join(projectDir, "src/App.css"), { force: true });
+
+    await runUpgrade({ verbose: false, deps });
+
+    const agents = await readFile(join(projectDir, "AGENTS.md"), "utf8");
+    expect(agents).not.toContain("App.css");
+    expect(agents).toContain("App.tsx");
+    expect(agents).toContain("## Project guidelines");
+    const rewritten = parseManifest(
+      await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
+    );
+    expect(rewritten.files["AGENTS.md"]).toBe(hashContent(agents));
+  });
+
+  it("recreates a deleted AGENTS.md with the tree pruned to the disk", async () => {
+    await createProjectFixture();
+    await rm(join(projectDir, "AGENTS.md"), { force: true });
+
+    await runUpgrade({ verbose: false, deps });
+
+    const agents = await readFile(join(projectDir, "AGENTS.md"), "utf8");
+    expect(agents).toContain("## Project guidelines");
+    // The tree itself no longer claims the deleted document exists.
+    expect(agents).not.toMatch(/^[├└]── AGENTS\.md\b/m);
+    const rewritten = parseManifest(
+      await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
+    );
+    expect(rewritten.files["AGENTS.md"]).toBe(hashContent(agents));
   });
 });
 

@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { agentsMd } from "../src/config/agents.js";
-import { FULL_TECH_SELECTION } from "../src/config/tech.js";
+import { agentsMd, agentsStructure } from "../src/config/agents.js";
+import { structurePaths } from "../src/config/project-structure.js";
+import { FULL_TECH_SELECTION, type TechSelection } from "../src/config/tech.js";
 import { managedFiles } from "../src/upgrade/managed-files.js";
 import { SNAPSHOT_SELECTIONS } from "../src/upgrade/template-snapshot.js";
 import type { Framework } from "../src/utils/validation.js";
 
 /**
- * The exact AGENTS.md the CLI must ship to generated projects. The template
- * takes no arguments, so every snapshot selection and both frameworks must
- * render this very content: any drift fails here instead of silently reaching
- * generated (and already generated) projects.
+ * The exact AGENTS.md the CLI must ship to generated projects. Without
+ * `existingPaths` it renders the full selection tree, so every snapshot
+ * selection and both frameworks must produce this very content: any drift
+ * fails here instead of silently reaching generated (and generated) projects.
+ * The optional `existingPaths` (used by `upgrade` to reflect the disk) is
+ * covered by the pruning tests below.
  */
 const EXPECTED_AGENTS_MD = [
   "# AGENTS.md",
@@ -454,5 +457,91 @@ describe("AGENTS.md in the managed tree", () => {
     expect(viteFull).not.toBe(nextFull);
     expect(viteFull).toContain("vite.config.ts");
     expect(nextFull).toContain("postcss.config.mjs");
+  });
+});
+
+describe("AGENTS.md tree pruning by existing paths", () => {
+  /** The ```text block under "## Project structure". */
+  function treeBlock(content: string): string[] {
+    const anchor = "## Project structure\n\n```text\n";
+    const start = content.indexOf(anchor);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const rest = content.slice(start + anchor.length);
+    const end = rest.indexOf("\n```");
+    expect(end).toBeGreaterThanOrEqual(0);
+    return rest.slice(0, end).split("\n");
+  }
+
+  function existingWithout(
+    frameworkId: Framework,
+    selection: TechSelection,
+    removed: string[],
+  ): string[] {
+    const removedSet = new Set(removed);
+    return structurePaths(agentsStructure(frameworkId, selection))
+      .map((path) => (path.endsWith("/") ? path.slice(0, -1) : path))
+      .filter((path) => !removedSet.has(path));
+  }
+
+  it("leaves the full tree when no existing paths are passed", () => {
+    const tree = treeBlock(agentsMd("vite", FULL_TECH_SELECTION));
+    expect(tree.some((line) => line.includes("App.css"))).toBe(true);
+    expect(tree.some((line) => line.includes("components/"))).toBe(true);
+    expect(tree.some((line) => line.includes("index.html"))).toBe(true);
+  });
+
+  it("drops a deleted file but keeps the directories around it", () => {
+    const tree = treeBlock(
+      agentsMd(
+        "vite",
+        FULL_TECH_SELECTION,
+        existingWithout("vite", FULL_TECH_SELECTION, [
+          "src/App.css",
+          "index.html",
+        ]),
+      ),
+    );
+    expect(tree.some((line) => line.includes("App.css"))).toBe(false);
+    expect(tree.some((line) => line.includes("index.html"))).toBe(false);
+    expect(tree.some((line) => line.includes("main.tsx"))).toBe(true);
+    expect(tree.some((line) => line.trim() === "├── src/")).toBe(true);
+  });
+
+  it("drops a directory the CLI never wrote and keeps one with children", () => {
+    // `src/components/` and `src/hooks/` are only aliased, never created; a
+    // user deletion of `src/config/site.ts` must not take `src/` down with it.
+    const tree = treeBlock(
+      agentsMd(
+        "vite",
+        FULL_TECH_SELECTION,
+        existingWithout("vite", FULL_TECH_SELECTION, [
+          "src/components",
+          "src/hooks",
+          "src/config/site.ts",
+        ]),
+      ),
+    );
+    expect(tree.some((line) => line.includes("components/"))).toBe(false);
+    expect(tree.some((line) => line.includes("hooks/"))).toBe(false);
+    expect(tree.some((line) => line.includes("site.ts"))).toBe(false);
+    expect(tree.some((line) => line.includes("main.tsx"))).toBe(true);
+    expect(tree.some((line) => line.trim() === "├── src/")).toBe(true);
+  });
+
+  it("applies the same pruning to the Next.js tree", () => {
+    const tree = treeBlock(
+      agentsMd(
+        "next",
+        FULL_TECH_SELECTION,
+        existingWithout("next", FULL_TECH_SELECTION, [
+          "src/app/not-found.tsx",
+          "src/components",
+        ]),
+      ),
+    );
+    expect(tree.some((line) => line.includes("not-found.tsx"))).toBe(false);
+    expect(tree.some((line) => line.includes("components/"))).toBe(false);
+    expect(tree.some((line) => line.includes("layout.tsx"))).toBe(true);
+    expect(tree.some((line) => line.includes("page.tsx"))).toBe(true);
   });
 });
