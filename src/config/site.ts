@@ -196,7 +196,7 @@ export function viteSiteHeadPlugin(): string {
 }
 
 export function viteSiteHeadImport(): string {
-  return 'import { site } from "./src/config/site";';
+  return 'import { site } from "./src/config/site.js";';
 }
 
 /**

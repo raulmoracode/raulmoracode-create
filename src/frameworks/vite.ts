@@ -127,7 +127,8 @@ export const viteFramework: ProjectFramework = {
   scripts() {
     return {
       dev: "vite",
-      build: "vite build",
+      build: "tsc -b && vite build",
+      typecheck: "tsc -b",
       check: "biome check .",
       format: "biome format --write .",
       lint: "biome lint .",
