@@ -1,5 +1,12 @@
 import { FULL_TECH_SELECTION, type TechSelection } from "./tech.js";
 
+/**
+ * Name of the CI job in the generated `.github/workflows/ci.yml`. The branch
+ * protection rule applied after the initial push requires this exact job
+ * (`github/branch-protection.ts`), so it must stay a single source of truth.
+ */
+export const CI_VALIDATE_JOB = "validate";
+
 export function ciWorkflowYaml(
   selection: TechSelection = FULL_TECH_SELECTION,
 ): string {
@@ -18,7 +25,7 @@ export function ciWorkflowYaml(
     "  pull_request:",
     "",
     "jobs:",
-    "  validate:",
+    `  ${CI_VALIDATE_JOB}:`,
     "    runs-on: ubuntu-latest",
     "    steps:",
     "      - uses: actions/checkout@v4",
