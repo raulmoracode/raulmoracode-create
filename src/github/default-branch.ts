@@ -1,4 +1,3 @@
-import { originHeadBranch } from "../git/upgrade.js";
 import { exec } from "../utils/exec.js";
 
 export function ghRepoViewDefaultBranchArgs(): string[] {
@@ -24,26 +23,22 @@ export function parseDefaultBranch(stdout: string): string | null {
 }
 
 /**
- * Base branch of the pull request. `gh` answers authoritatively; when it is
- * unavailable the local `origin/HEAD` symbolic ref is used instead. Injectable
- * so the orchestrator can be tested without the network.
+ * Base branch the platform reports for the repo. Only consults `gh`; when it
+ * is unavailable or its payload carries no branch name the function returns
+ * `null` and the orchestrator (src/cli/upgrade.ts) decides the fallback
+ * (`origin/HEAD`, then "main").
  */
-export async function detectDefaultBranch(
+export async function detectDefaultBranchFromGh(
   projectDir: string,
   verbose: boolean,
-): Promise<string> {
+): Promise<string | null> {
   try {
     const result = await exec("gh", ghRepoViewDefaultBranchArgs(), {
       cwd: projectDir,
       verbose,
     });
-    const fromGh = parseDefaultBranch(result.stdout);
-    if (fromGh) {
-      return fromGh;
-    }
+    return parseDefaultBranch(result.stdout);
   } catch {
-    // Fall through to the local symbolic ref.
+    return null;
   }
-  const fromOrigin = await originHeadBranch(projectDir, verbose);
-  return fromOrigin ?? "main";
 }
