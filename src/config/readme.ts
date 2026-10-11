@@ -4,6 +4,7 @@ import {
   RAULMORACODE_REGISTRY_CATALOG_URL,
 } from "./components.js";
 import { NODE_VERSION } from "./nvmrc.js";
+import { structureBlock, type TreeNode } from "./project-structure.js";
 import type { TechSelection } from "./tech.js";
 
 export const CREATE_REPO_URL =
@@ -21,6 +22,12 @@ export interface ReadmeOptions {
   versions: Record<string, string>;
   pnpmVersion: string;
   selection: TechSelection;
+  /**
+   * POSIX project-relative paths the caller detected on disk. When given, the
+   * project tree under `## Project structure` is pruned to what exists, so the
+   * README never re-lists files the project deleted.
+   */
+  existingPaths?: string[];
 }
 
 const SCRIPT_DESCRIPTIONS: Record<string, string> = {
@@ -144,31 +151,6 @@ function techStack(
   return rows;
 }
 
-interface TreeNode {
-  name: string;
-  comment?: string;
-  children?: TreeNode[];
-}
-
-/** Renders siblings with correct ├──/└── connectors and aligned comments. */
-function renderTree(nodes: TreeNode[], prefix = ""): string[] {
-  const width = Math.max(...nodes.map((node) => node.name.length));
-  const lines: string[] = [];
-  nodes.forEach((node, i) => {
-    const last = i === nodes.length - 1;
-    const label = node.comment
-      ? `${node.name.padEnd(width)}  # ${node.comment}`
-      : node.name;
-    lines.push(`${prefix}${last ? "└──" : "├──"} ${label}`);
-    if (node.children && node.children.length > 0) {
-      lines.push(
-        ...renderTree(node.children, `${prefix}${last ? "    " : "│   "}`),
-      );
-    }
-  });
-  return lines;
-}
-
 function libComment(selection: TechSelection): string | null {
   const parts: string[] = [];
   if (selection["tanstack-query"]) {
@@ -245,7 +227,11 @@ function srcChildren(
   return children;
 }
 
-function structure(frameworkId: Framework, selection: TechSelection): string[] {
+function structure(
+  frameworkId: Framework,
+  selection: TechSelection,
+  existingPaths?: string[],
+): string[] {
   const root: TreeNode[] = [];
   if (frameworkId === "vite") {
     root.push({
@@ -329,7 +315,7 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },
     { name: "raulmoracode.json", comment: "CLI manifest (upgrade tracking)" },
   );
-  return ["```text", ...renderTree(root), "```"];
+  return structureBlock(root, existingPaths);
 }
 
 export function readmeMd(options: ReadmeOptions): string {
@@ -342,6 +328,7 @@ export function readmeMd(options: ReadmeOptions): string {
     versions,
     pnpmVersion,
     selection,
+    existingPaths,
   } = options;
   const lines: string[] = [
     `# ${projectName}`,
@@ -464,7 +451,7 @@ export function readmeMd(options: ReadmeOptions): string {
     "",
     "## Project structure",
     "",
-    ...structure(frameworkId, selection),
+    ...structure(frameworkId, selection, existingPaths),
     "",
     "## Links",
     "",

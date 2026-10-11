@@ -37,10 +37,16 @@ export const EXECUTABLE_MANAGED_FILES = [
  * and the template snapshot test. Application code (`src/**`), `README.md`,
  * `CHANGELOG.md`, `LICENSE`, `package.json` and `pnpm-workspace.yaml` are
  * intentionally not listed (the last two are merged, not rendered).
+ *
+ * `existingPaths` only reaches `AGENTS.md`: during an `upgrade` the caller
+ * passes the tree paths it detected on disk so the re-rendered project tree
+ * reflects the files that actually exist (a deleted file is not resurrected).
+ * Creation, the manifest and the snapshot never pass it and keep the full tree.
  */
 export function managedFiles(
   frameworkId: Framework,
   selection: TechSelection,
+  existingPaths?: string[],
 ): Record<string, string> {
   const framework = getFramework(frameworkId);
   const files: Record<string, string> = {
@@ -50,7 +56,7 @@ export function managedFiles(
     ".github/workflows/ci.yml": ciWorkflowYaml(selection),
     ".github/dependabot.yml": dependabotYaml(),
     ".github/pull_request_template.md": pullRequestTemplate(),
-    "AGENTS.md": agentsMd(frameworkId, selection),
+    "AGENTS.md": agentsMd(frameworkId, selection, existingPaths),
   };
   if (selection.biome) {
     files["biome.json"] = biomeConfig();

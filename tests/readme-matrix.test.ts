@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { agentsStructure } from "../src/config/agents.js";
 import {
   RAULMORACODE_REGISTRY_ADD_EXAMPLE,
   RAULMORACODE_REGISTRY_CATALOG_URL,
 } from "../src/config/components.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
+import { structurePaths } from "../src/config/project-structure.js";
 import {
   CREATE_REPO_URL,
   type ReadmeOptions,
   readmeMd,
   SITE_URL,
 } from "../src/config/readme.js";
-import type { TechSelection } from "../src/config/tech.js";
+import { FULL_TECH_SELECTION, type TechSelection } from "../src/config/tech.js";
 import { frameworks } from "../src/frameworks/index.js";
 import type { ProjectFramework } from "../src/frameworks/types.js";
 import {
@@ -368,4 +370,78 @@ describe("README matrix (every snapshot selection x framework)", () => {
       });
     }
   }
+});
+
+describe("README tree pruning by existing paths", () => {
+  /** Every tree path the README can list for this framework/selection. */
+  function existingForReadme(
+    frameworkId: "vite" | "next",
+    selection: TechSelection,
+    removed: string[],
+  ): string[] {
+    const removedSet = new Set(removed);
+    const all = [
+      ...structurePaths(agentsStructure(frameworkId, selection)).map((path) =>
+        path.endsWith("/") ? path.slice(0, -1) : path,
+      ),
+      // The README documents these unconditionally; the AGENTS.md tree does not.
+      ".nvmrc",
+      ".editorconfig",
+      "README.md",
+    ];
+    return [...new Set(all)].filter((path) => !removedSet.has(path));
+  }
+
+  function pruned(
+    framework: ProjectFramework,
+    selection: TechSelection,
+    existingPaths: string[],
+  ): string {
+    return readmeMd({
+      ...readmeOptions(framework, selection),
+      existingPaths,
+    });
+  }
+
+  it("keeps the full tree without existing paths", () => {
+    const tree = treeLines(
+      readmeMd(readmeOptions(frameworks.vite, FULL_TECH_SELECTION)),
+    );
+    expect(treeHas(tree, "App.css")).toBe(true);
+    expect(treeHas(tree, ".editorconfig")).toBe(true);
+    expect(treeHas(tree, "README.md")).toBe(true);
+  });
+
+  it("drops a deleted file and every duplicate entry of it", () => {
+    const tree = treeLines(
+      pruned(
+        frameworks.vite,
+        FULL_TECH_SELECTION,
+        existingForReadme("vite", FULL_TECH_SELECTION, [
+          "index.html",
+          "src/App.css",
+          "vite.config.ts",
+        ]),
+      ),
+    );
+    expect(treeHas(tree, "App.css")).toBe(false);
+    expect(treeHas(tree, "index.html")).toBe(false);
+    // vite.config.ts appears twice in the full tailwind tree; both vanish.
+    expect(tree.some((line) => line.includes("vite.config.ts"))).toBe(false);
+    expect(treeHas(tree, "main.tsx")).toBe(true);
+    expect(treeHas(tree, ".editorconfig")).toBe(true);
+  });
+
+  it("keeps the parents of a deleted path", () => {
+    const tree = treeLines(
+      pruned(
+        frameworks.next,
+        FULL_TECH_SELECTION,
+        existingForReadme("next", FULL_TECH_SELECTION, ["src/app/error.tsx"]),
+      ),
+    );
+    expect(treeHas(tree, "error.tsx")).toBe(false);
+    expect(treeHas(tree, "layout.tsx")).toBe(true);
+    expect(treeHas(tree, "page.tsx")).toBe(true);
+  });
 });

@@ -1,31 +1,7 @@
 import type { Framework } from "../utils/validation.js";
 import { RAULMORACODE_REGISTRY_ADD_EXAMPLE } from "./components.js";
+import { structureBlock, type TreeNode } from "./project-structure.js";
 import { FULL_TECH_SELECTION, type TechSelection } from "./tech.js";
-
-interface TreeNode {
-  name: string;
-  comment?: string;
-  children?: TreeNode[];
-}
-
-/** Renders siblings with correct ├──/└── connectors and aligned comments. */
-function renderTree(nodes: TreeNode[], prefix = ""): string[] {
-  const width = Math.max(...nodes.map((node) => node.name.length));
-  const lines: string[] = [];
-  nodes.forEach((node, i) => {
-    const last = i === nodes.length - 1;
-    const label = node.comment
-      ? `${node.name.padEnd(width)}  # ${node.comment}`
-      : node.name;
-    lines.push(`${prefix}${last ? "└──" : "├──"} ${label}`);
-    if (node.children && node.children.length > 0) {
-      lines.push(
-        ...renderTree(node.children, `${prefix}${last ? "    " : "│   "}`),
-      );
-    }
-  });
-  return lines;
-}
 
 function libChildren(selection: TechSelection): TreeNode[] {
   const children: TreeNode[] = [];
@@ -103,7 +79,14 @@ function srcChildren(
   return children;
 }
 
-function structure(frameworkId: Framework, selection: TechSelection): string[] {
+/**
+ * The AGENTS.md project tree as nodes. Exported so `upgrade` can collect the
+ * candidate paths (`structurePaths()`) and detect which ones exist on disk.
+ */
+export function agentsStructure(
+  frameworkId: Framework,
+  selection: TechSelection,
+): TreeNode[] {
   const root: TreeNode[] = [];
   if (frameworkId === "vite") {
     root.push({
@@ -177,7 +160,15 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
     { name: "CHANGELOG.md", comment: "project changelog" },
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },
   );
-  return ["```text", ...renderTree(root), "```"];
+  return root;
+}
+
+function structure(
+  frameworkId: Framework,
+  selection: TechSelection,
+  existingPaths?: string[],
+): string[] {
+  return structureBlock(agentsStructure(frameworkId, selection), existingPaths);
 }
 
 function toolingScriptLines(
@@ -256,6 +247,7 @@ function prValidationChecklist(selection: TechSelection): string[] {
 export function agentsMd(
   frameworkId: Framework = "vite",
   selection: TechSelection = FULL_TECH_SELECTION,
+  existingPaths?: string[],
 ): string {
   const lines: string[] = [
     "# AGENTS.md",
@@ -312,7 +304,7 @@ export function agentsMd(
     "",
     "## Project structure",
     "",
-    ...structure(frameworkId, selection),
+    ...structure(frameworkId, selection, existingPaths),
     "",
     "## Project tooling",
     "",
