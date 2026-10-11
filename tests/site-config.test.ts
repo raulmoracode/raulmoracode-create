@@ -275,7 +275,7 @@ describe("viteSiteHeadPlugin", () => {
 
   it("imports the site config and is wired into the Vite config", () => {
     expect(viteSiteHeadImport()).toBe(
-      'import { site } from "./src/config/site";',
+      'import { site } from "./src/config/site.js";',
     );
     const config = viteTailwindConfig();
     expect(config).toContain(viteSiteHeadImport());

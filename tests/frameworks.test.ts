@@ -93,7 +93,8 @@ describe("frameworks", () => {
   it("vite scripts match the specification", () => {
     expect(viteFramework.scripts()).toEqual({
       dev: "vite",
-      build: "vite build",
+      build: "tsc -b && vite build",
+      typecheck: "tsc -b",
       check: "biome check .",
       format: "biome format --write .",
       lint: "biome lint .",
@@ -106,6 +107,7 @@ describe("frameworks", () => {
       dev: "next dev",
       build: "next build",
       start: "next start",
+      typecheck: "tsc --noEmit",
       check: "biome check .",
       format: "biome format --write .",
       lint: "biome lint .",
@@ -225,7 +227,8 @@ describe("patchPackageJson", () => {
         prepare: "husky",
       });
       expect(patched.scripts?.dev).toBe("vite");
-      expect(patched.scripts?.build).toBe("vite build");
+      expect(patched.scripts?.build).toBe("tsc -b && vite build");
+      expect(patched.scripts?.typecheck).toBe("tsc -b");
       expect(patched.scripts?.check).toBe("biome check .");
       expect(patched.scripts?.format).toBe("biome format --write .");
       expect(patched.scripts?.lint).toBe("biome lint .");
@@ -280,7 +283,8 @@ describe("patchPackageJson", () => {
 
       expect(patched.scripts).toEqual({
         dev: "vite",
-        build: "vite build",
+        build: "tsc -b && vite build",
+        typecheck: "tsc -b",
       });
       expect(patched.scripts?.prepare).toBeUndefined();
 
