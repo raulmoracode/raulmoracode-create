@@ -23,8 +23,11 @@ import { editorconfigContent } from "../src/config/editorconfig.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
 import {
+  isLicenseChoice,
   LICENSE_HOLDER,
   LICENSE_TYPE,
+  licenseField,
+  licenseFileContent,
   licenseText,
 } from "../src/config/license.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
@@ -289,6 +292,40 @@ describe("LICENSE", () => {
     expect(text).not.toContain("/Users/");
     expect(text).not.toContain("{{");
     expect(text).not.toContain("$");
+  });
+
+  it("maps every license choice to its npm field", () => {
+    expect(licenseField("MIT")).toBe("MIT");
+    expect(licenseField("Apache-2.0")).toBe("Apache-2.0");
+    expect(licenseField("UNLICENSED")).toBe("UNLICENSED");
+    expect(licenseField("none")).toBeNull();
+    expect(isLicenseChoice("MIT")).toBe(true);
+    expect(isLicenseChoice("Apache-2.0")).toBe(true);
+    expect(isLicenseChoice("UNLICENSED")).toBe(true);
+    expect(isLicenseChoice("none")).toBe(true);
+    expect(isLicenseChoice("proprietary")).toBe(false);
+    expect(isLicenseChoice("")).toBe(false);
+    expect(isLicenseChoice(42)).toBe(false);
+  });
+
+  it("renders the LICENSE content per choice and none for no license", () => {
+    const mit = licenseFileContent("MIT", { holder: "Jane Doe", year: 2026 });
+    expect(mit).toContain("MIT License");
+    expect(mit).toContain("Copyright (c) 2026 Jane Doe");
+    const apache = licenseFileContent("Apache-2.0", {
+      holder: "Jane Doe",
+      year: 2026,
+    });
+    expect(apache).toContain("Apache License");
+    expect(apache).toContain("http://www.apache.org/licenses/LICENSE-2.0");
+    const proprietary = licenseFileContent("UNLICENSED", {
+      holder: "Jane Doe",
+      year: 2026,
+    });
+    expect(proprietary).toContain("All rights reserved.");
+    expect(licenseFileContent("none", { holder: "Jane Doe", year: 2026 })).toBe(
+      null,
+    );
   });
 });
 

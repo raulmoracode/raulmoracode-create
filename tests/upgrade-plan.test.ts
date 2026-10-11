@@ -450,6 +450,26 @@ describe("package.json patch", () => {
     expect(patched.scripts?.prepare).toBe("husky");
     expect(EXECUTABLE_MANAGED_FILES).toContain(".husky/pre-commit");
   });
+
+  it("never touches the project author or license during an upgrade", () => {
+    const managed = managedPackageJson("vite", SELECTION);
+    const patched = patchManagedPackageJson(
+      {
+        name: "my-app",
+        author: { name: "Jane Doe", url: "https://example.com" },
+        license: "Apache-2.0",
+        dependencies: {},
+        devDependencies: {},
+      },
+      managed,
+      [],
+    );
+    expect(patched.author).toEqual({
+      name: "Jane Doe",
+      url: "https://example.com",
+    });
+    expect(patched.license).toBe("Apache-2.0");
+  });
 });
 
 describe("preflight helpers", () => {

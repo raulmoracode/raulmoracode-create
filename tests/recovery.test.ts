@@ -24,6 +24,8 @@ const FULL_TECH = [
   "vscode",
 ];
 
+const selectState = vi.hoisted(() => ({ calls: 0 }));
+
 vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
   outro: vi.fn(),
@@ -46,7 +48,10 @@ vi.mock("@clack/prompts", () => ({
       }
     },
   ),
-  select: vi.fn(async () => "vite"),
+  select: vi.fn(async () => {
+    selectState.calls += 1;
+    return selectState.calls === 1 ? "vite" : "MIT";
+  }),
   multiselect: vi.fn(async () => [...FULL_TECH]),
   text: vi.fn(),
   confirm: vi.fn(async () => false),
@@ -90,6 +95,7 @@ function versionOutput(command: string): string {
 
 beforeEach(async () => {
   execMock.mockReset();
+  selectState.calls = 0;
   exitSpy = vi
     .spyOn(process, "exit")
     .mockImplementation((() => undefined) as never);
@@ -128,7 +134,11 @@ describe("shouldRemoveProjectDir", () => {
 
 describe("run() failure recovery", () => {
   itNode24("removes the generated dir when a task fails midway", async () => {
-    mockAnswers("half-baked", "https://github.com/raulmoracode/half-baked");
+    mockAnswers(
+      "half-baked",
+      "https://github.com/raulmoracode/half-baked",
+      "Raul Mora",
+    );
     execMock.mockImplementation(async (command: string, args: string[]) => {
       if (args[0] === "--version") {
         return { code: 0, stdout: versionOutput(command), stderr: "" };
@@ -157,7 +167,11 @@ describe("run() failure recovery", () => {
     "restores a reused empty dir when failing before any task",
     async () => {
       await mkdir(join(workDir, "empty-again"), { recursive: true });
-      mockAnswers("empty-again", "https://github.com/raulmoracode/empty-again");
+      mockAnswers(
+        "empty-again",
+        "https://github.com/raulmoracode/empty-again",
+        "Raul Mora",
+      );
       execMock.mockImplementation(async (command: string, args: string[]) => {
         if (args[0] === "--version") {
           return { code: 0, stdout: versionOutput(command), stderr: "" };

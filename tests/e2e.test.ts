@@ -38,6 +38,11 @@ function runCommand(
 const answers = vi.hoisted(() => [
   "my-project",
   "https://github.com/raulmoracode/my-project",
+  "Raul Mora",
+]);
+const selectAnswers = vi.hoisted(() => [
+  process.env.E2E_FRAMEWORK ?? "vite",
+  "MIT",
 ]);
 let bareRemote: string;
 let gitConfigDir: string;
@@ -65,7 +70,7 @@ vi.mock("@clack/prompts", () => ({
       }
     },
   ),
-  select: vi.fn(async () => process.env.E2E_FRAMEWORK ?? "vite"),
+  select: vi.fn(async () => selectAnswers.shift() ?? "MIT"),
   multiselect: vi.fn(async () => [
     "tailwind",
     "shadcn",
@@ -336,6 +341,7 @@ e2e("end-to-end project creation", () => {
     expect(siteConfig).toContain('title: "my-project",');
     expect(siteConfig).toContain('twitter: "@raulmoracode",');
     expect(siteConfig).toContain('description: "",');
+    expect(siteConfig).toContain('author: "Raul Mora",');
 
     const isNext = process.env.E2E_FRAMEWORK === "next";
     const headOwner = await readFile(
