@@ -55,7 +55,7 @@ export function managedFiles(
     ".env.example": envExample(frameworkId),
     ".github/workflows/ci.yml": ciWorkflowYaml(selection),
     ".github/dependabot.yml": dependabotYaml(),
-    ".github/pull_request_template.md": pullRequestTemplate(),
+".github/pull_request_template.md": pullRequestTemplate(selection),
     "AGENTS.md": agentsMd(frameworkId, selection, existingPaths),
   };
   if (selection.biome) {

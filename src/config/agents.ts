@@ -1,6 +1,7 @@
 import type { Framework } from "../utils/validation.js";
 import { RAULMORACODE_REGISTRY_ADD_EXAMPLE } from "./components.js";
 import { structureBlock, type TreeNode } from "./project-structure.js";
+import { pullRequestTemplate } from "./pull-request.js";
 import { FULL_TECH_SELECTION, type TechSelection } from "./tech.js";
 
 function libChildren(selection: TechSelection): TreeNode[] {
@@ -227,21 +228,6 @@ function preCommitLines(selection: TechSelection): string[] {
     lines.push("pnpm test");
   }
   return lines;
-}
-
-function prValidationChecklist(selection: TechSelection): string[] {
-  const items: string[] = [];
-  if (selection.biome) {
-    items.push("- [ ] `pnpm check`");
-  }
-  if (selection.testing) {
-    items.push("- [ ] `pnpm test`");
-  }
-  if (selection.playwright) {
-    items.push("- [ ] `pnpm e2e`");
-  }
-  items.push("- [ ] `pnpm build`");
-  return items;
 }
 
 export function agentsMd(
@@ -495,29 +481,12 @@ export function agentsMd(
     "",
     "Keep the branch focused and open the pull request against `main`.",
     "",
+    "Write the pull request title and body in English.",
+    "",
     "Use this body template:",
     "",
     "```markdown",
-    "## Summary",
-    "",
-    "<1-2 sentences>",
-    "",
-    "## Changes",
-    "",
-    "- ...",
-    "",
-    "## How to test",
-    "",
-    "1. ...",
-    "2. ...",
-    "",
-    "## Validation",
-    "",
-    ...prValidationChecklist(selection),
-    "",
-    "## Breaking changes",
-    "",
-    "None (or describe the migration).",
+    pullRequestTemplate(selection).trim(),
     "```",
     "",
     "## Changelog",

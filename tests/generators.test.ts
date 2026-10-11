@@ -1084,6 +1084,25 @@ describe("configurePrTemplate", () => {
     expect(template.endsWith("\n")).toBe(true);
   });
 
+  it("gates the checklist on the tech selection", async () => {
+    const dir = await makeTempDir();
+    await configurePrTemplate(dir, {
+      ...FULL_TECH_SELECTION,
+      biome: false,
+      testing: false,
+    });
+    const template = await readFromFile(
+      dir,
+      ".github",
+      "pull_request_template.md",
+    );
+    expect(template).toContain("<!-- Write the PR body in English -->");
+    expect(template).not.toContain("`pnpm check`");
+    expect(template).not.toContain("`pnpm test`");
+    expect(template).toContain("- [ ] `pnpm typecheck`");
+    expect(template).toContain("- [ ] `pnpm build`");
+  });
+
   it("keeps the file registered as a managed file", async () => {
     const dir = await makeTempDir();
     await configurePrTemplate(dir);
