@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -240,9 +240,12 @@ describe("layer invariants (AGENTS.md §3)", () => {
       expect(byPath("index")).toBeDefined();
       expect(byPath("utils/filesystem")).toBeDefined();
       expect(byPath("upgrade/apply")).toBeDefined();
-      expect(matchesAnySet(byPath("utils/exec") ?? emptyModule(), PROCESS_SPECIFIERS)).toEqual([
-        "node:child_process",
-      ]);
+      expect(
+        matchesAnySet(
+          byPath("utils/exec") ?? emptyModule(),
+          PROCESS_SPECIFIERS,
+        ),
+      ).toEqual(["node:child_process"]);
       expect(matchesAny(byPath("cli/run") ?? emptyModule(), [CLACK])).toEqual([
         CLACK,
       ]);
@@ -283,9 +286,7 @@ describe("layer invariants (AGENTS.md §3)", () => {
     it("is owned by src/utils/filesystem.ts, the only module importing node:fs", () => {
       const violations = modules
         .filter((module) => module.path !== FILESYSTEM_MODULE)
-        .filter(
-          (module) => matchesAnySet(module, FS_SPECIFIERS).length > 0,
-        )
+        .filter((module) => matchesAnySet(module, FS_SPECIFIERS).length > 0)
         .map(
           (module) =>
             `src/${module.path}.ts imports ${quote(matchesAnySet(module, FS_SPECIFIERS))}`,
@@ -299,7 +300,10 @@ describe("layer invariants (AGENTS.md §3)", () => {
 
     it("is really performed by src/utils/filesystem.ts", () => {
       expect(
-        matchesAnySet(byPath(FILESYSTEM_MODULE) ?? emptyModule(), FS_SPECIFIERS),
+        matchesAnySet(
+          byPath(FILESYSTEM_MODULE) ?? emptyModule(),
+          FS_SPECIFIERS,
+        ),
       ).not.toHaveLength(0);
     });
   });
@@ -359,10 +363,9 @@ describe("layer invariants (AGENTS.md §3)", () => {
             module.internal.includes(EXEC_MODULE),
         )
         .map((module) => {
-          const hits = [
-            FILESYSTEM_MODULE,
-            EXEC_MODULE,
-          ].filter((name) => module.internal.includes(name));
+          const hits = [FILESYSTEM_MODULE, EXEC_MODULE].filter((name) =>
+            module.internal.includes(name),
+          );
           return `src/${module.path}.ts imports ${hits.map((hit) => `src/${hit}.ts`).join(", ")}`;
         });
       assertNone(
@@ -378,9 +381,7 @@ describe("layer invariants (AGENTS.md §3)", () => {
       const violations = [...layerFiles("git"), ...layerFiles("github")]
         .filter((module) => {
           const other = module.layer === "git" ? "github" : "git";
-          return module.internal.some(
-            (target) => layerOf(target) === other,
-          );
+          return module.internal.some((target) => layerOf(target) === other);
         })
         .map(
           (module) =>
@@ -417,10 +418,13 @@ describe("layer invariants (AGENTS.md §3)", () => {
         .map((module) => module.path)
         .filter((path) => path.startsWith("upgrade/"))
         .sort();
-      const classified = [...PURE_UPGRADE_MODULES, ...EFFECTFUL_UPGRADE_MODULES];
-      expect(sorted(classified.filter((path) => classified.includes(path)))).toEqual(
-        sorted(classified),
-      );
+      const classified = [
+        ...PURE_UPGRADE_MODULES,
+        ...EFFECTFUL_UPGRADE_MODULES,
+      ];
+      expect(
+        sorted(classified.filter((path) => classified.includes(path))),
+      ).toEqual(sorted(classified));
       expect(
         PURE_UPGRADE_MODULES.filter((path) =>
           EFFECTFUL_UPGRADE_MODULES.includes(path),
@@ -449,9 +453,7 @@ describe("layer invariants (AGENTS.md §3)", () => {
       const violations = modules
         .filter((module) => module.path.startsWith("upgrade/"))
         .filter((module) =>
-          module.internal.some((target) =>
-            forbidden.includes(layerOf(target)),
-          ),
+          module.internal.some((target) => forbidden.includes(layerOf(target))),
         )
         .map((module) => {
           const hits = module.internal.filter((target) =>
