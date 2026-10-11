@@ -24,7 +24,11 @@ import {
   type UpgradePlan,
   upgradeOutcome,
 } from "../upgrade/plan.js";
-import { upgradePrBody, upgradePrTitle } from "../upgrade/pr-body.js";
+import {
+  truncateForGithub,
+  upgradePrBody,
+  upgradePrTitle,
+} from "../upgrade/pr-body.js";
 import { upgradePreflightChecks } from "../upgrade/preflight.js";
 import { buildUpgradeReport } from "../upgrade/report.js";
 import { readProjectState } from "../upgrade/state.js";
@@ -226,7 +230,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
             base,
             head: plan.branch,
             title: prTitle,
-            body: upgradePrBody(report),
+            body: truncateForGithub(upgradePrBody(report)),
             verbose,
           });
           return "Pull request creado";
