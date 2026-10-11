@@ -137,7 +137,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 └── dist/                         # compiled output (generated, not versioned)
 ```
 
-Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O. `upgrade/` is a pure contract (manifest, managed files, notes, snapshot) with no Clack, no I/O and no processes; `upgrade/pr-body.ts` is pure (markdown out, nothing in but the report) and therefore **English**, like every other file in the repo — only the CLI messages the user sees are in Spanish.
+Separation rule: Clack lives only in `cli/` and `prompts/`. `generators/` configures projects, `frameworks/` encapsulates Vite/Next specifics, `git/` only operates with Git, `github/` only wraps the `gh` CLI, `utils/exec.ts` is the only process-execution path, and `config/` holds pure templates with no I/O. `upgrade/` is framework-agnostic and never imports Clack: its contract modules (manifest, managed files, plan, report, pr-body, template-snapshot, …) are pure — no Clack, no I/O, no processes — while its orchestration (`state.ts`, `preflight.ts`, `apply.ts`, `migrations/*`) legitimately reads and writes the project and spawns `git`/`pnpm` only through `utils/filesystem.ts` and `utils/exec.ts`; `upgrade/pr-body.ts` is pure (markdown out, nothing in but the report) and therefore **English**, like every other file in the repo — only the CLI messages the user sees are in Spanish.
 
 ---
 
