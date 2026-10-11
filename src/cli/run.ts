@@ -1,4 +1,5 @@
 import { intro, log, tasks } from "@clack/prompts";
+import { CI_VALIDATE_JOB } from "../config/ci.js";
 import { getFramework } from "../frameworks/index.js";
 import {
   configureBiome,
@@ -35,6 +36,7 @@ import { createCommit } from "../git/commit.js";
 import { initRepository } from "../git/init.js";
 import { push, remoteHasDivergentCommits } from "../git/push.js";
 import { addRemote, lsRemote } from "../git/remote.js";
+import { applyMainProtection } from "../github/branch-protection.js";
 import { promptAuthor } from "../prompts/author.js";
 import { promptOpenInVscode } from "../prompts/confirm.js";
 import { promptFramework } from "../prompts/framework.js";
@@ -383,6 +385,26 @@ export async function run(options: RunOptions = {}): Promise<void> {
             throw new Error(REMOTE_CONFLICT_MESSAGE);
           }
           await push(projectDir, verbose);
+          // Best effort: the project is already complete on GitHub, so a failed
+          // protection must never fail the run — the user gets the exact manual
+          // command instead (see applyMainProtection).
+          const protection = await applyMainProtection(
+            githubUrl,
+            [CI_VALIDATE_JOB],
+            verbose,
+          );
+          if (protection.status === "warn") {
+            showWarning(
+              [
+                "El proyecto se subió a GitHub, pero no se pudo proteger la rama main automáticamente.",
+                "Sin esa regla, cualquiera puede hacer push a main sin revisión ni tests.",
+                'Aplica la regla manualmente (PR + status check "validate"):',
+                protection.manualCommand ??
+                  "Configúrala desde GitHub → Settings → Rules.",
+                "El proyecto ya está completo; puedes ignorar este aviso.",
+              ].join("\n"),
+            );
+          }
           return "Pushed to GitHub";
         },
       },

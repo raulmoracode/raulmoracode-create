@@ -1,4 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  applyMainProtection,
+  ghMainRulesetArgs,
+  MAIN_RULESET_NAME,
+  mainRulesetPayload,
+  manualMainProtectionCommand,
+} from "../src/github/branch-protection.js";
 import {
   createPullRequest,
   findOpenPullRequest,
@@ -261,5 +268,192 @@ describe("repoDefaultBranch", () => {
     await expect(repoDefaultBranch("/tmp", false)).resolves.toBeNull();
     execMock.mockRejectedValueOnce(new Error("exit 1"));
     await expect(repoDefaultBranch("/tmp", false)).resolves.toBeNull();
+  });
+});
+
+describe("main branch protection", () => {
+  beforeEach(() => {
+    execMock.mockReset();
+  });
+
+  it("builds the ruleset payload requiring PRs, approvals and the validate check", () => {
+    const raw = mainRulesetPayload(["validate"]);
+    const payload = JSON.parse(raw) as {
+      name: string;
+      target: string;
+      enforcement: string;
+      conditions: { ref_name: { include: string[]; exclude: string[] } };
+      rules: unknown[];
+    };
+    expect(payload.name).toBe(MAIN_RULESET_NAME);
+    expect(payload.target).toBe("branch");
+    expect(payload.enforcement).toBe("active");
+    expect(payload.conditions.ref_name.include).toEqual(["refs/heads/main"]);
+    expect(payload.conditions.ref_name.exclude).toEqual([]);
+    const types = payload.rules
+      .map((rule) => (rule as { type: string }).type)
+      .sort();
+    expect(types).toEqual([
+      "deletion",
+      "non_fast_forward",
+      "pull_request",
+      "required_status_checks",
+    ]);
+  });
+
+  it("requires one approval and the given status check contexts", () => {
+    const payload = JSON.parse(mainRulesetPayload(["validate"])) as {
+      rules: Array<{ type: string; parameters?: Record<string, unknown> }>;
+    };
+    const pr = payload.rules.find((rule) => rule.type === "pull_request");
+    expect(pr?.parameters).toMatchObject({
+      required_approving_review_count: 1,
+    });
+    const checks = payload.rules.find(
+      (rule) => rule.type === "required_status_checks",
+    );
+    expect(checks?.parameters).toMatchObject({
+      required_status_checks: [{ context: "validate" }],
+    });
+  });
+
+  it("builds the gh api args reading the payload from a file", () => {
+    expect(
+      ghMainRulesetArgs("raulmoracode", "my-app", "/tmp/body.json"),
+    ).toEqual([
+      "api",
+      "--method",
+      "POST",
+      "repos/raulmoracode/my-app/rulesets",
+      "--input",
+      "/tmp/body.json",
+    ]);
+  });
+
+  it("builds a copy-pasteable manual command with the checks", () => {
+    const command = manualMainProtectionCommand("raulmoracode", "my-app", [
+      "validate",
+    ]);
+    expect(command).toMatch(/^echo '/);
+    expect(command).toContain(
+      "gh api --method POST repos/raulmoracode/my-app/rulesets --input -",
+    );
+    expect(command).toContain('"validate"');
+  });
+
+  it("applies the ruleset and removes the temp body file", async () => {
+    let bodyFile = "";
+    let call = 0;
+    execMock.mockImplementation(async (_command: string, args: string[]) => {
+      call += 1;
+      if (call === 1) {
+        return execResult("Logged in to github.com\n");
+      }
+      bodyFile = args[args.indexOf("--input") + 1] as string;
+      expect(await pathExists(bodyFile)).toBe(true);
+      return execResult('{"id": 7}\n');
+    });
+    const result = await applyMainProtection(
+      "https://github.com/raulmoracode/my-app",
+      ["validate"],
+      false,
+    );
+    expect(result.status).toBe("ok");
+    expect(result.manualCommand).toBeNull();
+    expect(await pathExists(bodyFile)).toBe(false);
+    expect(execMock).toHaveBeenCalledWith(
+      "gh",
+      ghMainRulesetArgs("raulmoracode", "my-app", bodyFile),
+      { verbose: false },
+    );
+  });
+
+  it("warns (never throws) when the API rejects, e.g. with a 422", async () => {
+    execMock.mockResolvedValueOnce(execResult("Logged in to github.com\n"));
+    execMock.mockRejectedValueOnce(
+      new ExecError({
+        command: "gh",
+        args: ["api"],
+        code: 1,
+        signal: null,
+        stdout: "",
+        stderr: "HTTP 422: Validation failed",
+      }),
+    );
+    const result = await applyMainProtection(
+      "https://github.com/raulmoracode/my-app",
+      ["validate"],
+      false,
+    );
+    expect(result.status).toBe("warn");
+    expect(result.manualCommand).toContain(
+      "repos/raulmoracode/my-app/rulesets",
+    );
+    expect(result.manualCommand).toContain('"validate"');
+  });
+
+  it("warns when gh is missing (spawn error), still carrying the manual command", async () => {
+    execMock.mockRejectedValueOnce(
+      new ExecError({
+        command: "gh",
+        args: ["auth", "status"],
+        code: null,
+        signal: null,
+        stdout: "",
+        stderr: "",
+        spawnError: "spawn gh ENOENT",
+      }),
+    );
+    const result = await applyMainProtection(
+      "https://github.com/raulmoracode/my-app",
+      ["validate"],
+      false,
+    );
+    expect(result.status).toBe("warn");
+    expect(result.manualCommand).toContain("--input -");
+  });
+
+  it("warns when gh is not authenticated", async () => {
+    execMock.mockRejectedValueOnce(new Error("exit 1"));
+    const result = await applyMainProtection(
+      "https://github.com/raulmoracode/my-app",
+      ["validate"],
+      false,
+    );
+    expect(result.status).toBe("warn");
+    expect(result.manualCommand).toContain("rulesets");
+    expect(execMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns without calling gh when the URL cannot be parsed", async () => {
+    const result = await applyMainProtection("not-a-url", ["validate"], false);
+    expect(result.status).toBe("warn");
+    expect(result.manualCommand).toBeNull();
+    expect(execMock).not.toHaveBeenCalled();
+  });
+
+  it("cleans up the temp file even when the API call fails", async () => {
+    let bodyFile = "";
+    execMock.mockResolvedValueOnce(execResult("Logged in to github.com\n"));
+    execMock.mockImplementationOnce(
+      async (_command: string, args: string[]) => {
+        bodyFile = args[args.indexOf("--input") + 1] as string;
+        throw new ExecError({
+          command: "gh",
+          args,
+          code: 422,
+          signal: null,
+          stdout: "",
+          stderr: "Validation failed",
+        });
+      },
+    );
+    const result = await applyMainProtection(
+      "https://github.com/raulmoracode/my-app",
+      ["validate"],
+      false,
+    );
+    expect(result.status).toBe("warn");
+    expect(await pathExists(bodyFile)).toBe(false);
   });
 });

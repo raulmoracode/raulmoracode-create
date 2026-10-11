@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -59,7 +59,7 @@ vi.mock("@clack/prompts", () => ({
   isCancel: () => false,
 }));
 
-import { text as promptText } from "@clack/prompts";
+import { log, text as promptText } from "@clack/prompts";
 import { run, shouldRemoveProjectDir } from "../src/cli/run.js";
 import { ExecError } from "../src/utils/exec.js";
 
@@ -187,6 +187,92 @@ describe("run() failure recovery", () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
       expect(existsSync(join(workDir, "empty-again"))).toBe(true);
       expect(await readdir(join(workDir, "empty-again"))).toEqual([]);
+    },
+  );
+});
+
+describe("run() completes when main protection fails", () => {
+  itNode24(
+    "best-effort: protection failure warns and the scaffold finishes with exit 0",
+    async () => {
+      const warnMock = log.warn as unknown as ReturnType<typeof vi.fn>;
+      warnMock.mockClear();
+
+      let ghApiCalled = false;
+      let rulesetBodyFile = "";
+
+      mockAnswers("protected", "https://github.com/raulmoracode/protected");
+
+      execMock.mockImplementation(async (command: string, args: string[]) => {
+        if (args[0] === "--version") {
+          return { code: 0, stdout: versionOutput(command), stderr: "" };
+        }
+        if (command === "git" && args[0] === "config") {
+          return { code: 0, stdout: "Test User\n", stderr: "" };
+        }
+        if (command === "git" && args[0] === "ls-remote") {
+          return { code: 0, stdout: "", stderr: "" };
+        }
+        // The mocked `pnpm create` scaffolds what the real one leaves on disk:
+        // a package.json for configureSite/patchPackageJson/configureReadme and
+        // an index.html for configureBranding. Everything else the generators
+        // write, so the full run() can reach the push + protection steps.
+        if (command === "pnpm" && args[0] === "create") {
+          const name = args[2] as string;
+          const projectDir = join(workDir, name);
+          await mkdir(projectDir, { recursive: true });
+          await writeFile(join(projectDir, "package.json"), "{}\n");
+          await writeFile(
+            join(projectDir, "index.html"),
+            [
+              "<!doctype html>",
+              '<html lang="en">',
+              "  <head>",
+              '    <meta charset="UTF-8" />',
+              "    <title>Vite + React + TS</title>",
+              '    <link rel="icon" type="image/svg+xml" href="/vite.svg" />',
+              "  </head>",
+              "  <body>",
+              '    <div id="root"></div>',
+              "  </body>",
+              "</html>",
+              "",
+            ].join("\n"),
+          );
+          return { code: 0, stdout: "", stderr: "" };
+        }
+        if (command === "gh" && args[0] === "auth") {
+          return { code: 0, stdout: "Logged in to github.com\n", stderr: "" };
+        }
+        if (command === "gh" && args[0] === "api") {
+          ghApiCalled = true;
+          rulesetBodyFile = args[args.indexOf("--input") + 1] as string;
+          // The API rejects (e.g. HTTP 422) — run() must warn and continue.
+          throw new ExecError({
+            command,
+            args,
+            code: 1,
+            signal: null,
+            stdout: "",
+            stderr: "HTTP 422: Validation failed",
+          });
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      });
+
+      await run({ verbose: false });
+
+      expect(ghApiCalled).toBe(true);
+      expect(exitSpy).not.toHaveBeenCalled();
+      // The project is complete: the generated dir survives and the push ran.
+      expect(existsSync(join(workDir, "protected"))).toBe(true);
+      // The exact manual command reached the user as a warning, not an error.
+      const warned = String(warnMock.mock.calls[0]?.[0]);
+      expect(warned).toContain("no se pudo proteger la rama main");
+      expect(warned).toContain("repos/raulmoracode/protected/rulesets");
+      expect(warned).toContain('"validate"');
+      // The ruleset temp body was cleaned up despite the failure.
+      expect(existsSync(rulesetBodyFile)).toBe(false);
     },
   );
 });
