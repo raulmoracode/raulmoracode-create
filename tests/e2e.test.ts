@@ -248,6 +248,7 @@ e2e("end-to-end project creation", () => {
     for (const file of [
       ".nvmrc",
       ".editorconfig",
+      ".env.example",
       "biome.json",
       "components.json",
       "vitest.config.ts",
@@ -459,6 +460,19 @@ e2e("end-to-end project creation", () => {
       projectDir,
     );
     expect(gitLog.stdout.trim()).toBe("chore: initial project setup");
+
+    // The `.env.example` template must be committed (the `!.env.example`
+    // negation un-ignores it) while the `.env.*` pattern still ignores `.env`.
+    const trackedEnv = await runCommand(
+      "git",
+      ["ls-files", ".env.example"],
+      projectDir,
+    );
+    expect(trackedEnv.stdout.trim()).toBe(".env.example");
+    await runCommand("git", ["check-ignore", ".env"], projectDir);
+    await expect(
+      runCommand("git", ["check-ignore", ".env.example"], projectDir),
+    ).rejects.toThrow();
 
     const hooksPath = await runCommand(
       "git",

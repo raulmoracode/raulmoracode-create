@@ -138,11 +138,11 @@ async function projectFileExists(
 }
 
 describe("migration registry", () => {
-  it("registers every write-once migration at version 1.0.9", () => {
+  it("registers every write-once migration at its release version", () => {
     expect(
       MIGRATIONS.map((migration) => [migration.id, migration.version]),
     ).toEqual([
-      ["gitignore-required-entries", "1.0.9"],
+      ["gitignore-required-entries", "1.1.0"],
       ["site-config-missing-fields", "1.0.9"],
       ["readme-project-structure", "1.0.9"],
     ]);
@@ -152,18 +152,24 @@ describe("migration registry", () => {
     }
   });
 
-  it("selects the migrations when the project crosses 1.0.9", () => {
+  it("selects the migrations when the project crosses their version", () => {
+    // 1.0.9 only fires the two 1.0.9 migrations; the gitignore one was bumped
+    // to 1.1.0 so 1.0.9-created projects also receive the `.env.example` negation.
     expect(selectMigrations("1.0.8", "1.0.9").map((entry) => entry.id)).toEqual(
-      MIGRATIONS.map((entry) => entry.id),
+      ["site-config-missing-fields", "readme-project-structure"],
     );
     expect(selectMigrations("1.0.6", "1.1.0").map((entry) => entry.id)).toEqual(
-      MIGRATIONS.map((entry) => entry.id),
+      [
+        "site-config-missing-fields",
+        "readme-project-structure",
+        "gitignore-required-entries",
+      ],
     );
   });
 
   it("stays dormant below 1.0.9, so the current CLI changes nothing", () => {
     expect(selectMigrations("1.0.8", "1.0.8")).toEqual([]);
-    expect(selectMigrations("1.0.8", "1.0.9").length).toBe(MIGRATIONS.length);
+    expect(selectMigrations("1.0.8", "1.0.9").length).toBe(2);
     expect(selectMigrations("1.0.9", "1.0.9")).toEqual([]);
   });
 
@@ -191,8 +197,22 @@ describe(".gitignore migration", () => {
     expect(result).toEqual({ touched: [GITIGNORE_PATH], removed: [] });
     const content = await readProject(projectDir, GITIGNORE_PATH);
     expect(content).toBe(
-      "# mis reglas\nmi-cache\nnode_modules\ndist\n.env\n.env.*\n.next\ncoverage\n",
+      "# mis reglas\nmi-cache\nnode_modules\ndist\n.env\n.env.*\n# Keep .env.example trackable (negates .env.*)\n!.env.example\n.next\ncoverage\n",
     );
+  });
+
+  it("keeps `.env` ignored while making `.env.example` trackable", () => {
+    const merged = mergeGitignoreEntries("");
+    const entries = requiredGitignoreEntries();
+    expect(entries).toContain(".env");
+    expect(entries).toContain(".env.*");
+    expect(entries).toContain("!.env.example");
+    // The negation must come after `.env.*`, or git would re-ignore the file.
+    expect(merged?.indexOf("!.env.example") ?? -1).toBeGreaterThan(
+      merged?.indexOf(".env.*") ?? -1,
+    );
+    // A second merge keeps the whole block, so the negation survives.
+    expect(mergeGitignoreEntries(merged ?? "")).toBeNull();
   });
 
   it("is idempotent: the second run writes nothing", async () => {
@@ -611,20 +631,20 @@ describe("all migrations over one project", () => {
     await writeProject(projectDir, ".nvmrc", "24\n");
 
     const touched: string[] = [];
-    for (const migration of selectMigrations("1.0.8", "1.0.9")) {
+    for (const migration of selectMigrations("1.0.8", "1.1.0")) {
       const result = await migration.run(
         context(projectDir, { selection: REDUCED_SELECTION }),
       );
       touched.push(...result.touched);
     }
 
-    expect(touched).toEqual([GITIGNORE_PATH, SITE_CONFIG_PATH, README_PATH]);
+    expect(touched).toEqual([SITE_CONFIG_PATH, README_PATH, GITIGNORE_PATH]);
     expect(await readProject(projectDir, ".nvmrc")).toBe("24\n");
     expect(await readProject(projectDir, "package.json")).toBe(
       '{"name":"my-app"}\n',
     );
     expect(await readProject(projectDir, GITIGNORE_PATH)).toBe(
-      "node_modules\ncustom\ndist\n.env\n.env.*\n.next\ncoverage\n",
+      "node_modules\ncustom\ndist\n.env\n.env.*\n# Keep .env.example trackable (negates .env.*)\n!.env.example\n.next\ncoverage\n",
     );
     expect(await readProject(projectDir, SITE_CONFIG_PATH)).toContain(
       'themeColor: "",',

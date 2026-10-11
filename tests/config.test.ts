@@ -20,6 +20,7 @@ import {
 } from "../src/config/components.js";
 import { dependabotYaml } from "../src/config/dependabot.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
+import { envExample } from "../src/config/env-example.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
 import {
@@ -68,6 +69,46 @@ describe(".nvmrc", () => {
   it("pins Node 24", () => {
     expect(nvmrcContent()).toBe("24\n");
     expect(NODE_VERSION).toBe("24");
+  });
+});
+
+describe(".env.example", () => {
+  it("renders a Vite template with VITE_ placeholders and a trailing newline", () => {
+    const content = envExample("vite");
+    expect(content).toContain("VITE_API_URL=");
+    expect(content).toContain("VITE_PUBLIC_KEY=");
+    expect(content).toContain("import.meta.env");
+    expect(content).not.toContain("NEXT_PUBLIC_");
+    expect(content).not.toContain("DATABASE_URL=");
+    expect(content.endsWith("\n")).toBe(true);
+    expect(content).not.toContain("\r");
+  });
+
+  it("renders a Next.js template with NEXT_PUBLIC_ and a server-only variable", () => {
+    const content = envExample("next");
+    expect(content).toContain("NEXT_PUBLIC_API_URL=");
+    expect(content).toContain("NEXT_PUBLIC_ANALYTICS_ID=");
+    expect(content).toContain("DATABASE_URL=");
+    expect(content).toContain("process.env");
+    expect(content).not.toContain("VITE_");
+    expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("tells the developer to copy the template to .env and never commit it", () => {
+    const content = envExample("vite");
+    expect(content).toContain("cp .env.example .env");
+    expect(content).toContain("Never commit `.env` files");
+  });
+
+  it("contains no tokens, credentials or machine-specific paths", () => {
+    for (const content of [envExample("vite"), envExample("next")]) {
+      expect(content).not.toMatch(/ghp_/);
+      expect(content).not.toMatch(/github_pat_/);
+      expect(content).not.toMatch(/_authToken/);
+      expect(content).not.toMatch(/\/Users\//);
+      expect(content).not.toMatch(/\/home\//);
+      expect(content).not.toMatch(/[A-Z]:\\/);
+    }
   });
 });
 

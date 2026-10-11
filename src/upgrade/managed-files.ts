@@ -5,6 +5,7 @@ import { commitlintConfig } from "../config/commitlint.js";
 import { componentsJson } from "../config/components.js";
 import { dependabotYaml } from "../config/dependabot.js";
 import { editorconfigContent } from "../config/editorconfig.js";
+import { envExample } from "../config/env-example.js";
 import { huskyCommitMsg, huskyPreCommit } from "../config/husky.js";
 import { nvmrcContent } from "../config/nvmrc.js";
 import { playwrightConfig } from "../config/playwright.js";
@@ -45,6 +46,7 @@ export function managedFiles(
   const files: Record<string, string> = {
     ".editorconfig": editorconfigContent(),
     ".nvmrc": nvmrcContent(),
+    ".env.example": envExample(frameworkId),
     ".github/workflows/ci.yml": ciWorkflowYaml(selection),
     ".github/dependabot.yml": dependabotYaml(),
     ".github/pull_request_template.md": pullRequestTemplate(),

@@ -157,6 +157,37 @@ describe("dev pin and managed file: playwright", () => {
   });
 });
 
+describe(".env.example is unconditional", () => {
+  it("ships for every framework and selection, with the framework prefix", () => {
+    for (const framework of Object.values(frameworks)) {
+      for (const selection of [NONE, FULL_TECH_SELECTION]) {
+        const files = managedFiles(framework.id, selection);
+        const content = files[".env.example"];
+        expect(content, `${framework.id}`).toBeDefined();
+        expect(content?.endsWith("\n"), `${framework.id}`).toBe(true);
+        if (framework.id === "vite") {
+          expect(content, framework.id).toContain("VITE_API_URL=");
+          expect(content, framework.id).not.toContain("NEXT_PUBLIC_");
+        } else {
+          expect(content, framework.id).toContain("NEXT_PUBLIC_API_URL=");
+          expect(content, framework.id).not.toContain("VITE_");
+        }
+      }
+    }
+  });
+
+  it("stays identical regardless of which tech is toggled", () => {
+    for (const framework of Object.values(frameworks)) {
+      for (const id of TECH_IDS) {
+        expect(
+          managedFiles(framework.id, without(id))[".env.example"],
+          `${framework.id}/${id}`,
+        ).toBe(managedFiles(framework.id, FULL_TECH_SELECTION)[".env.example"]);
+      }
+    }
+  });
+});
+
 describe("dependabot is unconditional", () => {
   it("ships .github/dependabot.yml for every framework and selection", () => {
     for (const framework of Object.values(frameworks)) {

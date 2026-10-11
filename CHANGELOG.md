@@ -7,7 +7,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- `.env.example` template in every generated project (Vite `VITE_*` /
+  Next.js `NEXT_PUBLIC_*` placeholders), so the environment-variable workflow
+  documented in the generated `AGENTS.md` is actually possible.
+- The `.gitignore` required entries now negate `.env.example` (`!.env.example`),
+  keeping it trackable even though `.env.*` ignores the rest; the gitignore
+  upgrade migration was bumped to 1.1.0 so existing projects receive it too.
 
 ## [1.0.9] - 2026-10-10
 
