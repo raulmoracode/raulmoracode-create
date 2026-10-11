@@ -3,6 +3,7 @@ import { biomeConfig } from "../config/biome.js";
 import { ciWorkflowYaml } from "../config/ci.js";
 import { commitlintConfig } from "../config/commitlint.js";
 import { componentsJson } from "../config/components.js";
+import { dependabotYaml } from "../config/dependabot.js";
 import { editorconfigContent } from "../config/editorconfig.js";
 import { huskyCommitMsg, huskyPreCommit } from "../config/husky.js";
 import { nvmrcContent } from "../config/nvmrc.js";
@@ -44,6 +45,7 @@ export function managedFiles(
     ".editorconfig": editorconfigContent(),
     ".nvmrc": nvmrcContent(),
     ".github/workflows/ci.yml": ciWorkflowYaml(selection),
+    ".github/dependabot.yml": dependabotYaml(),
     ".github/pull_request_template.md": pullRequestTemplate(),
     "AGENTS.md": agentsMd(frameworkId, selection),
   };

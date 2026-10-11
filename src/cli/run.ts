@@ -6,6 +6,7 @@ import {
 } from "../generators/configure-biome.js";
 import { configureChangelog } from "../generators/configure-changelog.js";
 import { configureCi } from "../generators/configure-ci.js";
+import { configureDependabot } from "../generators/configure-dependabot.js";
 import { configureGitHooks } from "../generators/configure-git-hooks.js";
 import { configureManifest } from "../generators/configure-manifest.js";
 import {
@@ -278,6 +279,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await augmentGitignore(projectDir);
           message("Configuring CI");
           await configureCi(projectDir, selection);
+          message("Configuring Dependabot");
+          await configureDependabot(projectDir);
           message("Configuring pull request template");
           await configurePrTemplate(projectDir);
           return "Project created";

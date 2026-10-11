@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { dependabotYaml } from "../src/config/dependabot.js";
 import {
   FULL_TECH_SELECTION,
   TECH_IDS,
@@ -96,6 +97,30 @@ describe("dev pin: theme", () => {
       expect(
         managedDependencyPins(framework.id, without("theme"))["tw-animate-css"],
       ).toBeUndefined();
+    }
+  });
+});
+
+describe("dependabot is unconditional", () => {
+  it("ships .github/dependabot.yml for every framework and selection", () => {
+    for (const framework of Object.values(frameworks)) {
+      for (const selection of [NONE, FULL_TECH_SELECTION]) {
+        const files = managedFiles(framework.id, selection);
+        expect(files[".github/dependabot.yml"], `${framework.id}`).toBe(
+          dependabotYaml(),
+        );
+      }
+    }
+  });
+
+  it("keeps the dependabot template independent of the tech selection", () => {
+    for (const framework of Object.values(frameworks)) {
+      for (const id of TECH_IDS) {
+        expect(
+          managedFiles(framework.id, without(id))[".github/dependabot.yml"],
+          `${framework.id}/${id}`,
+        ).toBe(dependabotYaml());
+      }
     }
   });
 });

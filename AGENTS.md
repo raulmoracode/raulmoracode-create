@@ -133,7 +133,9 @@ failures → `PreflightError`.
    Husky/Commitlint devDeps without Husky) → `configureReadme(...)` (always, after the
    patch so the scripts table matches the final `package.json`) → `writeProjectLicense(...)`
    (always, current year from `run.ts`) → `configureChangelog(...)` (always) →
-   `augmentGitignore` (always) → `configureCi(...)` (always, `.github/workflows/ci.yml`).
+   `augmentGitignore` (always) →
+   `configureCi(...)` (always, `.github/workflows/ci.yml`) →
+   `configureDependabot` (always, `.github/dependabot.yml`).
 2. `Installing dependencies`: `installDependencies` (`pnpm install --no-frozen-lockfile` → `pnpm add <runtime>` →
    `pnpm add -D <dev>`) → `normalizePackageJson` (strips `^`/`~` pnpm may have written) →
    `formatProject` (only if `selection.biome`, it would fail without the binary: `pnpm exec biome check --write .`) →
@@ -182,7 +184,8 @@ prompt (prompts/*.ts, Clack + validation.ts)
 - **Adding a new generated file**: create `src/config/<x>.ts` (pure function returning the
   exact content, ending in `\n`) + `src/generators/configure-<x>.ts`
   (uses `joinPath`/`writeTextFile` from `filesystem.ts`) + call it from `run.ts` in step 1
-  + tests in `config.test.ts` and `generators.test.ts` (temporary directories).
+  + tests in `config.test.ts` and `generators.test.ts` (temporary directories),
+  + managed-file/selection coverage in `tech-selection-files.test.ts`.
 - **Next.js error pages** (`config/error-pages.ts`) are file conventions: never wire them
   manually. Name the error component `ErrorPage`, not `Error`, or Biome fails in the
   generated project with `noShadowRestrictedNames`. They must not depend on theme tokens.
