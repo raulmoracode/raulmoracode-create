@@ -57,8 +57,9 @@ src/
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
 ├── github/             # `gh` CLI wrappers ONLY (arg builders + thin wrappers)
-├── upgrade/            # PURE manifest contract (types, manifest, managed files, notes,
-│                       # snapshot, PR body) + the upgrade orchestration (plan, preflight, apply)
+├── upgrade/            # pure contract modules (types, manifest, managed-files, notes, package-json,
+│                       # plan, pr-body, report, version, template-snapshot, migrations/index)
+│                       # + orchestration (state, preflight, apply, migrations/*) via utils/* only
 ├── config/             # PURE templates: functions returning strings, no I/O
 └── utils/
     ├── exec.ts         # ONLY external-process execution path (spawn)
@@ -71,11 +72,16 @@ Rules:
 - **Clack only in `cli/` and `prompts/`**. No other module imports `@clack/prompts`.
 - **`config/` performs no I/O**: it only exports pure functions (`biomeConfig()`, `huskyPreCommit()`,
   `commitlintConfig()`, …). If a template needs data, pass it as a parameter.
-- **`upgrade/` is pure and framework agnostic**: manifest (`ProjectManifest`, `hashContent()`,
-  `serializeManifest()`, `parseManifest()`), the managed-file inventory (`managedFiles()`,
-  `managedPackageJson()`, `managedDependencyPins()`, `EXECUTABLE_MANAGED_FILES`), the release
-  notes (`UPGRADE_NOTES`, `notesBetween()`) and the template snapshot. No Clack, no I/O, no
-  processes. `upgrade/` never imports `cli/` or `prompts/`; the reverse is fine.
+- **`upgrade/` is framework agnostic and splits into pure CONTRACT modules and effectful
+  ORCHESTRATION**: the contract (`manifest.ts`, `managed-files.ts`, `notes.ts`, `version.ts`,
+  `package-json.ts`, `plan.ts`, `report.ts`, `pr-body.ts`, `template-snapshot.ts`,
+  `migrations/index.ts`) only reads and writes strings and objects — no I/O, no processes, no
+  Clack. The orchestration (`state.ts` reads the project, `preflight.ts` checks it, `apply.ts`
+  writes it and spawns `pnpm`, `migrations/*` patch files) legitimately touches the disk and
+  spawns processes, but **exclusively through `utils/filesystem.ts` and `utils/exec.ts`** — never
+  `node:fs`/`child_process` directly, never Clack. `tests/layer-invariants.test.ts` pins the exact
+  module split (`PURE_UPGRADE_MODULES` vs `EFFECTFUL_UPGRADE_MODULES`). `upgrade/` never imports
+  `cli/` or `prompts/`; the reverse is fine.
 - **`github/` wraps the `gh` CLI, `git/` wraps `git`**: neither one knows about the other
   (no `gh` call inside `git/`, no `git` call inside `github/`), and Husky/Commitlint logic stays
   out of both.
@@ -246,7 +252,8 @@ generated project and always ends in a **ready-for-review** PR (`createPullReque
 1. `upgradePreflightChecks` (`upgrade/preflight.ts`): Node 24 → pnpm 12 (`REQUIRED_PNPM_MAJOR`) →
    git → inside a repo → **clean working tree** → `gh` auth → `origin` is a GitHub remote →
    `raulmoracode.json` exists and parses. Any failure: Spanish message, `exit 1`, nothing written.
-2. `readProjectState` + `buildUpgradePlan` (pure, `upgrade/plan.ts`): compares three hashes per
+2. `readProjectState` (reads the project from disk, `upgrade/state.ts`) +
+   `buildUpgradePlan` (pure, `upgrade/plan.ts`): compares three hashes per
    managed file — the template the CLI would render today, the hash in the manifest and the hash on
    disk — and classifies each file as `updated`, `overwritten` (the user edited it), `new`,
    `removed` (only when a migration handles it) or skipped `deleted-locally`. Pins are bumped to the
@@ -270,10 +277,16 @@ run wrote (`revertAppliedFiles`, safe only because the preflight proved the tree
 deletes the half-created branch. A failure at push/PR time **keeps** the branch and the commits and
 prints the exact retry commands.
 
-`upgrade/` takes no Clack and no process: `github/gh.ts` wraps `gh` (arg builders + thin wrappers
-through `utils/exec.ts`), `git/upgrade.ts` wraps git. `runUpgrade({ verbose, deps })` takes `gh` and
-the default-branch detector as injectable dependencies so the E2E can run against a local bare
-remote. PR bodies are English; CLI messages are Spanish.
+`upgrade/` never imports Clack, and its I/O and processes go exclusively through
+`utils/filesystem.ts` and `utils/exec.ts`: the contract modules (manifest, managed-files, notes,
+version, package-json, plan, report, pr-body, template-snapshot, migrations/index) are pure, while
+the orchestration (`state.ts` reads, `preflight.ts` checks, `apply.ts` writes and spawns,
+`migrations/*` patch files) legitimately reads and writes the project and spawns git/pnpm — always
+via the utils layer, never `node:fs`, `child_process` or Clack. `github/gh.ts` wraps `gh` (arg
+builders + thin wrappers through `utils/exec.ts`), `git/upgrade.ts` wraps git.
+`runUpgrade({ verbose, deps })` takes `gh` and the default-branch detector as injectable
+dependencies so the E2E can run against a local bare remote. PR bodies are English; CLI messages
+are Spanish.
 
 ## 6. Subtle verified details (do not "simplify" them)
 
