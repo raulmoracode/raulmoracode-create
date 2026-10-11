@@ -61,7 +61,7 @@ const EXPECTED_AGENTS_MD = [
   "## Project structure",
   "",
   "```text",
-"├── index.html              # tab title + favicon (raulmoracode branding)",
+  "├── index.html              # tab title + favicon (raulmoracode branding)",
   "├── .github/workflows/      # CI (install, check, typecheck, test, build)",
   "├── .github/dependabot.yml  # Dependabot (weekly, exact versions, 7-day cooldown)",
   "├── src/",
