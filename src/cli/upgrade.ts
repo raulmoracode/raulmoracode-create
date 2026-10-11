@@ -1,10 +1,11 @@
 import { intro, log, outro, tasks } from "@clack/prompts";
 import {
   deleteLocalBranch,
+  originHeadBranch,
   pushBranch,
   switchToBranch,
 } from "../git/upgrade.js";
-import { detectDefaultBranch as detectDefaultBranchWithGh } from "../github/default-branch.js";
+import { detectDefaultBranchFromGh } from "../github/default-branch.js";
 import type { CreatePullRequestOptions } from "../github/gh.js";
 import {
   createPullRequest,
@@ -74,7 +75,15 @@ const DEFAULT_DEPS: UpgradeDeps = {
     createPullRequest: (options: CreatePullRequestOptions) =>
       createPullRequest(options),
   },
-  detectDefaultBranch: detectDefaultBranchWithGh,
+  // `gh` answers authoritatively; the `origin/HEAD` symbolic ref and the
+  // `main` fallback are orchestration decisions, so they live here in the
+  // orchestrator and `github/` stays unaware of `git/`.
+  detectDefaultBranch: async (projectDir, verbose) => {
+    const fromPlatform = await detectDefaultBranchFromGh(projectDir, verbose);
+    if (fromPlatform) return fromPlatform;
+    const fromOriginHead = await originHeadBranch(projectDir, verbose);
+    return fromOriginHead ?? "main";
+  },
 };
 
 export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
