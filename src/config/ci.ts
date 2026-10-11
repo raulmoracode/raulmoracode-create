@@ -6,6 +6,7 @@ export function ciWorkflowYaml(
   const steps = [
     "      - run: pnpm install --no-frozen-lockfile",
     ...(selection.biome ? ["      - run: pnpm check"] : []),
+    "      - run: pnpm typecheck",
     ...(selection.testing ? ["      - run: pnpm test"] : []),
     "      - run: pnpm build",
   ];
