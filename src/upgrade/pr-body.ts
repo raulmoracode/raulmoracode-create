@@ -522,7 +522,8 @@ export function unifiedDiff(
 /**
  * GitHub rejects pull request bodies longer than ~65 000 characters. Diffs are
  * the only expendable content: they are collapsed first and dropped after that,
- * never the summary, the ⚠️ section, the tables or the action items. Idempotent.
+ * never the summary, the ⚠️ section, the tables or the action items. Whatever
+ * survives is then capped, so the result always fits the limit. Idempotent.
  */
 export function truncateForGithub(body: string): string {
   if (body.length <= GITHUB_PR_BODY_LIMIT) {
@@ -539,13 +540,36 @@ export function truncateForGithub(body: string): string {
           DIFF_BLOCK_PATTERN,
           `${DIFF_BLOCK_BEGIN}\n${DIFF_BLOCK_END}`,
         );
-  if (shortened.includes(TRIM_NOTE)) {
-    return shortened;
+  return capToLimit(withTrimNote(shortened));
+}
+
+/** Replaces the trim anchor with the visible note, or appends it at the end. */
+function withTrimNote(body: string): string {
+  if (body.includes(TRIM_NOTE)) {
+    return body;
   }
-  if (shortened.includes(TRIM_NOTE_ANCHOR)) {
-    return shortened.replace(TRIM_NOTE_ANCHOR, TRIM_NOTE);
+  if (body.includes(TRIM_NOTE_ANCHOR)) {
+    return body.replace(TRIM_NOTE_ANCHOR, TRIM_NOTE);
   }
-  return `${shortened.trimEnd()}\n\n${TRIM_NOTE}\n`;
+  return `${body.trimEnd()}\n\n${TRIM_NOTE}\n`;
+}
+
+/**
+ * Last resort, reached only when the body is still over the limit once every
+ * diff is gone (a huge table of release notes, or a report whose files were all
+ * freshly created so there are no diffs to drop at all). Cuts the tail and keeps
+ * the trim note so the reader is still pointed at the **Files changed** tab.
+ */
+function capToLimit(body: string): string {
+  if (body.length <= GITHUB_PR_BODY_LIMIT) {
+    return body;
+  }
+  const withoutNote = body.split(TRIM_NOTE).join("").trimEnd();
+  // Reserve room for the `\n\n` separator, the note and the trailing newline.
+  const budget = Math.max(GITHUB_PR_BODY_LIMIT - TRIM_NOTE.length - 3, 0);
+  const kept = withoutNote.slice(0, budget);
+  const lastNewline = kept.lastIndexOf("\n");
+  return `${lastNewline > 0 ? kept.slice(0, lastNewline) : kept}\n\n${TRIM_NOTE}\n`;
 }
 
 function escapeCell(value: string): string {

@@ -13,6 +13,9 @@ import type { TechSelection } from "../src/config/tech.js";
 import type { PackageJson } from "../src/frameworks/types.js";
 
 const execMock = vi.hoisted(() => vi.fn());
+const truncateForGithubMock = vi.hoisted(() =>
+  vi.fn((body: string) => `TRUNCATED\n${body}`),
+);
 
 vi.mock("../src/utils/exec.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/utils/exec.js")>();
@@ -55,6 +58,7 @@ vi.mock("../src/upgrade/pr-body.js", () => ({
   upgradePrTitle: (report: { toVersion: string }) =>
     `chore: upgrade raulmoracode-create to ${report.toVersion}`,
   upgradePrBody: (report: unknown) => `PR BODY\n${JSON.stringify(report)}`,
+  truncateForGithub: truncateForGithubMock,
 }));
 
 import { confirm, log } from "@clack/prompts";
@@ -298,6 +302,7 @@ beforeEach(async () => {
   findOpenPullRequest.mockResolvedValue(null);
   createPullRequest.mockReset();
   createPullRequest.mockResolvedValue(PR_URL);
+  truncateForGithubMock.mockClear();
   detectDefaultBranch.mockReset();
   detectDefaultBranch.mockResolvedValue("main");
   exitSpy = vi
@@ -353,6 +358,8 @@ describe("runUpgrade", () => {
       verbose: false,
     });
     expect(String(prOptions?.body)).toContain("PR BODY");
+    expect(truncateForGithubMock).toHaveBeenCalledTimes(1);
+    expect(String(prOptions?.body)).toContain("TRUNCATED");
     expect(exitSpy).not.toHaveBeenCalled();
     expect(String(successMock.mock.calls[0]?.[0])).toContain(PR_URL);
   });
