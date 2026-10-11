@@ -20,6 +20,7 @@ const FULL_TECH = [
   "forms",
   "biome",
   "testing",
+  "playwright",
   "husky",
   "vscode",
 ];

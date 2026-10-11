@@ -34,6 +34,7 @@ import {
   configureNode,
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
+import { configurePlaywright } from "../src/generators/configure-playwright.js";
 import { configurePrTemplate } from "../src/generators/configure-pr-template.js";
 import {
   PROJECT_AUTHOR,
@@ -501,6 +502,7 @@ describe("refreshPnpmWorkspaceExcludes", () => {
       forms: false,
       biome: false,
       testing: false,
+      playwright: false,
       husky: false,
       vscode: false,
     });
@@ -673,6 +675,7 @@ describe("configureReadme", () => {
         forms: false,
         biome: false,
         testing: false,
+        playwright: false,
         husky: false,
         vscode: false,
       },
@@ -806,6 +809,31 @@ describe("configureTesting", () => {
   });
 });
 
+describe("configurePlaywright", () => {
+  it("writes playwright.config.ts and an e2e smoke spec for both frameworks", async () => {
+    for (const framework of [viteFramework, nextFramework]) {
+      const dir = await makeTempDir();
+      await configurePlaywright(dir, framework);
+      const config = await readFromFile(dir, "playwright.config.ts");
+      expect(config).toContain('testDir: "./e2e"');
+      expect(config).toContain('command: "pnpm dev"');
+      const spec = await readFromFile(dir, "e2e", "smoke.e2e.ts");
+      expect(spec).toContain('from "@playwright/test"');
+    }
+  });
+
+  it("keeps the config registered as a managed file per framework", async () => {
+    for (const framework of [viteFramework, nextFramework]) {
+      const dir = await makeTempDir();
+      await configurePlaywright(dir, framework);
+      const written = await readFromFile(dir, "playwright.config.ts");
+      expect(written).toBe(
+        managedFiles(framework.id, FULL_TECH_SELECTION)["playwright.config.ts"],
+      );
+    }
+  });
+});
+
 describe("configureGitHooks", () => {
   it("writes .husky hooks and commitlint.config.ts", async () => {
     const dir = await makeTempDir();
@@ -832,6 +860,7 @@ describe("configureGitHooks", () => {
       forms: true,
       biome: false,
       testing: true,
+      playwright: true,
       husky: true,
       vscode: true,
     });

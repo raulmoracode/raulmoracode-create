@@ -26,6 +26,7 @@ const NO_TECH: TechSelection = {
   forms: false,
   biome: false,
   testing: false,
+  playwright: false,
   husky: false,
   vscode: false,
 };
@@ -99,6 +100,7 @@ describe("frameworks", () => {
       format: "biome format --write .",
       lint: "biome lint .",
       test: "vitest",
+      e2e: "playwright test",
     });
   });
 
@@ -112,6 +114,7 @@ describe("frameworks", () => {
       format: "biome format --write .",
       lint: "biome lint .",
       test: "vitest",
+      e2e: "playwright test",
     });
   });
 
@@ -148,6 +151,7 @@ describe("dependency installation", () => {
     expect(vitestOf(viteDev)).toBe("5.0.2");
     expect(viteDev["@testing-library/react"]).toBe("16.3.3");
     expect(viteDev["@testing-library/dom"]).toBe("10.4.2");
+    expect(viteDev["@playwright/test"]).toBe("1.64.0");
 
     const nextDev = devDependencies(nextFramework);
     expect(nextDev["@tailwindcss/postcss"]).toBe("4.3.3");

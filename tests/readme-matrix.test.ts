@@ -32,6 +32,7 @@ const SCRIPT_ORDER = [
   "format",
   "lint",
   "test",
+  "e2e",
 ] as const;
 
 const SCRIPT_DESCRIPTIONS: Record<string, string> = {
@@ -40,6 +41,7 @@ const SCRIPT_DESCRIPTIONS: Record<string, string> = {
   format: "Apply formatting",
   lint: "Run the linter",
   test: "Run the test suite (watch mode)",
+  e2e: "Run browser E2E tests with Playwright",
   typecheck: "Run the TypeScript type checker",
 };
 
@@ -147,6 +149,11 @@ function expectedTechStack(
   if (selection.testing) {
     rows.push(
       `- **Vitest${versioned(versions, "vitest")} + Testing Library** — tests run in \`jsdom\``,
+    );
+  }
+  if (selection.playwright) {
+    rows.push(
+      `- **Playwright${versioned(versions, "@playwright/test")}** — E2E tests in a real Chromium browser`,
     );
   }
   if (selection.husky) {
@@ -291,6 +298,8 @@ describe("README matrix (every snapshot selection x framework)", () => {
           const presence: Array<[string, boolean]> = [
             ["biome.json", selection.biome],
             ["vitest.config.ts", selection.testing],
+            ["playwright.config.ts", selection.playwright],
+            ["e2e/", selection.playwright],
             [".vscode/", selection.vscode],
             ["components.json", selection.shadcn],
             ["components/", selection.shadcn],

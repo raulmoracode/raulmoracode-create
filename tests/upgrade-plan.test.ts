@@ -41,6 +41,7 @@ const SELECTION: TechSelection = {
   forms: false,
   biome: true,
   testing: true,
+  playwright: true,
   husky: true,
   vscode: true,
 };

@@ -94,6 +94,7 @@ const SELECTION: TechSelection = {
   forms: false,
   biome: true,
   testing: false,
+  playwright: false,
   husky: true,
   vscode: false,
 };
