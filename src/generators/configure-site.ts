@@ -10,12 +10,13 @@ import { joinPath, readJsonFile, writeTextFile } from "../utils/filesystem.js";
 export async function configureSite(
   projectDir: string,
   projectName: string,
+  author?: string,
 ): Promise<void> {
   const packageJson = await readJsonFile<PackageJson>(
     joinPath(projectDir, "package.json"),
   );
   await writeTextFile(
     joinPath(projectDir, SITE_CONFIG_PATH),
-    siteConfigTs(siteValues({ projectName, packageJson })),
+    siteConfigTs(siteValues({ projectName, packageJson, author })),
   );
 }

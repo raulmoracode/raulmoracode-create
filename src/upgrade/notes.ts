@@ -10,8 +10,13 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
     version: "1.1.0",
     summary:
-      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI so type errors always fail the pipeline, and ships a Dependabot configuration (.github/dependabot.yml) that keeps dependency updates automatic with exact-version PRs, aligned with the pnpm minimumReleaseAge maturity gate.",
+      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI so type errors always fail the pipeline, ships a Dependabot configuration (.github/dependabot.yml) that keeps dependency updates automatic with exact-version PRs aligned with the pnpm minimumReleaseAge maturity gate, and lets the project author and license be chosen at creation time (with the AGENTS.md tree labelling LICENSE as the project license instead of assuming MIT).",
     changes: [
+      {
+        files: ["AGENTS.md"],
+        what: 'The project structure tree in AGENTS.md now labels `LICENSE` as "project license" instead of "MIT license".',
+        why: "Generated projects can now pick MIT, Apache-2.0, a proprietary notice or no license at all, so the tree must not claim the LICENSE file is always MIT.",
+      },
       {
         files: [".github/workflows/ci.yml"],
         what: "The CI workflow now runs `pnpm typecheck` on every push and PR, and the Vite build script is `tsc -b && vite build` again (as create-vite ships it), so TypeScript errors fail the pipeline instead of being erased by esbuild.",
