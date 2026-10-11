@@ -47,6 +47,11 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         what: "A new optional Playwright tech preset (E2E browser testing) ships `playwright.config.ts` (Chromium project, `webServer` on the framework dev server, `e2e/*.e2e.ts` in `testDir`), an `e2e` script (`playwright test`), the `@playwright/test` dev dependency pinned to `1.64.0`, an example `e2e/smoke.e2e.ts`, and a CI step that installs Chromium (`pnpm exec playwright install --with-deps chromium`) and runs `pnpm e2e`.",
         why: "Projects wanted end-to-end browser coverage on top of the Vitest unit tests; Playwright is the standard E2E runner for both Vite and Next.js, with exact-version pins consistent with the rest of the generated stack and the browser binary downloaded per the pinned package version.",
       },
+      {
+        files: ["AGENTS.md"],
+        what: "The project structure tree in AGENTS.md (and the shared renderer that also feeds README.md) now reflects the files actually present on disk: `raulmoracode-create upgrade` detects the tree paths that exist in the project and re-renders AGENTS.md without the paths that no longer exist (a file the user deleted disappears from the tree instead of being resurrected; a directory is only kept when it exists or still has existing children).",
+        why: "AGENTS.md is a managed file re-rendered on every upgrade, but it was rebuilt from the framework and the tech selection alone, so a user who deleted a file saw it reappear in the tree after the upgrade, contradicting the repository state the document itself tells agents to trust. Pruning the tree by what is on disk makes the guide match the project it documents.",
+      },
     ],
   },
   {

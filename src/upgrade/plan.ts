@@ -20,6 +20,13 @@ export interface ProjectDiskState {
   /** Managed path → current content, or `null` when the file is missing. */
   files: Record<string, string | null>;
   dependencies: Record<DependencyType, Record<string, string>>;
+  /**
+   * POSIX project-relative paths the project tree declares and that actually
+   * exist on disk, detected by the caller (see `upgrade/state.ts`). Absent
+   * paths are left out of the re-rendered `AGENTS.md` tree, so files the user
+   * deleted are not resurrected. When absent, the full tree is rendered.
+   */
+  existingTreePaths?: string[];
 }
 
 export interface UpgradePlan {
@@ -191,7 +198,12 @@ export interface BuildUpgradePlanParams {
 export function buildUpgradePlan(params: BuildUpgradePlanParams): UpgradePlan {
   const { manifest, toVersion, state } = params;
   const templates =
-    params.templates ?? managedFiles(manifest.framework, manifest.selection);
+    params.templates ??
+    managedFiles(
+      manifest.framework,
+      manifest.selection,
+      state.existingTreePaths,
+    );
   const migrations =
     params.migrations ?? selectMigrations(manifest.cliVersion, toVersion);
   const notes = params.notes ?? notesBetween(manifest.cliVersion, toVersion);
