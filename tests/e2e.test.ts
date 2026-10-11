@@ -253,6 +253,7 @@ e2e("end-to-end project creation", () => {
       ".husky/commit-msg",
       "commitlint.config.ts",
       ".github/workflows/ci.yml",
+      ".github/dependabot.yml",
       "CHANGELOG.md",
     ]) {
       expect(existsSync(join(projectDir, file)), file).toBe(true);

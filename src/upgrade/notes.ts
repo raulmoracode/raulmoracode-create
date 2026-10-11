@@ -10,7 +10,7 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
     version: "1.1.0",
     summary:
-      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI, so type errors always fail the pipeline.",
+      "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI so type errors always fail the pipeline, and ships a Dependabot configuration (.github/dependabot.yml) that keeps dependency updates automatic with exact-version PRs, aligned with the pnpm minimumReleaseAge maturity gate.",
     changes: [
       {
         files: [".github/workflows/ci.yml"],
@@ -26,6 +26,11 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         files: ["vite.config.ts"],
         what: 'The `vite.config.ts` template now imports the site config with an explicit `.js` extension (`import { site } from "./src/config/site.js"`).',
         why: "create-vite's `tsconfig.node.json` type-checks `vite.config.ts` with `moduleResolution: nodenext`, which requires explicit extensions on relative imports; the extensionless import made the restored `tsc -b` type check fail.",
+      },
+      {
+        files: [".github/dependabot.yml"],
+        what: "Every generated project now ships a .github/dependabot.yml that opens weekly npm-ecosystem update PRs with `versioning-strategy: increase` (exact versions stay exact, never ranges), a 7-day cooldown that mirrors the `minimumReleaseAge: 10080` gate in pnpm-workspace.yaml, and one grouped PR for minor and patch bumps. Majors stay individual PRs.",
+        why: "Updating dependencies was manual, and naive automation broke against the maturity gate: Dependabot would propose a release younger than 7 days that pnpm refuses to install. The cooldown mirrors the gate so Dependabot only proposes versions pnpm accepts, while security updates (exempt from the cooldown) still open immediately.",
       },
     ],
   },

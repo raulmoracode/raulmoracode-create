@@ -115,6 +115,10 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
     name: ".github/workflows/",
     comment: "CI (install, check, typecheck, test, build)",
   });
+  root.push({
+    name: ".github/dependabot.yml",
+    comment: "Dependabot (weekly, exact versions, 7-day cooldown)",
+  });
   root.push({ name: "src/", children: srcChildren(frameworkId, selection) });
   if (selection.shadcn) {
     root.push({

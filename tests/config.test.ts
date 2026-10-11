@@ -18,6 +18,7 @@ import {
   utilsTs,
   withRegistryAliases,
 } from "../src/config/components.js";
+import { dependabotYaml } from "../src/config/dependabot.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
@@ -638,6 +639,78 @@ describe("CI workflow template", () => {
     expect(content).toContain("pnpm build");
     expect(content).not.toContain("deploy");
     expect(content.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("Dependabot configuration", () => {
+  it("pins the exact bytes of .github/dependabot.yml", () => {
+    expect(dependabotYaml()).toBe(
+      [
+        "version: 2",
+        "updates:",
+        "  - package-ecosystem: npm # pnpm projects use the npm ecosystem",
+        "    directory: /",
+        "    schedule:",
+        "      interval: weekly",
+        "    versioning-strategy: increase # bumps exact versions, never creates ranges",
+        "    cooldown:",
+        `      # Same 7-day maturity gate as pnpm-workspace.yaml (minimumReleaseAge: ${PNPM_MINIMUM_RELEASE_AGE})`,
+        `      default-days: ${PNPM_MINIMUM_RELEASE_AGE / 1440}`,
+        "    groups:",
+        "      minor-and-patch:",
+        "        applies-to: version-updates",
+        "        update-types:",
+        "          - minor",
+        "          - patch",
+        "",
+      ].join("\n"),
+    );
+    expect(dependabotYaml().endsWith("\n")).toBe(true);
+  });
+
+  it("targets the npm ecosystem (pnpm) at the repo root", () => {
+    const content = dependabotYaml();
+    expect(content).toContain("version: 2");
+    expect(content).toContain("package-ecosystem: npm");
+    expect(content).toContain("    directory: /");
+    expect(content).toContain("interval: weekly");
+  });
+
+  it("uses versioning-strategy increase so exact pins never become ranges", () => {
+    const content = dependabotYaml();
+    expect(content).toContain("versioning-strategy: increase");
+    expect(content).not.toContain("versioning-strategy: widen");
+    expect(content).not.toContain("versioning-strategy: lockfile-only");
+    expect(content).not.toContain("versioning-strategy: increase-if-necessary");
+  });
+
+  it("mirrors the pnpm minimumReleaseAge gate in the cooldown", () => {
+    const content = dependabotYaml();
+    expect(PNPM_MINIMUM_RELEASE_AGE).toBe(10080);
+    expect(content).toContain(
+      `default-days: ${PNPM_MINIMUM_RELEASE_AGE / 1440}`,
+    );
+    expect(content).toContain(`minimumReleaseAge: ${PNPM_MINIMUM_RELEASE_AGE}`);
+  });
+
+  it("groups minor and patch bumps into one PR, leaving majors individual", () => {
+    const content = dependabotYaml();
+    expect(content).toContain("groups:");
+    expect(content).toContain("minor-and-patch:");
+    expect(content).toContain("applies-to: version-updates");
+    expect(content).toContain("          - minor");
+    expect(content).toContain("          - patch");
+    expect(content).not.toContain("          - major");
+  });
+
+  it("contains no tokens or machine-specific paths", () => {
+    const content = dependabotYaml();
+    expect(content).not.toMatch(/ghp_/);
+    expect(content).not.toMatch(/github_pat_/);
+    expect(content).not.toMatch(/_authToken/);
+    expect(content).not.toMatch(/\/Users\//);
+    expect(content).not.toMatch(/\/home\//);
+    expect(content).not.toMatch(/[A-Z]:\\/);
   });
 });
 

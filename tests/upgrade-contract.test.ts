@@ -154,6 +154,7 @@ describe("managed files", () => {
   it("follows the tech selection and framework", () => {
     expect(Object.keys(managedFiles("vite", NONE)).sort()).toEqual([
       ".editorconfig",
+      ".github/dependabot.yml",
       ".github/pull_request_template.md",
       ".github/workflows/ci.yml",
       ".nvmrc",

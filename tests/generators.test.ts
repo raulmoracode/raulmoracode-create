@@ -11,6 +11,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 });
 
 import { SHADCN_VERSION } from "../src/config/components.js";
+import { dependabotYaml } from "../src/config/dependabot.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
@@ -24,6 +25,7 @@ import {
 } from "../src/generators/configure-biome.js";
 import { configureChangelog } from "../src/generators/configure-changelog.js";
 import { configureCi } from "../src/generators/configure-ci.js";
+import { configureDependabot } from "../src/generators/configure-dependabot.js";
 import { configureGitHooks } from "../src/generators/configure-git-hooks.js";
 import { configureManifest } from "../src/generators/configure-manifest.js";
 import {
@@ -968,6 +970,31 @@ describe("configurePrTemplate", () => {
         ".github/pull_request_template.md"
       ],
     );
+  });
+});
+
+describe("configureDependabot", () => {
+  it("writes .github/dependabot.yml with the exact template", async () => {
+    const dir = await makeTempDir();
+    await configureDependabot(dir);
+    const yaml = await readFromFile(dir, ".github", "dependabot.yml");
+    expect(yaml).toBe(dependabotYaml());
+    expect(yaml).toContain("package-ecosystem: npm");
+    expect(yaml).toContain("versioning-strategy: increase");
+    expect(yaml.endsWith("\n")).toBe(true);
+  });
+
+  it("keeps the file registered as a managed file for both frameworks", async () => {
+    for (const framework of [viteFramework, nextFramework]) {
+      const dir = await makeTempDir();
+      await configureDependabot(dir);
+      const written = await readFromFile(dir, ".github", "dependabot.yml");
+      expect(written).toBe(
+        managedFiles(framework.id, FULL_TECH_SELECTION)[
+          ".github/dependabot.yml"
+        ],
+      );
+    }
   });
 });
 
