@@ -5,16 +5,76 @@ All notable changes to `@raulmoracode/create` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-10-11
 
 ### Added
 
-- `.env.example` template in every generated project (Vite `VITE_*` /
-  Next.js `NEXT_PUBLIC_*` placeholders), so the environment-variable workflow
-  documented in the generated `AGENTS.md` is actually possible.
-- The `.gitignore` required entries now negate `.env.example` (`!.env.example`),
-  keeping it trackable even though `.env.*` ignores the rest; the gitignore
-  upgrade migration was bumped to 1.1.0 so existing projects receive it too.
+- **Playwright as an optional tech preset** (`@playwright/test@1.64.0`): a
+  `playwright.config.ts` (Chromium, `webServer` on the framework dev server,
+  `e2e/*.e2e.ts`), an `e2e` script, an example `e2e/smoke.e2e.ts`, and a CI
+  step that installs Chromium and runs `pnpm e2e`. Independent from the
+  Vitest `testing` preset; no cascade in either direction.
+- **Dependabot** (`.github/dependabot.yml`) in every generated project:
+  weekly npm-ecosystem PRs, `versioning-strategy: increase` so exact pins stay
+  exact, a 7-day cooldown mirroring the `minimumReleaseAge` gate, one grouped
+  PR for minor+patch, majors individual. Registered as a managed file.
+- **`.env.example`** in every generated project (Vite `VITE_*` / Next.js
+  `NEXT_PUBLIC_*` placeholders), making the environment workflow documented in
+  the generated `AGENTS.md` actually possible. The gitignore now negates it
+  (`!.env.example`) and the upgrade migration (bumped to 1.1.0) adds it to
+  existing projects.
+- **`.vscode/settings.json` is now tracked** in Vite projects: the create-vite
+  `.vscode/*` glob no longer swallows it, so editor configuration ships with
+  the repo (Next projects already tracked it). New upgrade migration
+  `vscode-settings-tracked`.
+- **Author and license prompts**: scaffolding now asks for the project author
+  (default `Raul Mora`, just press Enter) and the license (`MIT` default,
+  `Apache-2.0`, `UNLICENSED`, or none). `package.json` and `LICENSE` reflect
+  the answers; the upgrade preserves them (they are not managed fields).
+- **Branch protection after the first push** (best-effort): the scaffold
+  applies a GitHub ruleset to `main` requiring pull requests and the
+  `validate` status check. If `gh` is missing or the API fails, the project
+  still succeeds and the exact manual `gh api` command is printed.
+- **`typecheck` script** (`tsc -b` on Vite, `tsc --noEmit` on Next) and a
+  `typecheck` step in the generated CI.
+- **Layer invariants test** (`tests/layer-invariants.test.ts`): a static
+  import scan over `src/` that enforces the §3 rules (Clack layering, I/O
+  through `filesystem.ts`, processes through `exec.ts`, `git/`↔`github/`
+  isolation, `upgrade/` contract vs orchestration).
+
+### Changed
+
+- **The generated AGENTS.md project tree now reflects the project state**:
+  `upgrade` prunes the tree by what actually exists on disk, so files the user
+  deleted no longer reappear listed after an upgrade. The shared renderer
+  (`project-structure.ts`) feeds both the AGENTS.md and README trees.
+- **The pull request template is a single source**, selection-aware
+  (checklist gates `pnpm check`/`test`/`e2e` by the selected techs, always
+  `typecheck`/`build`), embedded in both `.github/pull_request_template.md`
+  and the generated AGENTS.md `## Pull requests` section, with an explicit
+  rule that PR titles and bodies are written in English.
+- `upgrade` now caps oversized pull request bodies (`truncateForGithub`
+  wired into the PR creation), so `gh pr create` never fails after the branch
+  was already pushed.
+- `upgrade/` purity claim in the docs corrected: contract modules are pure,
+  orchestration (preflight/apply/state/migrations) uses I/O and processes
+  exclusively through the utils layer — matching the enforced invariants.
+- AGENTS.md test table synced with the real suite (30/30 files documented).
+
+### Fixed
+
+- **Generated Vite projects are now typechecked**: `vite build` had replaced
+  create-vite's `tsc -b && vite build`, so a TypeScript error never failed the
+  build or CI. A latent TS2835 in the `vite.config.ts` template (extensionless
+  `site` import) surfaced and was fixed.
+- The upgrade rollback now restores migration-written files (`.gitignore`,
+  `README.md`, `src/config/site.ts`), matching the documented guarantee.
+- `github/default-branch.ts` no longer imports from `git/` (the §3 layer rule);
+  the `origin/HEAD` fallback moved to the orchestrator.
+
+## [Unreleased]
+
+Nothing pending yet.
 
 ## [1.0.9] - 2026-10-10
 
@@ -284,7 +344,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.9...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.6...v1.0.7
