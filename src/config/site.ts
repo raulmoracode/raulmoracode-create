@@ -61,10 +61,12 @@ export function describeStack(packageJson: unknown): string {
 export function siteValues(options: {
   projectName: string;
   packageJson: unknown;
+  author?: string;
 }): SiteValues {
   const name =
     options.projectName.trim() === "" ? SITE_TITLE : options.projectName;
   const stack = describeStack(options.packageJson);
+  const author = options.author?.trim() || "Raul Mora";
   return {
     name,
     title: name,
@@ -73,7 +75,7 @@ export function siteValues(options: {
     favicon: FAVICON_URL,
     socialImage: "/imagen.png",
     socialImageAlt: stack === "" ? name : `${name} — ${stack}`,
-    author: "Raul Mora",
+    author,
     twitter: TWITTER_SITE_HANDLE,
     locale: "es_ES",
     themeColor: "#ffffff",

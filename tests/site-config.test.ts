@@ -158,6 +158,21 @@ describe("siteValues", () => {
       "my-project — React 19 + Next.js 16 + TypeScript 7",
     );
   });
+
+  it("uses the given author and falls back for a blank one", () => {
+    const site = siteValues({
+      projectName: "my-project",
+      packageJson: VITE_PACKAGE_JSON,
+      author: "Jane Doe",
+    });
+    expect(site.author).toBe("Jane Doe");
+    const blank = siteValues({
+      projectName: "my-project",
+      packageJson: VITE_PACKAGE_JSON,
+      author: "   ",
+    });
+    expect(blank.author).toBe("Raul Mora");
+  });
 });
 
 describe("siteConfigTs", () => {

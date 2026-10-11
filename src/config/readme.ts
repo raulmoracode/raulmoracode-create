@@ -310,7 +310,7 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
     },
     { name: ".nvmrc", comment: "pinned Node version" },
     { name: ".editorconfig", comment: "editor defaults" },
-    { name: "LICENSE", comment: "MIT license" },
+    { name: "LICENSE", comment: "project license" },
     { name: "CHANGELOG.md", comment: "project changelog" },
     { name: "README.md", comment: "project guide" },
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },

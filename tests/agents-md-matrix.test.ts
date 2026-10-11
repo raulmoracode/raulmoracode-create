@@ -88,7 +88,7 @@ const EXPECTED_AGENTS_MD = [
   "├── package.json            # scripts and dependencies (exact versions)",
   "├── pnpm-workspace.yaml     # minimumReleaseAge policy + excludes",
   "├── raulmoracode.json       # CLI manifest (framework, selection, hashes)",
-  "├── LICENSE                 # MIT license",
+  "├── LICENSE                 # project license",
   "├── CHANGELOG.md            # project changelog",
   "└── AGENTS.md               # guidelines for AI coding agents",
   "```",

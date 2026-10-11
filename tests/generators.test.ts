@@ -863,6 +863,40 @@ describe("writeProjectLicense", () => {
     expect(text).toContain(`Copyright (c) 2026 ${PROJECT_AUTHOR.name}`);
     expect(text.endsWith("\n")).toBe(true);
   });
+
+  it("writes the chosen holder and license", async () => {
+    const dir = await makeTempDir();
+    await writeProjectLicense(dir, 2027, {
+      holder: "Jane Doe",
+      license: "Apache-2.0",
+    });
+    const text = await readFromFile(dir, "LICENSE");
+    expect(text.startsWith("Copyright (c) 2027 Jane Doe\n")).toBe(true);
+    expect(text).toContain("Apache License");
+    expect(text).toContain("http://www.apache.org/licenses/LICENSE-2.0");
+    expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("writes the proprietary notice for UNLICENSED", async () => {
+    const dir = await makeTempDir();
+    await writeProjectLicense(dir, 2026, {
+      holder: "Jane Doe",
+      license: "UNLICENSED",
+    });
+    const text = await readFromFile(dir, "LICENSE");
+    expect(text).toContain("All rights reserved.");
+    expect(text).toContain("Copyright (c) 2026 Jane Doe");
+    expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("writes no LICENSE file when the project has no license", async () => {
+    const dir = await makeTempDir();
+    await writeProjectLicense(dir, 2026, {
+      holder: "Jane Doe",
+      license: "none",
+    });
+    await expect(readFromFile(dir, "LICENSE")).rejects.toThrow();
+  });
 });
 
 describe("configureSite", () => {

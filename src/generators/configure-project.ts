@@ -1,8 +1,9 @@
 import { registryScopeExcludes } from "../config/components.js";
 import {
   LICENSE_HOLDER,
-  LICENSE_TYPE,
-  licenseText,
+  type LicenseChoice,
+  licenseField,
+  licenseFileContent,
 } from "../config/license.js";
 import {
   collectLockedPackages,
@@ -125,6 +126,16 @@ export const PROJECT_AUTHOR = {
   url: "https://raulmoracode.com",
 };
 
+export interface ProjectOptions {
+  author: { name: string; url: string };
+  license: LicenseChoice;
+}
+
+export const DEFAULT_PROJECT_OPTIONS: ProjectOptions = {
+  author: { ...PROJECT_AUTHOR },
+  license: "MIT",
+};
+
 export function projectScripts(
   framework: ProjectFramework,
   selection: TechSelection,
@@ -150,6 +161,7 @@ export async function patchPackageJson(
   projectName: string,
   githubUrl: string,
   selection: TechSelection = FULL_TECH_SELECTION,
+  options: ProjectOptions = DEFAULT_PROJECT_OPTIONS,
 ): Promise<void> {
   const packageJsonPath = joinPath(projectDir, "package.json");
   const pkg = await readJsonFile<PackageJson>(packageJsonPath);
@@ -158,12 +170,18 @@ export async function patchPackageJson(
   pkg.version = "0.1.0";
   pkg.private = true;
   pkg.type = "module";
-  pkg.author = { ...PROJECT_AUTHOR };
+  pkg.author = { ...options.author };
   pkg.homepage = githubUrl;
   pkg.repository = { type: "git", url: githubUrl };
   pkg.scripts = projectScripts(framework, selection);
   pkg.engines = { node: ">=24" };
   pkg.packageManager = `pnpm@${PNPM_VERSION}`;
+  const licenseValue = licenseField(options.license);
+  if (licenseValue === null) {
+    delete pkg.license;
+  } else {
+    pkg.license = licenseValue;
+  }
 
   const dependencies = pkg.dependencies ?? {};
   for (const [name, version] of Object.entries(
@@ -209,18 +227,23 @@ export async function patchPackageJson(
     version: "0.1.0",
     private: true,
     type: "module",
-    author: { ...PROJECT_AUTHOR },
-    license: LICENSE_TYPE,
+    author: { ...options.author },
     homepage: githubUrl,
     repository: { type: "git", url: githubUrl },
     scripts: projectScripts(framework, selection),
     engines: { node: ">=24" },
     packageManager: `pnpm@${PNPM_VERSION}`,
   };
+  if (licenseValue !== null) {
+    finalPkg.license = licenseValue;
+  }
   for (const [key, value] of Object.entries(pkg)) {
     if (!(key in finalPkg)) {
       finalPkg[key] = value;
     }
+  }
+  if (licenseValue === null) {
+    delete finalPkg.license;
   }
   if (Object.keys(dependencies).length > 0) {
     finalPkg.dependencies = dependencies;
@@ -315,11 +338,19 @@ export async function refreshPnpmWorkspaceExcludes(
 export async function writeProjectLicense(
   projectDir: string,
   year: number,
+  options: { holder?: string; license?: LicenseChoice } = {},
 ): Promise<void> {
-  await writeTextFile(
-    joinPath(projectDir, "LICENSE"),
-    licenseText({ holder: LICENSE_HOLDER, year }),
-  );
+  const holder = options.holder ?? LICENSE_HOLDER;
+  const content = licenseFileContent(options.license ?? "MIT", {
+    holder,
+    year,
+  });
+  const licensePath = joinPath(projectDir, "LICENSE");
+  if (content === null) {
+    await removeIfExists(licensePath);
+    return;
+  }
+  await writeTextFile(licensePath, content);
 }
 
 export async function normalizePackageJson(projectDir: string): Promise<void> {

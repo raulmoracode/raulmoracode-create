@@ -35,6 +35,11 @@ function runCommand(
 const answers = vi.hoisted(() => [
   "upgrade-project",
   "https://github.com/raulmoracode/upgrade-project",
+  "Raul Mora",
+]);
+const selectAnswers = vi.hoisted(() => [
+  process.env.E2E_FRAMEWORK ?? "vite",
+  "MIT",
 ]);
 
 vi.mock("@clack/prompts", () => ({
@@ -59,7 +64,7 @@ vi.mock("@clack/prompts", () => ({
       }
     },
   ),
-  select: vi.fn(async () => process.env.E2E_FRAMEWORK ?? "vite"),
+  select: vi.fn(async () => selectAnswers.shift() ?? "MIT"),
   multiselect: vi.fn(async () => [
     "tailwind",
     "shadcn",

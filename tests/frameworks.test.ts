@@ -381,4 +381,82 @@ describe("patchPackageJson", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("writes the chosen author and license, keeping the default URL", async () => {
+    const { mkdtemp, writeFile, readFile, rm } = await import(
+      "node:fs/promises"
+    );
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = await mkdtemp(join(tmpdir(), "raulmoracode-patch-author-"));
+    try {
+      await writeFile(
+        join(dir, "package.json"),
+        JSON.stringify(viteTemplatePackageJson()),
+        "utf8",
+      );
+      await patchPackageJson(
+        dir,
+        viteFramework,
+        "my-project",
+        "https://github.com/raulmoracode/my-project",
+        NO_TECH,
+        {
+          author: { name: "Jane Doe", url: "https://raulmoracode.com" },
+          license: "Apache-2.0",
+        },
+      );
+      const patched = JSON.parse(
+        await readFile(join(dir, "package.json"), "utf8"),
+      ) as PackageJson;
+      expect(patched.author).toEqual({
+        name: "Jane Doe",
+        url: "https://raulmoracode.com",
+      });
+      expect(patched.license).toBe("Apache-2.0");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("drops the license field when the project has none", async () => {
+    const { mkdtemp, writeFile, readFile, rm } = await import(
+      "node:fs/promises"
+    );
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = await mkdtemp(join(tmpdir(), "raulmoracode-patch-nolicense-"));
+    try {
+      const template = {
+        ...viteTemplatePackageJson(),
+        license: "MIT",
+      };
+      await writeFile(
+        join(dir, "package.json"),
+        JSON.stringify(template),
+        "utf8",
+      );
+      await patchPackageJson(
+        dir,
+        viteFramework,
+        "my-project",
+        "https://github.com/raulmoracode/my-project",
+        NO_TECH,
+        {
+          author: { name: "Jane Doe", url: "https://raulmoracode.com" },
+          license: "none",
+        },
+      );
+      const patched = JSON.parse(
+        await readFile(join(dir, "package.json"), "utf8"),
+      ) as PackageJson;
+      expect(patched.license).toBeUndefined();
+      expect(patched.author).toEqual({
+        name: "Jane Doe",
+        url: "https://raulmoracode.com",
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

@@ -167,7 +167,7 @@ function structure(frameworkId: Framework, selection: TechSelection): string[] {
       name: "raulmoracode.json",
       comment: "CLI manifest (framework, selection, hashes)",
     },
-    { name: "LICENSE", comment: "MIT license" },
+    { name: "LICENSE", comment: "project license" },
     { name: "CHANGELOG.md", comment: "project changelog" },
     { name: "AGENTS.md", comment: "guidelines for AI coding agents" },
   );

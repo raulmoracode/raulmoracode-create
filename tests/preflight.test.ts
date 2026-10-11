@@ -10,6 +10,8 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
   return { ...actual, exec: execMock };
 });
 
+const selectState = vi.hoisted(() => ({ calls: 0 }));
+
 vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
   outro: vi.fn(),
@@ -22,7 +24,10 @@ vi.mock("@clack/prompts", () => ({
     info: vi.fn(),
   },
   tasks: vi.fn(),
-  select: vi.fn(async () => "vite"),
+  select: vi.fn(async () => {
+    selectState.calls += 1;
+    return selectState.calls === 1 ? "vite" : "MIT";
+  }),
   multiselect: vi.fn(async () => ["tailwind"]),
   text: vi.fn(),
   confirm: vi.fn(async () => false),
@@ -88,6 +93,7 @@ beforeEach(async () => {
   execMock.mockReset();
   errorMock.mockClear();
   selectMock.mockClear();
+  selectState.calls = 0;
   exitSpy = vi
     .spyOn(process, "exit")
     .mockImplementation((() => undefined) as never);
@@ -142,11 +148,15 @@ describe("pnpm version preflight", () => {
     "proceeds past the preflight with pnpm 12.x without spawning it twice",
     async () => {
       mockPnpmVersion("12.6.0\n");
-      mockAnswers("pnpm-ok", "https://github.com/raulmoracode/pnpm-ok");
+      mockAnswers(
+        "pnpm-ok",
+        "https://github.com/raulmoracode/pnpm-ok",
+        "Raul Mora",
+      );
 
       await run({ verbose: false });
 
-      expect(selectMock).toHaveBeenCalledTimes(1);
+      expect(selectMock).toHaveBeenCalledTimes(2);
       const commands = calledCommands();
       expect(commands.slice(0, 4)).toEqual([
         "pnpm --version",

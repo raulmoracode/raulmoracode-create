@@ -35,9 +35,11 @@ import { createCommit } from "../git/commit.js";
 import { initRepository } from "../git/init.js";
 import { push, remoteHasDivergentCommits } from "../git/push.js";
 import { addRemote, lsRemote } from "../git/remote.js";
+import { promptAuthor } from "../prompts/author.js";
 import { promptOpenInVscode } from "../prompts/confirm.js";
 import { promptFramework } from "../prompts/framework.js";
 import { promptGitHubUrl } from "../prompts/github.js";
+import { promptLicense } from "../prompts/license.js";
 import { promptProjectName } from "../prompts/project.js";
 import { promptTechPreset } from "../prompts/tech.js";
 import { ExecError, exec } from "../utils/exec.js";
@@ -199,6 +201,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
     }
     projectName = await promptProjectName();
     const githubUrl = await promptGitHubUrl();
+    const author = await promptAuthor();
+    const license = await promptLicense();
 
     const { projectDir, reusedEmptyDir } = await checkDestination(projectName);
     cleanupDir = projectDir;
@@ -219,7 +223,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
             await framework.configureTailwind(projectDir);
           }
           message("Configuring site config");
-          await configureSite(projectDir, projectName);
+          await configureSite(projectDir, projectName, author.name);
           message("Configuring branding");
           await framework.configureBranding(projectDir);
           if (selection.shadcn) {
@@ -263,6 +267,7 @@ export async function run(options: RunOptions = {}): Promise<void> {
             projectName,
             githubUrl,
             selection,
+            { author, license },
           );
           message("Writing README");
           await configureReadme(
@@ -273,7 +278,10 @@ export async function run(options: RunOptions = {}): Promise<void> {
             selection,
           );
           message("Writing LICENSE");
-          await writeProjectLicense(projectDir, new Date().getFullYear());
+          await writeProjectLicense(projectDir, new Date().getFullYear(), {
+            holder: author.name,
+            license,
+          });
           message("Writing CHANGELOG");
           await configureChangelog(projectDir);
           await augmentGitignore(projectDir);
