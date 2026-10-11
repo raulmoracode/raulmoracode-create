@@ -48,7 +48,6 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         why: "Projects wanted end-to-end browser coverage on top of the Vitest unit tests; Playwright is the standard E2E runner for both Vite and Next.js, with exact-version pins consistent with the rest of the generated stack and the browser binary downloaded per the pinned package version.",
       },
       {
-{
         files: ["AGENTS.md"],
         what: "The project structure tree in AGENTS.md (and the shared renderer that also feeds README.md) now reflects the files actually present on disk: `raulmoracode-create upgrade` detects the tree paths that exist in the project and re-renders AGENTS.md without the paths that no longer exist (a file the user deleted disappears from the tree instead of being resurrected; a directory is only kept when it exists or still has existing children).",
         why: "AGENTS.md is a managed file re-rendered on every upgrade, but it was rebuilt from the framework and the tech selection alone, so a user who deleted a file saw it reappear in the tree after the upgrade, contradicting the repository state the document itself tells agents to trust. Pruning the tree by what is on disk makes the guide match the project it documents.",
@@ -62,7 +61,6 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         files: ["AGENTS.md"],
         what: "The `## Pull requests` section now embeds the exact pull request body template through the same single source as `.github/pull_request_template.md` (selection-aware checklist) and explicitly tells agents to write pull request titles and bodies in English.",
         why: "The AGENTS.md embedded copy duplicated the template file and could diverge from it, and agents were generating pull request bodies in Spanish; the shared source keeps both copies in sync and the language rule makes PRs reviewable by anyone.",
-      },
       },
     ],
   },
