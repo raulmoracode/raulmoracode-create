@@ -17,11 +17,19 @@ describe("parseArgs", () => {
       help: false,
       version: false,
       verbose: false,
+      check: false,
     });
   });
 
   it("detects --verbose", () => {
     expect(parseArgs(["--verbose"]).verbose).toBe(true);
+  });
+
+  it("detects --check and its alias --dry-run", () => {
+    expect(parseArgs(["--check"]).check).toBe(true);
+    expect(parseArgs(["--dry-run"]).check).toBe(true);
+    expect(parseArgs(["--check", "--dry-run"]).check).toBe(true);
+    expect(parseArgs([]).check).toBe(false);
   });
 
   it("detects --help and -h", () => {
@@ -41,6 +49,14 @@ describe("parseArgs", () => {
       help: true,
       version: false,
       verbose: true,
+      check: false,
+    });
+    expect(parseArgs(["upgrade", "--check", "--verbose"])).toEqual({
+      command: "upgrade",
+      help: false,
+      version: false,
+      verbose: true,
+      check: true,
     });
   });
 
@@ -51,6 +67,7 @@ describe("parseArgs", () => {
       help: false,
       version: false,
       verbose: true,
+      check: false,
     });
     expect(parseArgs(["something"]).command).toBe("create");
   });
@@ -61,6 +78,7 @@ describe("parseArgs", () => {
       help: false,
       version: false,
       verbose: false,
+      check: false,
     });
   });
 });
@@ -78,6 +96,8 @@ describe("help and version output", () => {
     expect(text).toContain("Usage:");
     expect(text).toContain("raulmoracode-create [options]");
     expect(text).toContain("--verbose");
+    expect(text).toContain("--check");
+    expect(text).toContain("--dry-run");
     expect(text).toContain("--help");
     expect(text).toContain("--version");
     expect(text).toContain("raulmoracode-create upgrade");

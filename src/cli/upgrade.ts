@@ -66,6 +66,7 @@ export interface UpgradeDeps {
 
 export interface UpgradeOptions {
   verbose?: boolean;
+  check?: boolean;
   deps?: Partial<UpgradeDeps>;
 }
 
@@ -90,6 +91,7 @@ const DEFAULT_DEPS: UpgradeDeps = {
 
 export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
   const verbose = options.verbose ?? false;
+  const check = options.check ?? false;
   const gh: GhClient = { ...DEFAULT_DEPS.gh, ...options.deps?.gh };
   const detectDefaultBranch =
     options.deps?.detectDefaultBranch ?? DEFAULT_DEPS.detectDefaultBranch;
@@ -161,6 +163,16 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
       state,
     });
     appliedPlan = plan;
+
+    // `--check` / `--dry-run`: the same preflight rigor, the same fresh fetch
+    // and the same plan, but the run stops before any write — no branch, no
+    // commit, no push, no pull request. It only reports: exit 1 when the
+    // upgrade would change something (drift), exit 0 when there is nothing to
+    // do (already published or empty plan).
+    if (check) {
+      await runUpgradeCheck(plan, toVersion);
+      return;
+    }
 
     const openPullRequest = await gh.findOpenPullRequest(
       projectDir,
@@ -328,4 +340,37 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
     }
     process.exit(1);
   }
+}
+
+/**
+ * Dry-run branch of `runUpgrade` (`--check` / `--dry-run`): shows the same
+ * summary a real run would show and decides the exit code without touching the
+ * project. Exit 1 when the upgrade would change something (drift), exit 0 when
+ * the plan is empty — an up-to-date project or an upgrade with nothing to do is
+ * the success case, never an error. The plan has already been built on a fresh
+ * `git fetch origin` (read-only), so the report reasons about the latest
+ * remote refs exactly like a real run.
+ */
+async function runUpgradeCheck(
+  plan: UpgradePlan,
+  toVersion: string,
+): Promise<void> {
+  log.info(
+    "Modo comprobación (--check): no se escribirá nada en el proyecto ni se abrirá ningún pull request.",
+  );
+  showUpgradeSummary(plan);
+
+  if (!planHasWork(plan)) {
+    log.success(
+      `El proyecto está al día con raulmoracode-create ${toVersion}: no hay cambios pendientes.`,
+    );
+    outro("No hay nada que actualizar.");
+    return;
+  }
+
+  log.warn(
+    `Hay cambios pendientes: raulmoracode-create upgrade crearía la rama ${plan.branch} y abriría un pull request con los cambios de arriba.`,
+  );
+  outro("Ejecuta 'raulmoracode-create upgrade' para aplicar la actualización.");
+  process.exit(1);
 }

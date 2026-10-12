@@ -153,7 +153,9 @@ run({ verbose: parseArgs(process.argv.slice(2)).verbose }).catch(...);
 
 - The shebang is preserved in `dist/index.js` after compiling with `tsc`.
 - Flags: `--verbose` (prints stdout/stderr of every external command in real time),
-  `-h`/`--help` (help, exit 0 without entering the flow), `-V`/`--version` (prints `VERSION`, exit 0).
+  `-h`/`--help` (help, exit 0 without entering the flow), `-V`/`--version` (prints `VERSION`, exit 0),
+  `--check` / `--dry-run` (upgrade only: shows the planned upgrade without writing anything;
+  exits 1 when changes are pending, 0 when the project is up to date).
 - `VERSION` lives in `src/cli/args.ts` and a test pins it to `package.json` (never read the JSON at runtime).
 - Works from any working directory.
 
@@ -197,7 +199,7 @@ Internal functions:
 ### 5.2 `src/cli/args.ts` — flags
 
 - `VERSION = "1.1.0"` — single source of truth for `--version`; pinned to `package.json` by a test.
-- `parseArgs(argv): CliArgs` — `{ help, version, verbose }` (`-h`/`--help`, `-V`/`--version`, `--verbose`; unknown flags are ignored).
+- `parseArgs(argv): CliArgs` — `{ help, version, verbose, check }` (`-h`/`--help`, `-V`/`--version`, `--verbose`, `--check`/`--dry-run`; unknown flags are ignored).
 - `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
 ### 5.3 `src/cli/output.ts` — Clack output
