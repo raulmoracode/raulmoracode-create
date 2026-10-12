@@ -734,6 +734,51 @@ describe("runUpgrade", () => {
     );
   });
 
+  it("rolls back the migration files the run wrote when a later step fails", async () => {
+    const templates = managedFiles("vite", SELECTION);
+    await createProjectFixture({
+      files: { ...templates, "AGENTS.md": "my own agents file" },
+      staleFiles: ["AGENTS.md"],
+    });
+    // The write-once migrations patch files the fixture does not materialize
+    // (`.gitignore`, `README.md` and `src/config/site.ts` are not managed —
+    // which is exactly why the previous rollback test never noticed them): give
+    // the migrations something to actually write so their paths reach revert.
+    await writeFileAt(join(projectDir, ".gitignore"), "node_modules\n");
+    await writeFileAt(
+      join(projectDir, "README.md"),
+      "# my-app\n\n## Project structure\n\n- stale tree\n\n## Links\n",
+    );
+    await writeFileAt(
+      join(projectDir, "src/config/site.ts"),
+      'export const site = {\n  name: "my-app",\n  title: "my-app",\n} as const;\n',
+    );
+    mockExec({
+      failOn: (command, args) => command === "pnpm" && args[0] === "install",
+    });
+
+    await runUpgrade({ verbose: false, deps });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    // The revert restores the plan files, the flow files AND the migration
+    // paths: without the latter the working tree would keep the migrations
+    // half-applied (`.gitignore`, `README.md`, `src/config/site.ts`) after
+    // switching back to the user's branch.
+    expect(calledCommands()).toContain(
+      "git restore -- AGENTS.md package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json src/config/site.ts README.md .gitignore",
+    );
+    expect(calledCommands()).toContain(
+      `git branch -D chore/raulmoracode-update-${VERSION}`,
+    );
+    expect(calledCommands().some((line) => line.startsWith("git add"))).toBe(
+      false,
+    );
+    expect(calledCommands().some((line) => line.startsWith("git commit"))).toBe(
+      false,
+    );
+    expect(createPullRequest).not.toHaveBeenCalled();
+  });
+
   it("keeps the branch and prints the retry commands when the push fails", async () => {
     await createProjectFixture();
     mockExec({
