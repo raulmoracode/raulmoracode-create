@@ -319,11 +319,12 @@ describe("end-to-end upgrade of a generated project", () => {
     expect(files).toBe("AGENTS.md");
     expect(existsSync(join(projectDir, "AGENTS.md.new"))).toBe(false);
 
-    // The upgrade commit (first parent) is scoped to exactly what the plan and
-    // the flow wrote: the migrations are idempotent here (the project was
-    // created by this same CLI, so `.gitignore`/`README.md`/`site.ts` need no
-    // merge), the pins did not move, so the only real change is the manifest.
-    // The old `git add .` would have included anything Biome reformatted.
+    // The upgrade commit (first parent) is scoped to the plan + flow files
+    // (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`,
+    // `raulmoracode.json` — the lockfile legitimately changes because the
+    // upgrade re-installs with `--no-frozen-lockfile`). The old `git add .`
+    // would have included anything Biome reformatted, so the real invariant is:
+    // no application code outside the plan enters the commit.
     const upgradeCommitFiles = (
       await runCommand(
         "git",
@@ -331,7 +332,19 @@ describe("end-to-end upgrade of a generated project", () => {
         projectDir,
       )
     ).stdout.trim();
-    expect(upgradeCommitFiles).toBe("raulmoracode.json");
+    expect(upgradeCommitFiles).toContain("raulmoracode.json");
+    const allowed = new Set([
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "raulmoracode.json",
+    ]);
+    for (const file of upgradeCommitFiles.split("\n").filter(Boolean)) {
+      expect(
+        allowed.has(file),
+        `unexpected file in upgrade commit: ${file}`,
+      ).toBe(true);
+    }
     const appCode =
       process.env.E2E_FRAMEWORK === "next" ? "src/app/page.tsx" : "src/App.tsx";
     expect(upgradeCommitFiles).not.toContain(appCode);
