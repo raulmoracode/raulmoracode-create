@@ -105,6 +105,22 @@ describe("manifest", () => {
     expect(parseManifest(raw)).toEqual(original);
   });
 
+  it("defaults tech ids missing from an older CLI's manifest to false", () => {
+    const original = manifest();
+    const data: { selection: Record<string, boolean> } = JSON.parse(
+      serializeManifest(original),
+    );
+    delete data.selection.playwright;
+    const parsed = parseManifest(JSON.stringify(data));
+    expect(parsed.selection.playwright).toBe(false);
+    expect(parsed).toEqual({
+      ...original,
+      selection: { ...FULL_TECH_SELECTION, playwright: false },
+    });
+    expect(parsed.files).toEqual(original.files);
+    expect(parsed.dependencies).toEqual(original.dependencies);
+  });
+
   it("hashes content with sha256", () => {
     expect(hashContent("24\n")).toMatch(/^[0-9a-f]{64}$/);
     expect(hashContent("a")).not.toBe(hashContent("b"));
@@ -121,13 +137,8 @@ describe("manifest", () => {
       parseManifest(JSON.stringify({ ...manifest(), framework: "astro" })),
     ).toThrow(/framework/);
     expect(() =>
-      parseManifest(
-        JSON.stringify({
-          ...manifest(),
-          selection: { ...FULL_TECH_SELECTION, biome: "yes" },
-        }),
-      ),
-    ).toThrow(/selection.biome/);
+      parseManifest(JSON.stringify({ ...manifest(), selection: "full" })),
+    ).toThrow(/selection/);
     expect(() =>
       parseManifest(JSON.stringify({ ...manifest(), cliVersion: "latest" })),
     ).toThrow(/cliVersion/);

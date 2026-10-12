@@ -84,10 +84,7 @@ export function parseManifest(raw: string): ProjectManifest {
   const selection = {} as TechSelection;
   for (const id of TECH_IDS) {
     const value = data.selection[id];
-    if (typeof value !== "boolean") {
-      throw invalid(`"selection.${id}" debe ser true o false.`);
-    }
-    selection[id] = value;
+    selection[id] = typeof value === "boolean" ? value : false;
   }
   if (typeof data.projectName !== "string" || data.projectName === "") {
     throw invalid('falta "projectName".');
