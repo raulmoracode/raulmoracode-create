@@ -1,5 +1,5 @@
 import { exec } from "../utils/exec.js";
-import { addArgs, commitArgs } from "./commit.js";
+import { commitArgs } from "./commit.js";
 
 export function showTopLevelArgs(): string[] {
   return ["rev-parse", "--show-toplevel"];
@@ -74,6 +74,42 @@ export async function workingTreeChanges(
     .filter((line) => line.length > 0);
 }
 
+export interface WorkingTreeEntry {
+  /** The two porcelain status characters (`XY`: index, worktree). */
+  status: string;
+  /** POSIX path relative to the repo root (the rename source, if any). */
+  path: string;
+}
+
+/**
+ * Raw `git status --porcelain` entries, the leading space preserved so the
+ * `XY` status pair can be split off: `" M"` is a worktree modification,
+ * `"M "` a staged one, `"??"` an untracked file, `"R  old -> new"` a rename.
+ * Unlike `workingTreeChanges` this keeps the exact positions of the format.
+ */
+export async function workingTreeEntries(
+  projectDir: string,
+  verbose: boolean,
+): Promise<WorkingTreeEntry[]> {
+  const result = await exec("git", porcelainArgs(), {
+    cwd: projectDir,
+    verbose,
+  });
+  const entries: WorkingTreeEntry[] = [];
+  for (const line of result.stdout.split("\n")) {
+    if (line.length < 4) {
+      continue;
+    }
+    const status = line.slice(0, 2);
+    const path = line.slice(3).split(" -> ")[0] ?? "";
+    if (path.length === 0) {
+      continue;
+    }
+    entries.push({ status, path });
+  }
+  return entries;
+}
+
 export async function currentBranch(
   projectDir: string,
   verbose: boolean,
@@ -137,13 +173,6 @@ export async function deleteLocalBranch(
   verbose: boolean,
 ): Promise<void> {
   await exec("git", branchDeleteArgs(branch), { cwd: projectDir, verbose });
-}
-
-export async function stageAll(
-  projectDir: string,
-  verbose: boolean,
-): Promise<void> {
-  await exec("git", addArgs(), { cwd: projectDir, verbose });
 }
 
 export async function stagePaths(

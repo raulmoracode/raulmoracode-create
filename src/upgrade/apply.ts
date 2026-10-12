@@ -12,9 +12,9 @@ import {
   createBranch,
   fetchOrigin,
   restorePaths,
-  stageAll,
   stagePaths,
   unstagePaths,
+  workingTreeEntries,
 } from "../git/upgrade.js";
 import { exec } from "../utils/exec.js";
 import {
@@ -46,6 +46,28 @@ export function upgradeCommitMessage(toVersion: string): string {
 
 export const OVERWRITE_COMMIT_MESSAGE =
   "chore: overwrite locally modified files";
+
+/**
+ * The exact set of project-relative paths the upgrade commit stages: every
+ * managed file the plan writes (including the ones it removes), the
+ * non-managed files the flow itself updates (`package.json`, the lockfile,
+ * `pnpm-workspace.yaml`, `raulmoracode.json` — the same list the rollback
+ * restores) and the paths the applied migrations actually wrote or removed.
+ * Sorted and de-duplicated so the `git add` command is deterministic and so
+ * the branch can never pick up a file the upgrade did not touch.
+ */
+export function upgradeCommitPaths(
+  plan: UpgradePlan,
+  migrationPaths: string[] = [],
+): string[] {
+  return [
+    ...new Set([
+      ...plan.files.map((file) => file.path),
+      ...REVERT_EXTRA_FILES,
+      ...migrationPaths,
+    ]),
+  ].sort();
+}
 
 export interface PrepareBranchParams {
   projectDir: string;
@@ -87,27 +109,44 @@ async function writeManagedFiles(
   }
 }
 
+export interface MigrationRunResult {
+  migrations: AppliedMigration[];
+  /**
+   * POSIX project-relative paths the applied migrations actually wrote or
+   * removed, de-duplicated and in run order. Managed files are reported only
+   * when the migration really wrote them (patchProjectFile skips absent,
+   * unrecognizable and already-current files), so the commit scope stays exact.
+   */
+  touchedPaths: string[];
+}
+
 async function runMigrations(
   projectDir: string,
   plan: UpgradePlan,
   verbose: boolean,
-): Promise<AppliedMigration[]> {
+): Promise<MigrationRunResult> {
   const context: MigrationContext = {
     projectDir,
     manifest: plan.manifest,
     verbose,
   };
   const applied: AppliedMigration[] = [];
+  const touchedPaths: string[] = [];
   for (const migration of plan.migrations) {
-    await migration.run(context);
+    const result = await migration.run(context);
     applied.push({
       id: migration.id,
       version: migration.version,
       description: migration.description,
       why: migration.why,
     });
+    for (const path of [...result.touched, ...result.removed]) {
+      if (!touchedPaths.includes(path)) {
+        touchedPaths.push(path);
+      }
+    }
   }
-  return applied;
+  return { migrations: applied, touchedPaths };
 }
 
 async function patchProjectPackageJson(
@@ -160,13 +199,26 @@ export async function writeProjectManifest(
   return next;
 }
 
+export interface ApplyUpgradeResult {
+  migrations: AppliedMigration[];
+  /**
+   * POSIX project-relative paths the applied migrations actually wrote or
+   * removed: the commit must stage them alongside the plan files.
+   */
+  migrationPaths: string[];
+}
+
 export async function applyUpgradeFiles(
   params: ApplyUpgradeParams,
-): Promise<AppliedMigration[]> {
+): Promise<ApplyUpgradeResult> {
   const { projectDir, plan, verbose } = params;
 
   await writeManagedFiles(projectDir, plan);
-  const appliedMigrations = await runMigrations(projectDir, plan, verbose);
+  const { migrations, touchedPaths } = await runMigrations(
+    projectDir,
+    plan,
+    verbose,
+  );
   await patchProjectPackageJson(projectDir, plan);
   await refreshPnpmWorkspaceExcludes(
     projectDir,
@@ -179,9 +231,51 @@ export async function applyUpgradeFiles(
   if (plan.selection.biome) {
     await formatProject(projectDir, verbose);
   }
+  await restoreNonPlanChanges(projectDir, plan, touchedPaths, verbose);
   await writeProjectManifest(projectDir, plan);
 
-  return appliedMigrations;
+  return { migrations, migrationPaths: touchedPaths };
+}
+
+/**
+ * Discards the formatting side effects the run caused on files that are NOT
+ * part of the upgrade: `formatProject` runs Biome over the whole project, so a
+ * file the plan does not touch can be reformatted, and `pnpm install` can
+ * touch `pnpm-lock.yaml` (owned) but nothing else. The PR body promises that
+ * nothing else is modified, and leaving those files reformatted would dirty
+ * the user's working tree the moment the CLI switches back to their branch.
+ *
+ * Only tracked files can be restored from the index (`git restore`); Biome
+ * rewrites existing files and never creates new ones, so everything it
+ * reformatted is tracked. Untracked leftovers (if any) are left alone rather
+ * than deleted (`git clean` is forbidden here). Safe because the preflight
+ * proved the working tree was clean: the content being replaced is exactly
+ * what this run itself changed, never user work.
+ */
+async function restoreNonPlanChanges(
+  projectDir: string,
+  plan: UpgradePlan,
+  migrationPaths: string[],
+  verbose: boolean,
+): Promise<void> {
+  const owned = new Set(upgradeCommitPaths(plan, migrationPaths));
+  const toRestore: string[] = [];
+  for (const { status, path } of await workingTreeEntries(
+    projectDir,
+    verbose,
+  )) {
+    if (status === "??" || status === "!!") {
+      continue;
+    }
+    if (owned.has(path)) {
+      continue;
+    }
+    toRestore.push(path);
+  }
+  if (toRestore.length === 0) {
+    return;
+  }
+  await restorePaths(projectDir, toRestore, verbose);
 }
 
 export interface CommitUpgradeParams {
@@ -189,22 +283,34 @@ export interface CommitUpgradeParams {
   plan: UpgradePlan;
   verbose: boolean;
   onCommit?: (message: string) => void;
+  /**
+   * POSIX paths the applied migrations actually wrote or removed, forwarded
+   * from `applyUpgradeFiles` so the commit stages them alongside the plan.
+   */
+  migrationPaths?: string[];
 }
 
 /**
  * Two Conventional Commits, staged separately: the first carries every change
  * except the managed files the user had modified, the second carries those
  * files alone so the overwrite is reviewable on its own.
+ *
+ * The staging is scoped to `upgradeCommitPaths()` — never `git add .` — so the
+ * branch contains exactly what this upgrade wrote and nothing else, which is
+ * what the pull request body claims.
  */
 export async function commitUpgrade(
   params: CommitUpgradeParams,
 ): Promise<string[]> {
-  const { projectDir, plan, verbose, onCommit } = params;
+  const { projectDir, plan, verbose, onCommit, migrationPaths = [] } = params;
   const overwritten = plan.files
     .filter((file) => file.status === "overwritten")
     .map((file) => file.path);
 
-  await stageAll(projectDir, verbose);
+  const commitPaths = upgradeCommitPaths(plan, migrationPaths);
+  if (commitPaths.length > 0) {
+    await stagePaths(projectDir, commitPaths, verbose);
+  }
   if (overwritten.length > 0) {
     await unstagePaths(projectDir, overwritten, verbose);
   }

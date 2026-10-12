@@ -105,6 +105,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
   let prTitle: string | null = null;
   let pullRequestUrl: string | null = null;
   let appliedMigrations: AppliedMigration[] = [];
+  let appliedMigrationPaths: string[] = [];
   let commits: string[] = [];
   let appliedPlan: UpgradePlan | null = null;
 
@@ -210,11 +211,13 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
         task: async (message) => {
           message("Escribiendo los archivos gestionados");
           filesWritten = true;
-          appliedMigrations = await applyUpgradeFiles({
+          const applied = await applyUpgradeFiles({
             projectDir,
             plan,
             verbose,
           });
+          appliedMigrations = applied.migrations;
+          appliedMigrationPaths = applied.migrationPaths;
           message("Instalando dependencias");
           return "Proyecto actualizado";
         },
@@ -226,6 +229,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
             projectDir,
             plan,
             verbose,
+            migrationPaths: appliedMigrationPaths,
             onCommit: () => {
               commitsCreated = true;
             },
