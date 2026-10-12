@@ -178,6 +178,8 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
     showUpgradeSummary(plan);
     if (!planHasWork(plan)) {
       showNothingToDo(plan);
+      outro("El proyecto ya está al día: no hay nada que actualizar.");
+      return;
     }
 
     base = await detectDefaultBranch(projectDir, verbose);

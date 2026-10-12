@@ -1,6 +1,6 @@
 import { log } from "@clack/prompts";
 import type { UpgradePlan } from "../upgrade/plan.js";
-import { type FileChangeStatus, MANIFEST_FILE } from "../upgrade/types.js";
+import type { FileChangeStatus } from "../upgrade/types.js";
 
 const STATUS_LABELS: Record<FileChangeStatus, string> = {
   updated: "se actualiza",
@@ -109,6 +109,6 @@ export function showPushFailureHint(
 
 export function showNothingToDo(plan: UpgradePlan): void {
   log.info(
-    `No hay cambios de plantilla entre ${plan.fromVersion} y ${plan.toVersion}: solo se actualizará ${MANIFEST_FILE}.`,
+    `No hay cambios de plantilla, dependencias ni migraciones entre ${plan.fromVersion} y ${plan.toVersion}.`,
   );
 }
