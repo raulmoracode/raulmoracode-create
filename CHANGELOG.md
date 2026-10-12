@@ -5,6 +5,40 @@ All notable changes to `@raulmoracode/create` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-10-12
+
+### Fixed
+
+- **Upgrade works again on every existing project**: manifests written by
+  CLI ≤ 1.0.9 (which predate the `playwright` tech id) now parse — missing
+  selection ids default to `false` instead of making `upgrade` fail with
+  `"selection.playwright" debe ser true o false`. The `upgrade` command is
+  usable from projects created with any earlier version.
+- **Upgrade rollback now restores migration-written files**: if `pnpm install`
+  (or any later step) fails after the migrations wrote `.gitignore`,
+  `README.md` or `src/config/site.ts`, `revertAppliedFiles` undoes them too —
+  the working tree is no longer left dirty with half-applied migrations,
+  matching the documented "undoes exactly the files this run wrote".
+- **Upgrade fetches before building the plan**: a network failure now aborts
+  before any prompt (fail-fast), and the plan/summary/warnings see fresh
+  `origin/<base>` refs instead of whatever the last manual fetch left behind.
+- **Upgrade commit is scoped to the plan**: `git add .` is gone from the
+  upgrade — only the plan paths + flow files (`package.json`,
+  `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `raulmoracode.json`) + migration
+  paths are committed, and formatting noise outside the plan is restored. The
+  PR body's "nothing else is modified" is now true.
+- **Upgrade stops cleanly when there is nothing to do**: when the plan has no
+  work, the run ends with "already up to date" and exit 0 instead of asking to
+  confirm and opening a PR that only touched `raulmoracode.json`.
+
+### Added
+
+- **`upgrade --check` (alias `--dry-run`)**: runs the same preflights, reads
+  the state and shows the full plan (files, dependencies, migrations,
+  overwrite warnings) **without writing anything** — exit 1 if changes are
+  pending, exit 0 if up to date. Pairs with the fetch-before-plan fix so you
+  see the drift before committing.
+
 ## [1.1.0] - 2026-10-11
 
 ### Added
@@ -344,7 +378,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.7...v1.0.8
