@@ -15,6 +15,7 @@ import {
 } from "../github/gh.js";
 import { confirmUpgrade } from "../prompts/upgrade.js";
 import {
+  type ApplyUpgradeProgress,
   applyUpgradeFiles,
   commitUpgrade,
   prepareUpgradeBranch,
@@ -106,6 +107,13 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
   let pullRequestUrl: string | null = null;
   let appliedMigrations: AppliedMigration[] = [];
   let appliedMigrationPaths: string[] = [];
+  // Filled by `applyUpgradeFiles` as soon as the migrations finish writing —
+  // before `pnpm install` and the other fallible steps — so the rollback below
+  // can undo the migration edits even when that call throws mid-run.
+  const appliedProgress: ApplyUpgradeProgress = {
+    migrations: [],
+    migrationPaths: [],
+  };
   let commits: string[] = [];
   let appliedPlan: UpgradePlan | null = null;
 
@@ -215,6 +223,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
             projectDir,
             plan,
             verbose,
+            progress: appliedProgress,
           });
           appliedMigrations = applied.migrations;
           appliedMigrationPaths = applied.migrationPaths;
@@ -291,7 +300,12 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
         );
       } else {
         if (filesWritten) {
-          await revertAppliedFiles(projectDir, appliedPlan, verbose);
+          await revertAppliedFiles(
+            projectDir,
+            appliedPlan,
+            verbose,
+            appliedProgress.migrationPaths,
+          );
         }
         try {
           await deleteLocalBranch(projectDir, createdBranch, verbose);

@@ -86,10 +86,28 @@ export async function prepareUpgradeBranch(
   return { base };
 }
 
+export interface ApplyUpgradeProgress {
+  /**
+   * Mutable collector the caller keeps for the rollback. It is filled the
+   * moment the migrations finish writing — before any step that can fail
+   * (`pnpm install`, Biome, the manifest rewrite) — so a mid-run failure still
+   * knows exactly which migration files to revert even though
+   * `applyUpgradeFiles` threw and never returned its result.
+   */
+  migrations: AppliedMigration[];
+  migrationPaths: string[];
+}
+
 export interface ApplyUpgradeParams {
   projectDir: string;
   plan: UpgradePlan;
   verbose: boolean;
+  /**
+   * Optional collector filled as soon as the migrations finish writing, so the
+   * rollback can undo their edits when a later step fails before
+   * `applyUpgradeFiles` returns (see `ApplyUpgradeProgress`).
+   */
+  progress?: ApplyUpgradeProgress;
 }
 
 async function writeManagedFiles(
@@ -211,14 +229,17 @@ export interface ApplyUpgradeResult {
 export async function applyUpgradeFiles(
   params: ApplyUpgradeParams,
 ): Promise<ApplyUpgradeResult> {
-  const { projectDir, plan, verbose } = params;
+  const { projectDir, plan, verbose, progress } = params;
 
   await writeManagedFiles(projectDir, plan);
-  const { migrations, touchedPaths } = await runMigrations(
-    projectDir,
-    plan,
-    verbose,
-  );
+  const migrated = await runMigrations(projectDir, plan, verbose);
+  if (progress) {
+    // Filled before the fallible steps: `pnpm install` and everything after
+    // can fail, and the caller has to be able to roll back the migrations even
+    // though this function then throws before returning its result.
+    progress.migrations = migrated.migrations;
+    progress.migrationPaths = migrated.touchedPaths;
+  }
   await patchProjectPackageJson(projectDir, plan);
   await refreshPnpmWorkspaceExcludes(
     projectDir,
@@ -231,10 +252,13 @@ export async function applyUpgradeFiles(
   if (plan.selection.biome) {
     await formatProject(projectDir, verbose);
   }
-  await restoreNonPlanChanges(projectDir, plan, touchedPaths, verbose);
+  await restoreNonPlanChanges(projectDir, plan, migrated.touchedPaths, verbose);
   await writeProjectManifest(projectDir, plan);
 
-  return { migrations, migrationPaths: touchedPaths };
+  return {
+    migrations: migrated.migrations,
+    migrationPaths: migrated.touchedPaths,
+  };
 }
 
 /**
@@ -339,6 +363,13 @@ const REVERT_EXTRA_FILES = [
 /**
  * Undoes, on the original branch, exactly the files this run wrote: files that
  * did not exist before are deleted, the rest are restored from the index.
+ *
+ * `migrationPaths` are the POSIX project-relative paths the applied migrations
+ * actually wrote or removed (collected by `runMigrations` and forwarded through
+ * the `progress` collector, which survives a mid-run failure). They are part of
+ * what this run wrote: reverting only the plan files would leave the
+ * migration edits half-applied in the user's working tree.
+ *
  * Safe precisely because the preflight proved the working tree was clean, so
  * the indexed content is the user's own.
  */
@@ -346,6 +377,7 @@ export async function revertAppliedFiles(
   projectDir: string,
   plan: UpgradePlan,
   verbose: boolean,
+  migrationPaths: string[] = [],
 ): Promise<void> {
   const created: string[] = [];
   const restored: string[] = [];
@@ -361,7 +393,9 @@ export async function revertAppliedFiles(
       await removeIfExists(joinPath(projectDir, path));
     }
   }
-  const tracked = [...new Set([...restored, ...REVERT_EXTRA_FILES])];
+  const tracked = [
+    ...new Set([...restored, ...REVERT_EXTRA_FILES, ...migrationPaths]),
+  ];
   if (tracked.length === 0) {
     return;
   }
