@@ -19,6 +19,25 @@ const truncateForGithubMock = vi.hoisted(() =>
   vi.fn((body: string) => `TRUNCATED\n${body}`),
 );
 
+/**
+ * Lets a single test simulate a CLI release that ships no migrations in the
+ * project's version range: without it, `planHasWork` can never be false,
+ * because every version below `VERSION` today selects at least the 1.0.9 and
+ * 1.1.0 migrations. The mock delegates to the real registry unless `empty` is
+ * set, so the rest of the suite keeps the real migration selection.
+ */
+const migrationsState = vi.hoisted(() => ({ empty: false }));
+
+vi.mock("../src/upgrade/migrations/index.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/upgrade/migrations/index.js")>();
+  return {
+    ...actual,
+    selectMigrations: (from: string, to: string) =>
+      migrationsState.empty ? [] : actual.selectMigrations(from, to),
+  };
+});
+
 vi.mock("../src/utils/exec.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/utils/exec.js")>();
   return { ...actual, exec: execMock };
@@ -63,7 +82,7 @@ vi.mock("../src/upgrade/pr-body.js", () => ({
   truncateForGithub: truncateForGithubMock,
 }));
 
-import { confirm, log } from "@clack/prompts";
+import { confirm, log, outro } from "@clack/prompts";
 import { VERSION } from "../src/cli/args.js";
 import { runUpgrade } from "../src/cli/upgrade.js";
 import { viteFramework } from "../src/frameworks/vite.js";
@@ -75,6 +94,7 @@ import {
 import {
   managedDependencyPins,
   managedFiles,
+  managedPackageJson,
 } from "../src/upgrade/managed-files.js";
 import {
   hashContent,
@@ -114,6 +134,7 @@ const warnMock = log.warn as unknown as ReturnType<typeof vi.fn>;
 const infoMock = log.info as unknown as ReturnType<typeof vi.fn>;
 const successMock = log.success as unknown as ReturnType<typeof vi.fn>;
 const confirmMock = confirm as unknown as ReturnType<typeof vi.fn>;
+const outroMock = outro as unknown as ReturnType<typeof vi.fn>;
 
 const originalCwd = process.cwd();
 let workDir = "";
@@ -212,6 +233,12 @@ interface FixtureOptions {
   packageJson?: PackageJson;
   skipManifest?: boolean;
   skipFiles?: boolean;
+  /**
+   * Flat `name → version` pins recorded in the manifest. Defaults to the
+   * 1.0.6-era pins, which make the plan bump them; a test that needs an empty
+   * plan passes the current pins (`managedDependencyPins`) instead.
+   */
+  manifestDependencies?: Record<string, string>;
 }
 
 async function createProjectFixture(
@@ -273,7 +300,7 @@ async function createProjectFixture(
           : hashContent(content),
       ]),
     ),
-    dependencies: {
+    dependencies: options.manifestDependencies ?? {
       "@biomejs/biome": PREVIOUS_BIOME_VERSION,
       "@commitlint/cli": "21.2.3",
       "@commitlint/config-conventional": "21.2.3",
@@ -284,24 +311,26 @@ async function createProjectFixture(
 
   await writeFileAt(
     join(projectDir, "package.json"),
-    `${JSON.stringify(
-      {
-        name: "my-app",
-        private: true,
-        type: "module",
-        scripts: { dev: "vite", build: "tsc -b && vite build" },
-        dependencies: { react: "19.2.0", "react-dom": "19.2.0" },
-        devDependencies: {
-          "@biomejs/biome": PREVIOUS_BIOME_VERSION,
-          "@types/react": "19.2.0",
-          husky: "9.1.7",
-          typescript: "7.0.2",
-          vite: "8.3.1",
-        },
-      },
-      null,
-      2,
-    )}\n`,
+    options.packageJson !== undefined
+      ? `${JSON.stringify(options.packageJson, null, 2)}\n`
+      : `${JSON.stringify(
+          {
+            name: "my-app",
+            private: true,
+            type: "module",
+            scripts: { dev: "vite", build: "tsc -b && vite build" },
+            dependencies: { react: "19.2.0", "react-dom": "19.2.0" },
+            devDependencies: {
+              "@biomejs/biome": PREVIOUS_BIOME_VERSION,
+              "@types/react": "19.2.0",
+              husky: "9.1.7",
+              typescript: "7.0.2",
+              vite: "8.3.1",
+            },
+          },
+          null,
+          2,
+        )}\n`,
   );
   await writeFileAt(
     join(projectDir, "pnpm-workspace.yaml"),
@@ -341,6 +370,8 @@ beforeEach(async () => {
   infoMock.mockClear();
   successMock.mockClear();
   confirmMock.mockClear();
+  outroMock.mockClear();
+  migrationsState.empty = false;
   requireAuth.mockClear();
   findOpenPullRequest.mockReset();
   findOpenPullRequest.mockResolvedValue(null);
@@ -624,6 +655,53 @@ describe("runUpgrade", () => {
     );
     expect(await listProjectFiles()).toEqual(before);
     expect(gitCommands()).not.toContain("git fetch origin");
+  });
+
+  it("stops cleanly without confirming or opening a PR when the plan has no work", async () => {
+    // A release that ships no migrations, no template changes and no pin bumps
+    // in range yields an empty plan: everything the project has already
+    // matches the CLI. The run must end here — nothing to confirm, no branch,
+    // no manifest-bump-only PR.
+    const managed = managedPackageJson("vite", SELECTION);
+    await createProjectFixture({
+      manifestDependencies: managedDependencyPins("vite", SELECTION),
+      packageJson: {
+        name: "my-app",
+        private: true,
+        type: "module",
+        scripts: managed.scripts,
+        dependencies: managed.dependencies.dependencies,
+        devDependencies: managed.dependencies.devDependencies,
+      },
+    });
+    migrationsState.empty = true;
+    const before = await listProjectFiles();
+
+    await runUpgrade({ verbose: false, deps });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(detectDefaultBranch).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(createPullRequest).not.toHaveBeenCalled();
+    expect(findOpenPullRequest).toHaveBeenCalledTimes(1);
+    const info = infoMock.mock.calls.map((call) => String(call[0]));
+    expect(info).toContainEqual(
+      expect.stringContaining(
+        "No hay cambios de plantilla, dependencias ni migraciones entre",
+      ),
+    );
+    expect(String(outroMock.mock.calls.at(-1)?.[0])).toContain(
+      "El proyecto ya está al día: no hay nada que actualizar.",
+    );
+    const git = gitCommands();
+    expect(git).not.toContain(
+      `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
+    );
+    expect(git.some((line) => line.includes("git push"))).toBe(false);
+    expect(
+      calledCommands().filter((line) => line.startsWith("git commit")),
+    ).toEqual([]);
+    expect(await listProjectFiles()).toEqual(before);
   });
 
   it("asks the user to update the CLI when the manifest is newer", async () => {
