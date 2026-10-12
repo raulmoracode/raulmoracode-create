@@ -13,6 +13,7 @@ import {
 import { branchArgs, initArgs, initRepository } from "../src/git/init.js";
 import { push, pushArgs } from "../src/git/push.js";
 import { addRemote, remoteAddArgs, remoteExists } from "../src/git/remote.js";
+import { addPathsArgs } from "../src/git/upgrade.js";
 
 const execAsync = promisify(exec);
 
@@ -50,6 +51,9 @@ describe("git command builders", () => {
   });
 
   it("builds add and commit commands", () => {
+    // `git add .` is only correct for the initial commit of a freshly
+    // scaffolded project (`createCommit`); the upgrade commit must never use
+    // it, it stages `addPathsArgs(...)` from `git/upgrade.ts` instead.
     expect(addArgs()).toEqual(["add", "."]);
     expect(commitArgs()).toEqual([
       "commit",
@@ -62,6 +66,16 @@ describe("git command builders", () => {
       "custom message",
     ]);
     expect(INITIAL_COMMIT_MESSAGE).toBe("chore: initial project setup");
+  });
+
+  it("builds a path-scoped add command with the -- separator", () => {
+    expect(addPathsArgs(["package.json", ".env.example"])).toEqual([
+      "add",
+      "--",
+      "package.json",
+      ".env.example",
+    ]);
+    expect(addPathsArgs([])).toEqual(["add", "--"]);
   });
 
   it("builds push command without force", () => {

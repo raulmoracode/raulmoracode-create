@@ -318,6 +318,23 @@ describe("end-to-end upgrade of a generated project", () => {
     ).stdout.trim();
     expect(files).toBe("AGENTS.md");
     expect(existsSync(join(projectDir, "AGENTS.md.new"))).toBe(false);
+
+    // The upgrade commit (first parent) is scoped to exactly what the plan and
+    // the flow wrote: the migrations are idempotent here (the project was
+    // created by this same CLI, so `.gitignore`/`README.md`/`site.ts` need no
+    // merge), the pins did not move, so the only real change is the manifest.
+    // The old `git add .` would have included anything Biome reformatted.
+    const upgradeCommitFiles = (
+      await runCommand(
+        "git",
+        ["show", "--name-only", "--pretty=", `${upgradeBranch}^`],
+        projectDir,
+      )
+    ).stdout.trim();
+    expect(upgradeCommitFiles).toBe("raulmoracode.json");
+    const appCode =
+      process.env.E2E_FRAMEWORK === "next" ? "src/app/page.tsx" : "src/App.tsx";
+    expect(upgradeCommitFiles).not.toContain(appCode);
   }, 120_000);
 
   it("is a no-op when the project is already up to date", async () => {

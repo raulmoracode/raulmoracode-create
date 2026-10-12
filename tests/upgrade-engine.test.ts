@@ -68,7 +68,10 @@ import { VERSION } from "../src/cli/args.js";
 import { runUpgrade } from "../src/cli/upgrade.js";
 import { viteFramework } from "../src/frameworks/vite.js";
 import { collectManagedFileHashes } from "../src/generators/configure-manifest.js";
-import { writeProjectManifest } from "../src/upgrade/apply.js";
+import {
+  upgradeCommitPaths,
+  writeProjectManifest,
+} from "../src/upgrade/apply.js";
 import {
   managedDependencyPins,
   managedFiles,
@@ -78,7 +81,7 @@ import {
   parseManifest,
   serializeManifest,
 } from "../src/upgrade/manifest.js";
-import { buildUpgradePlan } from "../src/upgrade/plan.js";
+import { buildUpgradePlan, type UpgradePlan } from "../src/upgrade/plan.js";
 import { readProjectState } from "../src/upgrade/state.js";
 import {
   MANIFEST_FILE,
@@ -129,12 +132,20 @@ const deps = {
 
 interface ExecStub {
   status?: string;
+  /**
+   * Porcelain output for the `git status --porcelain` calls AFTER the
+   * preflight (the post-format cleanup scan inside `applyUpgradeFiles`), while
+   * `status` answers the preflight one. Lets a test simulate files that Biome
+   * reformatted outside the plan without failing the clean-tree preflight.
+   */
+  dirtyAfter?: string;
   origin?: string;
   branch?: string;
   failOn?: (command: string, args: string[]) => boolean;
 }
 
 function mockExec(stub: ExecStub = {}): void {
+  let porcelainCalls = 0;
   execMock.mockImplementation(async (command: string, args: string[]) => {
     const line = `${command} ${args.join(" ")}`.trim();
     if (stub.failOn?.(command, args)) {
@@ -157,7 +168,10 @@ function mockExec(stub: ExecStub = {}): void {
       return { code: 0, stdout: `${projectDir}\n`, stderr: "" };
     }
     if (line === "git status --porcelain") {
-      return { code: 0, stdout: stub.status ?? "", stderr: "" };
+      porcelainCalls += 1;
+      const dirty =
+        porcelainCalls === 1 ? (stub.status ?? "") : (stub.dirtyAfter ?? "");
+      return { code: 0, stdout: dirty, stderr: "" };
     }
     if (line === "git remote get-url origin") {
       return {
@@ -366,7 +380,8 @@ describe("runUpgrade", () => {
       "git fetch origin",
       "git fetch origin",
       `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
-      "git add .",
+      "git status --porcelain",
+      "git add -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json",
       `git commit -m chore: upgrade raulmoracode-create to ${VERSION}`,
       `git push -u origin chore/raulmoracode-update-${VERSION}`,
       "git switch main",
@@ -503,6 +518,39 @@ describe("runUpgrade", () => {
     const body = String(createPullRequest.mock.calls[0]?.[0]?.body ?? "");
     expect(body).toContain("my own agents file");
     expect(body).toContain("chore: overwrite locally modified files");
+  });
+
+  it("stages exactly the plan paths and restores formatter changes outside the plan", async () => {
+    await createProjectFixture();
+    // The preflight sees a clean tree; the post-format cleanup scan sees two
+    // files Biome would have reformatted outside the plan (`src/main.tsx` and
+    // `README.md`, which no migration touched here).
+    mockExec({ dirtyAfter: " M src/main.tsx\n M README.md" });
+
+    await runUpgrade({ verbose: false, deps });
+
+    const all = calledCommands();
+    // The cleanup scan follows the formatter and precedes the commit.
+    expect(all.indexOf("pnpm exec biome check --write .")).toBeLessThan(
+      all.indexOf("git restore -- src/main.tsx README.md"),
+    );
+    expect(all.indexOf("git restore -- src/main.tsx README.md")).toBeLessThan(
+      all.indexOf(
+        "git add -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json",
+      ),
+    );
+    // The formatter side effects on non-plan files are discarded, never
+    // committed (the preflight proved the tree was clean, so restoring them
+    // from the index replaces exactly what the run itself changed).
+    expect(gitCommands()).toContain("git restore -- src/main.tsx README.md");
+    // `git add .` never appears: every add is scoped to `git add -- <paths>`.
+    expect(gitCommands().filter((line) => line.startsWith("git add"))).toEqual([
+      "git add -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json",
+    ]);
+    const addArgs = execMock.mock.calls
+      .filter(([command]) => command === "git")
+      .flatMap(([, args]) => args as string[]);
+    expect(addArgs).not.toContain(".");
   });
 
   it("stops with exit 1 and writes nothing when the working tree is dirty", async () => {
@@ -704,7 +752,8 @@ describe("runUpgrade", () => {
       "git fetch origin",
       "git fetch origin",
       `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
-      "git add .",
+      "git status --porcelain",
+      "git add -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json",
       `git commit -m chore: upgrade raulmoracode-create to ${VERSION}`,
       `git push -u origin chore/raulmoracode-update-${VERSION}`,
       "git switch main",
@@ -805,6 +854,90 @@ describe("runUpgrade", () => {
       await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
     );
     expect(rewritten.files["AGENTS.md"]).toBe(hashContent(agents));
+  });
+});
+
+describe("upgradeCommitPaths", () => {
+  it("stages exactly the plan files, the flow files and the migration paths", () => {
+    const plan = {
+      files: [
+        {
+          path: "AGENTS.md",
+          status: "overwritten",
+          previousContent: "local",
+          nextContent: "template",
+        },
+        {
+          path: "biome.json",
+          status: "updated",
+          previousContent: "old",
+          nextContent: "new",
+        },
+        {
+          path: ".husky/pre-commit",
+          status: "new",
+          previousContent: null,
+          nextContent: "hook",
+        },
+        {
+          path: ".nvmrc",
+          status: "removed",
+          previousContent: "24\n",
+          nextContent: null,
+        },
+      ],
+    } as unknown as UpgradePlan;
+
+    expect(upgradeCommitPaths(plan)).toEqual([
+      ".husky/pre-commit",
+      ".nvmrc",
+      "AGENTS.md",
+      "biome.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "raulmoracode.json",
+    ]);
+    expect(upgradeCommitPaths(plan, [".gitignore", "README.md"])).toEqual([
+      ".gitignore",
+      ".husky/pre-commit",
+      ".nvmrc",
+      "AGENTS.md",
+      "README.md",
+      "biome.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "raulmoracode.json",
+    ]);
+  });
+
+  it("de-duplicates and ignores migration paths the plan already owns", () => {
+    const plan = {
+      files: [
+        {
+          path: "AGENTS.md",
+          status: "updated",
+          previousContent: "old",
+          nextContent: "new",
+        },
+        {
+          path: "biome.json",
+          status: "updated",
+          previousContent: "old",
+          nextContent: "new",
+        },
+      ],
+    } as unknown as UpgradePlan;
+
+    expect(upgradeCommitPaths(plan, ["AGENTS.md", "AGENTS.md"])).toEqual([
+      "AGENTS.md",
+      "biome.json",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "raulmoracode.json",
+    ]);
   });
 });
 
