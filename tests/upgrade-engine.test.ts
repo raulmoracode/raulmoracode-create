@@ -675,7 +675,6 @@ describe("runUpgrade", () => {
       },
     });
     migrationsState.empty = true;
-    const before = await listProjectFiles();
 
     await runUpgrade({ verbose: false, deps });
 
@@ -701,6 +700,82 @@ describe("runUpgrade", () => {
     expect(
       calledCommands().filter((line) => line.startsWith("git commit")),
     ).toEqual([]);
+  });
+
+  it("--check runs the same preflights, shows the plan and exits 1 without writing anything when changes are pending", async () => {
+    await createProjectFixture();
+    const before = await listProjectFiles();
+
+    await runUpgrade({ verbose: false, check: true, deps });
+
+    // Drift: exit 1, the check-mode contract.
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    // Same preflight rigor as a real run.
+    expect(calledCommands()).toContain("pnpm --version");
+    expect(calledCommands()).toContain("git --version");
+    expect(requireAuth).toHaveBeenCalled();
+    expect(errorMock).not.toHaveBeenCalled();
+    // The plan is built on a fresh read-only fetch, like the normal flow.
+    const git = gitCommands();
+    expect(git).toContain("git fetch origin");
+    // Nothing is written: no branch, no commit, no push, no PR, no prompts.
+    expect(git).not.toContain(
+      `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
+    );
+    expect(git.some((line) => line.startsWith("git push"))).toBe(false);
+    expect(git.filter((line) => line.startsWith("git commit"))).toEqual([]);
+    expect(git.filter((line) => line.startsWith("git add"))).toEqual([]);
+    expect(git.filter((line) => line.startsWith("git branch"))).toEqual([]);
+    expect(git).not.toContain("git restore");
+    expect(createPullRequest).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
+    // The dry-run header, the summary and the drift outro are shown.
+    expect(String(infoMock.mock.calls[0]?.[0])).toContain("--check");
+    expect(String(infoMock.mock.calls[0]?.[0])).toContain(
+      "no se escribirá nada",
+    );
+    expect(String(warnMock.mock.calls.at(-1)?.[0])).toContain(
+      "Hay cambios pendientes",
+    );
+    expect(String(warnMock.mock.calls.at(-1)?.[0])).toContain(
+      `chore/raulmoracode-update-${VERSION}`,
+    );
+    expect(String(outroMock.mock.calls.at(-1)?.[0])).toContain(
+      "raulmoracode-create upgrade",
+    );
+    expect(await listProjectFiles()).toEqual(before);
+  });
+
+  it("--check exits 0 and writes nothing when the project is already up to date", async () => {
+    await createProjectFixture({ cliVersion: VERSION });
+    const before = await listProjectFiles();
+
+    await runUpgrade({ verbose: false, check: true, deps });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(createPullRequest).not.toHaveBeenCalled();
+    expect(String(successMock.mock.calls[0]?.[0])).toContain(
+      "ya está actualizado",
+    );
+    expect(gitCommands()).not.toContain("git fetch origin");
+    expect(await listProjectFiles()).toEqual(before);
+  });
+
+  it("--check fails the same preflights as a real run (dirty tree)", async () => {
+    await createProjectFixture();
+    const before = await listProjectFiles();
+    mockExec({ status: " M src/main.tsx" });
+
+    await runUpgrade({ verbose: false, check: true, deps });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(String(errorMock.mock.calls[0]?.[0])).toContain(
+      "El árbol de trabajo tiene cambios sin confirmar",
+    );
+    expect(gitCommands()).not.toContain("git fetch origin");
+    expect(createPullRequest).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
     expect(await listProjectFiles()).toEqual(before);
   });
 

@@ -17,7 +17,7 @@ if (args.version) {
 
 const main =
   args.command === "upgrade"
-    ? runUpgrade({ verbose: args.verbose })
+    ? runUpgrade({ verbose: args.verbose, check: args.check })
     : run({ verbose: args.verbose });
 
 main.catch((error: unknown) => {

@@ -7,6 +7,7 @@ export interface CliArgs {
   help: boolean;
   version: boolean;
   verbose: boolean;
+  check: boolean;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -16,6 +17,7 @@ export function parseArgs(argv: string[]): CliArgs {
     help: argv.includes("--help") || argv.includes("-h"),
     version: argv.includes("--version") || argv.includes("-V"),
     verbose: argv.includes("--verbose"),
+    check: argv.includes("--check") || argv.includes("--dry-run"),
   };
 }
 
@@ -29,6 +31,9 @@ export function helpText(): string {
     "",
     "Options:",
     "  --verbose        Print the output of every external command.",
+    "  --check, --dry-run",
+    "                   (upgrade only) Show the planned upgrade without touching the project.",
+    "                   Exits 1 when changes are pending, 0 when the project is up to date.",
     "  -h, --help       Show this help message.",
     "  -V, --version    Show the installed version.",
     "",
@@ -36,6 +41,7 @@ export function helpText(): string {
     "  raulmoracode-create",
     "  raulmoracode-create --verbose",
     "  raulmoracode-create upgrade",
+    "  raulmoracode-create upgrade --check",
     "",
   ].join("\n");
 }
