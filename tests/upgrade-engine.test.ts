@@ -364,12 +364,26 @@ describe("runUpgrade", () => {
       "git remote get-url origin",
       "git rev-parse --abbrev-ref HEAD",
       "git fetch origin",
+      "git fetch origin",
       `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
       "git add .",
       `git commit -m chore: upgrade raulmoracode-create to ${VERSION}`,
       `git push -u origin chore/raulmoracode-update-${VERSION}`,
       "git switch main",
     ]);
+    // The first fetch happens before the plan is built (readProjectState and
+    // buildUpgradePlan run between the preflights and the summary); the second
+    // one is prepareUpgradeBranch refreshing the refs again right before
+    // switching to the upgrade branch, so a stale remote cannot make the
+    // summary, the overwrite warnings or the branch base reason about old refs.
+    const git = gitCommands();
+    const firstFetch = git.indexOf("git fetch origin");
+    const upgradeSwitch = git.indexOf(
+      `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
+    );
+    expect(firstFetch).toBeGreaterThanOrEqual(0);
+    expect(firstFetch).toBeLessThan(upgradeSwitch);
+    expect(git.filter((line) => line === "git fetch origin")).toHaveLength(2);
     expect(calledCommands().filter((line) => line.startsWith("pnpm "))).toEqual(
       [
         "pnpm --version",
@@ -625,6 +639,7 @@ describe("runUpgrade", () => {
       "git remote get-url origin",
       "git rev-parse --abbrev-ref HEAD",
       "git fetch origin",
+      "git fetch origin",
       `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
       "git switch main",
       "git restore -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json",
@@ -686,6 +701,7 @@ describe("runUpgrade", () => {
       "git status --porcelain",
       "git remote get-url origin",
       "git rev-parse --abbrev-ref HEAD",
+      "git fetch origin",
       "git fetch origin",
       `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
       "git add .",

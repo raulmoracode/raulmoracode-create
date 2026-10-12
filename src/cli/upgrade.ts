@@ -1,6 +1,7 @@
 import { intro, log, outro, tasks } from "@clack/prompts";
 import {
   deleteLocalBranch,
+  fetchOrigin,
   originHeadBranch,
   pushBranch,
   switchToBranch,
@@ -134,6 +135,15 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
       outro("No se ha modificado el proyecto.");
       return;
     }
+
+    // Fetch before the plan is built: the summary, the overwrite warnings and
+    // the branch creation must reason about the freshest `origin/<base>` refs,
+    // not about whatever the last manual fetch left behind. If the network is
+    // down, the run fails here, before prompting, instead of mid-task.
+    // `prepareUpgradeBranch` fetches again right before switching, so the
+    // upgrade branch is still created from the latest remote state even after
+    // the confirmation prompt (see `src/upgrade/apply.ts`).
+    await fetchOrigin(projectDir, verbose);
 
     const state = await readProjectState(projectDir, preflight.manifest);
     const plan = buildUpgradePlan({
