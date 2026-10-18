@@ -2,6 +2,7 @@ import type { Migration } from "../types.js";
 import { compareVersions, isVersionInRange } from "../version.js";
 import { migrateGitignore } from "./gitignore.js";
 import { migrateReadmeStructure } from "./readme.js";
+import { removePullRequestTemplate } from "./remove-pull-request-template.js";
 import { migrateSiteConfig } from "./site-config.js";
 import { migrateVscodeSettingsTracked } from "./vscode-settings.js";
 
@@ -20,15 +21,17 @@ export interface UpgradeMigration extends Migration {
 
 /**
  * Ordered registry of one-off migrations. A migration runs once, when the
- * project crosses its version: `from < version <= to`. All of them patch a
+ * project crosses its version: `from < version <= to`. Most of them patch a
  * file the CLI wrote but does not re-render (`.gitignore`, `src/config/site.ts`,
- * `README.md`), merging instead of overwriting so local edits survive.
+ * `README.md`), merging instead of overwriting so local edits survive; a
+ * removal migration only declares the path it retires in `handles`.
  */
 export const MIGRATIONS: UpgradeMigration[] = [
   migrateGitignore,
   migrateSiteConfig,
   migrateReadmeStructure,
   migrateVscodeSettingsTracked,
+  removePullRequestTemplate,
 ];
 
 export function isUpgradeMigration(

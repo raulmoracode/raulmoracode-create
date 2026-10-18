@@ -50,6 +50,7 @@ const EFFECTFUL_UPGRADE_MODULES = [
   "upgrade/apply",
   "upgrade/migrations/gitignore",
   "upgrade/migrations/readme",
+  "upgrade/migrations/remove-pull-request-template",
   "upgrade/migrations/site-config",
   "upgrade/migrations/support",
   "upgrade/migrations/vscode-settings",

@@ -397,6 +397,48 @@ describe("buildUpgradePlan", () => {
     expect(planOverwrittenFiles(plan)).toEqual([]);
   });
 
+  it("removes the pull request template the CLI no longer generates", () => {
+    const oldTemplate = "<!-- older template -->\n";
+    const plan = buildUpgradePlan({
+      manifest: manifest({
+        cliVersion: "1.2.0",
+        files: {
+          ...Object.fromEntries(
+            Object.entries(templates).map(([path, content]) => [
+              path,
+              hashContent(content),
+            ]),
+          ),
+          ".github/pull_request_template.md": hashContent(oldTemplate),
+        },
+      }),
+      toVersion: "1.3.0",
+      state: {
+        files: {
+          ...templates,
+          ".github/pull_request_template.md": oldTemplate,
+        },
+        dependencies: { dependencies: {}, devDependencies: {} },
+      },
+      templates,
+      notes: [],
+      migrations: selectMigrations("1.2.0", "1.3.0"),
+    });
+
+    // The template left the managed inventory; the migration declares the
+    // removal, so the file is deleted instead of merely reported.
+    expect(templates[".github/pull_request_template.md"]).toBeUndefined();
+    expect(plan.files).toEqual([
+      {
+        path: ".github/pull_request_template.md",
+        status: "removed",
+        previousContent: oldTemplate,
+        nextContent: null,
+      },
+    ]);
+    expect(plan.needsAttention).toEqual([]);
+  });
+
   it("separates an updated file from an overwritten one", () => {
     const stateCopy: ProjectDiskState = {
       files: { ...templates, "AGENTS.md": "mine" },

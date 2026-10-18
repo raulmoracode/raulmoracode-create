@@ -14,7 +14,6 @@ import { SHADCN_VERSION } from "../src/config/components.js";
 import { dependabotYaml } from "../src/config/dependabot.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
 import { opencodeConfigJson } from "../src/config/opencode.js";
-import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
 import { viteTailwindConfig } from "../src/config/tailwind.js";
 import { FULL_TECH_SELECTION } from "../src/config/tech.js";
@@ -38,7 +37,6 @@ import {
 } from "../src/generators/configure-node.js";
 import { configureOpencode } from "../src/generators/configure-opencode.js";
 import { configurePlaywright } from "../src/generators/configure-playwright.js";
-import { configurePrTemplate } from "../src/generators/configure-pr-template.js";
 import {
   PROJECT_AUTHOR,
   refreshPnpmWorkspaceExcludes,
@@ -1098,56 +1096,6 @@ describe("configureCi", () => {
     const workflow = await readFromFile(dir, ".github", "workflows", "ci.yml");
     expect(workflow).toContain("pnpm check");
     expect(workflow).toContain("pnpm test");
-  });
-});
-
-describe("configurePrTemplate", () => {
-  it("writes .github/pull_request_template.md with the exact template", async () => {
-    const dir = await makeTempDir();
-    await configurePrTemplate(dir);
-    const template = await readFromFile(
-      dir,
-      ".github",
-      "pull_request_template.md",
-    );
-    expect(template).toBe(pullRequestTemplate());
-    expect(template).toContain("## Summary");
-    expect(template).toContain("## How to test");
-    expect(template.endsWith("\n")).toBe(true);
-  });
-
-  it("gates the checklist on the tech selection", async () => {
-    const dir = await makeTempDir();
-    await configurePrTemplate(dir, {
-      ...FULL_TECH_SELECTION,
-      biome: false,
-      testing: false,
-    });
-    const template = await readFromFile(
-      dir,
-      ".github",
-      "pull_request_template.md",
-    );
-    expect(template).toContain("<!-- Write the PR body in English -->");
-    expect(template).not.toContain("`pnpm check`");
-    expect(template).not.toContain("`pnpm test`");
-    expect(template).toContain("- [ ] `pnpm typecheck`");
-    expect(template).toContain("- [ ] `pnpm build`");
-  });
-
-  it("keeps the file registered as a managed file", async () => {
-    const dir = await makeTempDir();
-    await configurePrTemplate(dir);
-    const written = await readFromFile(
-      dir,
-      ".github",
-      "pull_request_template.md",
-    );
-    expect(written).toBe(
-      managedFiles("vite", FULL_TECH_SELECTION)[
-        ".github/pull_request_template.md"
-      ],
-    );
   });
 });
 

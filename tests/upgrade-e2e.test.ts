@@ -42,6 +42,20 @@ const selectAnswers = vi.hoisted(() => [
   "MIT",
 ]);
 
+/**
+ * Simulates the release that ships this change: the CLI version the upgrade
+ * targets must cross the 1.3.0 removal migration, but the version on this
+ * branch is the previous release, so the removal would stay dormant until
+ * after publishing. Every `VERSION` read in this file goes through the mocked
+ * module, so the branch name, the PR title and the assertions agree.
+ */
+const TARGET_CLI_VERSION = vi.hoisted(() => "1.3.0");
+
+vi.mock("../src/cli/args.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/cli/args.js")>();
+  return { ...actual, VERSION: TARGET_CLI_VERSION };
+});
+
 vi.mock("@clack/prompts", () => ({
   intro: vi.fn(),
   outro: vi.fn(),
@@ -218,7 +232,18 @@ describe("end-to-end upgrade of a generated project", () => {
       await readFile(manifestPath, "utf8"),
     ) as ProjectManifest;
     manifest.cliVersion = OLD_CLI_VERSION;
-    manifest.files = { ...manifest.files, "AGENTS.md": hash("stale\n") };
+    // A project generated before 1.3.0 still ships the pull request template
+    // and records its hash, so the upgrade has to delete it through the
+    // removal migration instead of reporting it as a file needing attention.
+    const prTemplateRelative = ".github/pull_request_template.md";
+    const prTemplatePath = join(projectDir, prTemplateRelative);
+    const oldPrTemplate = "<!-- older template -->\n";
+    await writeFile(prTemplatePath, oldPrTemplate);
+    manifest.files = {
+      ...manifest.files,
+      "AGENTS.md": hash("stale\n"),
+      [prTemplateRelative]: hash(oldPrTemplate),
+    };
     await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
     // A local edit to a managed file: upgrade must overwrite it in place, never
@@ -228,6 +253,7 @@ describe("end-to-end upgrade of a generated project", () => {
       agentsPath,
       `${await readFile(agentsPath, "utf8")}\n## Local customization\n`,
     );
+    await runCommand("git", ["add", prTemplateRelative], projectDir);
     await runCommand(
       "git",
       ["commit", "-am", "chore: local tweak"],
@@ -275,6 +301,8 @@ describe("end-to-end upgrade of a generated project", () => {
     expect(prBody).toContain(`Upgrade raulmoracode-create ${OLD_CLI_VERSION}`);
     expect(prBody).toContain("## ⚠️ Overwritten files with local changes");
     expect(prBody).toContain("AGENTS.md");
+    // The removal is announced in the release notes of the target version.
+    expect(prBody).toContain(".github/pull_request_template.md");
     expect(prBody).not.toContain("--draft");
 
     // The OpenCode config survives the upgrade, `.gitignore` keeps its
@@ -319,6 +347,19 @@ describe("end-to-end upgrade of a generated project", () => {
       hash(opencodeConfigJson()),
     );
 
+    // The removal is real: the file is gone on the branch and the manifest no
+    // longer records a hash for it.
+    expect(
+      parsedBranchManifest.files[".github/pull_request_template.md"],
+    ).toBeUndefined();
+    await expect(
+      runCommand(
+        "git",
+        ["show", `${upgradeBranch}:.github/pull_request_template.md`],
+        projectDir,
+      ),
+    ).rejects.toThrow();
+
     const onBranch = await runCommand(
       "git",
       ["show", `${upgradeBranch}:AGENTS.md`],
@@ -352,7 +393,10 @@ describe("end-to-end upgrade of a generated project", () => {
       )
     ).stdout.trim();
     expect(upgradeCommitFiles).toContain("raulmoracode.json");
+    // The deleted template travels in the same commit as the rest of the plan.
+    expect(upgradeCommitFiles).toContain(".github/pull_request_template.md");
     const allowed = new Set([
+      ".github/pull_request_template.md",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",

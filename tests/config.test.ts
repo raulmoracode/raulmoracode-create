@@ -45,7 +45,6 @@ import {
   PNPM_MINIMUM_RELEASE_AGE,
   pnpmWorkspaceYaml,
 } from "../src/config/pnpm-workspace.js";
-import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { queryClientConfig } from "../src/config/query.js";
 import {
   CREATE_REPO_URL,
@@ -527,7 +526,7 @@ describe("pnpm-workspace.yaml", () => {
 });
 
 describe("agents guide", () => {
-  it("provides the project guidelines for coding agents", () => {
+  it("provides the project facts for coding agents", () => {
     const content = agentsMd();
     expect(content).toContain("# AGENTS.md");
     expect(content).toContain("`@raulmoracode/create`");
@@ -535,23 +534,94 @@ describe("agents guide", () => {
     expect(content).toContain("pnpm check");
     expect(content).toContain("pnpm test");
     expect(content).toContain("pnpm build");
-    expect(content).toContain("git push --force");
-    expect(content).toContain(
-      "Do not claim tests, builds, or other commands were executed if they were not actually run.",
-    );
     expect(content).toContain("## Project tooling");
     expect(content).toContain("uses pnpm exclusively");
     expect(content).toContain("siteHead()");
     expect(content).toContain(RAULMORACODE_REGISTRY_ADD_EXAMPLE);
     expect(content).not.toContain("shadcn@latest");
     expect(content).toContain("https://registry.raulmoracode.com");
-    expect(content).toContain("`@raulmoracode` registry");
+    expect(content).toContain("@components/*");
+  });
+
+  it("delegates how to work to the skills catalog", () => {
+    const content = agentsMd();
+    expect(content).toContain("## Skills");
+    expect(content).toContain(
+      "https://raulmoracode.github.io/raulmoracode-skills/",
+    );
+    expect(content).toContain("`.opencode/opencode.json` loads that catalog");
+    expect(content).toContain("`raulmoracode-mode`");
+    for (const skill of [
+      "`git-pr`",
+      "`git-branch`",
+      "`safe-git`",
+      "`test-before-finishing`",
+      "`verify-before-claiming`",
+      "`no-made-up-results`",
+      "`security-first`",
+      "`release-engineering`",
+      "`clear-final-report`",
+    ]) {
+      expect(content, skill).toContain(skill);
+    }
+    // Fallback non-negotiables when the catalog is unavailable.
+    expect(content).toContain("Use pnpm only, never npm or yarn.");
+    expect(content).toContain("no `^`, no `~`, no `latest`");
+    expect(content).toContain("git push --force");
+    expect(content).toContain("git reset --hard");
+    expect(content).toContain("git clean -fd");
+    expect(content).toContain("Follow Conventional Commits.");
+    expect(content).toContain(
+      "Never claim a command was run, or that something works, when it was not verified.",
+    );
+    expect(content).toContain("Never delete or overwrite the user's content.");
+  });
+
+  it("keeps only project facts, without the sections the catalog owns", () => {
+    const content = agentsMd();
+    for (const prose of [
+      "## General principles",
+      "## Code style",
+      "## Architecture",
+      "## Git\n",
+      "## Pull requests",
+      "## Changelog",
+      "## Security",
+      "## Adding dependencies",
+      "## Environment variables",
+      "## Deployment",
+      "## Working with existing code",
+      "## Final response",
+    ]) {
+      expect(content, prose).not.toContain(prose);
+    }
+  });
+
+  it("lists the OpenCode catalog configuration in the tree", () => {
+    expect(agentsMd()).toContain(".opencode/opencode.json");
+  });
+
+  it("gates the components section on shadcn", () => {
+    expect(agentsMd()).toContain("## Components and UI");
+    const withoutShadcn = agentsMd("vite", {
+      ...FULL_TECH_SELECTION,
+      shadcn: false,
+    });
+    expect(withoutShadcn).not.toContain("## Components and UI");
+  });
+
+  it("includes pnpm typecheck in the validation commands", () => {
+    const content = agentsMd();
+    expect(content).toContain("## Validation");
+    expect(content).toContain("```bash\npnpm check\npnpm typecheck\n");
+    expect(content).toContain("pnpm build\n```");
   });
 
   it("documents Git hooks and Conventional Commits", () => {
     const content = agentsMd();
     expect(content).toContain("## Git hooks and commits");
     expect(content).toContain("Husky");
+    expect(content).toContain("`pre-commit` runs:");
     expect(content).toContain("pnpm check");
     expect(content).toContain("pnpm test");
     expect(content).toContain("Commitlint");
@@ -562,24 +632,35 @@ describe("agents guide", () => {
     expect(content).toContain("test: add query client tests");
     expect(content).toContain("docs: update project guide");
     expect(content).toContain("chore: update dependencies");
-    expect(content).toContain("--no-verify");
     expect(content).toContain("pnpm build");
   });
 
-  it("documents project structure, dependencies, tests, env vars and deployment", () => {
+  it("documents structure, dependencies, scripts and env vars without leaving an empty hook fence", () => {
     const content = agentsMd();
     expect(content).toContain("## Project structure");
     expect(content).toContain("components/");
     expect(content).toContain("hooks/");
     expect(content).toContain("site.ts");
-    expect(content).toContain("## Adding dependencies");
-    expect(content).toContain("pnpm add package-name@1.2.3");
-    expect(content).toContain("exact versions");
+    expect(content).toContain("Use pnpm exclusively and pin exact versions");
     expect(content).toContain("CI=true pnpm test");
-    expect(content).toContain("## Environment variables");
-    expect(content).toContain(".env.example");
-    expect(content).toContain("## Deployment");
-    expect(content).toContain(".github/workflows/ci.yml");
+    expect(content).toContain("## Site identity");
+    expect(content).not.toContain("```bash\n```");
+
+    // Husky without Biome and without testing installs a `pre-commit` hook
+    // that runs nothing: the guide must say so instead of rendering an empty
+    // command fence.
+    const bare = agentsMd("vite", {
+      ...FULL_TECH_SELECTION,
+      biome: false,
+      testing: false,
+    });
+    expect(bare).toContain("## Git hooks and commits");
+    expect(bare).not.toContain("```bash\n```");
+    expect(bare).toContain(
+      "`.husky/pre-commit` is installed but runs no commands in this project.",
+    );
+    expect(bare).toContain("`commit-msg` runs Commitlint.");
+    expect(bare).toContain("pnpm typecheck");
   });
 });
 
@@ -906,126 +987,6 @@ describe("Dependabot configuration", () => {
 
   it("contains no tokens or machine-specific paths", () => {
     const content = dependabotYaml();
-    expect(content).not.toMatch(/ghp_/);
-    expect(content).not.toMatch(/github_pat_/);
-    expect(content).not.toMatch(/_authToken/);
-    expect(content).not.toMatch(/\/Users\//);
-    expect(content).not.toMatch(/\/home\//);
-    expect(content).not.toMatch(/[A-Z]:\\/);
-  });
-});
-
-describe("Pull request template", () => {
-  it("generates the five GitHub sections", () => {
-    const content = pullRequestTemplate();
-    expect(content).toContain("## Summary");
-    expect(content).toContain("## Changes");
-    expect(content).toContain("## How to test");
-    expect(content).toContain("## Validation");
-    expect(content).toContain("## Breaking changes");
-  });
-
-  it("keeps every heading as an HTML comment or a list", () => {
-    const content = pullRequestTemplate();
-    expect(content).toContain("Briefly describe what this PR does and why");
-    expect(content).toContain("- [ ] `pnpm check`");
-    expect(content).toContain("- [ ] `pnpm test`");
-    expect(content).toContain("- [ ] `pnpm e2e`");
-    expect(content).toContain("- [ ] `pnpm typecheck`");
-    expect(content).toContain("- [ ] `pnpm build`");
-    expect(content).toContain('or write "None"');
-    expect(content).not.toContain("TODO");
-    expect(content).not.toContain("FIXME");
-  });
-
-  it("is written in English for the PR reviewer", () => {
-    const content = pullRequestTemplate();
-    for (const spanish of [
-      "Resumen",
-      "Cambios",
-      "Validación",
-      "Ruptura",
-      "Probar",
-    ]) {
-      expect(content).not.toContain(spanish);
-    }
-  });
-
-  it("tells the author to write the PR body in English", () => {
-    expect(pullRequestTemplate()).toContain(
-      "<!-- Write the PR body in English -->",
-    );
-  });
-
-  it("gates the checklist on the tech selection", () => {
-    const noBiome = pullRequestTemplate({
-      ...FULL_TECH_SELECTION,
-      biome: false,
-    });
-    expect(noBiome).not.toContain("`pnpm check`");
-    expect(noBiome).toContain("- [ ] `pnpm test`");
-    expect(noBiome).toContain("- [ ] `pnpm typecheck`");
-    expect(noBiome).toContain("- [ ] `pnpm build`");
-
-    const bare = pullRequestTemplate({
-      tailwind: false,
-      shadcn: false,
-      theme: false,
-      "tanstack-query": false,
-      zustand: false,
-      forms: false,
-      biome: false,
-      testing: false,
-      playwright: false,
-      husky: false,
-      vscode: false,
-    });
-    expect(bare).not.toContain("`pnpm check`");
-    expect(bare).not.toContain("`pnpm test`");
-    expect(bare).not.toContain("`pnpm e2e`");
-    expect(bare).toContain("- [ ] `pnpm typecheck`");
-    expect(bare).toContain("- [ ] `pnpm build`");
-  });
-
-  it("pins the exact bytes", () => {
-    expect(pullRequestTemplate()).toBe(
-      [
-        "<!-- Write the PR body in English -->",
-        "",
-        "## Summary",
-        "",
-        "<!-- Briefly describe what this PR does and why. -->",
-        "",
-        "## Changes",
-        "",
-        "- ",
-        "",
-        "## How to test",
-        "",
-        "1. ",
-        "2. ",
-        "",
-        "## Validation",
-        "",
-        "- [ ] `pnpm check`",
-        "- [ ] `pnpm test`",
-        "- [ ] `pnpm e2e`",
-        "- [ ] `pnpm typecheck`",
-        "- [ ] `pnpm build`",
-        "",
-        "## Breaking changes",
-        "",
-        '<!-- List any breaking changes, or write "None". -->',
-        "",
-        "None",
-        "",
-      ].join("\n"),
-    );
-    expect(pullRequestTemplate().endsWith("\n")).toBe(true);
-  });
-
-  it("contains no tokens, credentials or machine-specific paths", () => {
-    const content = pullRequestTemplate();
     expect(content).not.toMatch(/ghp_/);
     expect(content).not.toMatch(/github_pat_/);
     expect(content).not.toMatch(/_authToken/);

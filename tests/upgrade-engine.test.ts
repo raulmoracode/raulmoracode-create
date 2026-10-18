@@ -26,15 +26,37 @@ const truncateForGithubMock = vi.hoisted(() =>
  * 1.1.0 migrations. The mock delegates to the real registry unless `empty` is
  * set, so the rest of the suite keeps the real migration selection.
  */
-const migrationsState = vi.hoisted(() => ({ empty: false }));
+const migrationsState = vi.hoisted(() => ({
+  empty: false,
+  /**
+   * Simulates the release that drops `.github/pull_request_template.md`: the
+   * real registry only selects that migration from 1.3.0, which is past
+   * `VERSION` on this branch, so the engine coverage for the removal injects
+   * it explicitly instead of pretending the project is on 1.3.0.
+   */
+  removesPullRequestTemplate: false,
+}));
 
 vi.mock("../src/upgrade/migrations/index.js", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../src/upgrade/migrations/index.js")>();
   return {
     ...actual,
-    selectMigrations: (from: string, to: string) =>
-      migrationsState.empty ? [] : actual.selectMigrations(from, to),
+    selectMigrations: (from: string, to: string) => {
+      if (migrationsState.empty) {
+        return [];
+      }
+      const selected = actual.selectMigrations(from, to);
+      if (!migrationsState.removesPullRequestTemplate) {
+        return selected;
+      }
+      const removal = actual.MIGRATIONS.find(
+        (entry) => entry.id === "remove-pull-request-template",
+      );
+      return removal !== undefined && !selected.includes(removal)
+        ? [...selected, removal]
+        : selected;
+    },
   };
 });
 
@@ -372,6 +394,7 @@ beforeEach(async () => {
   confirmMock.mockClear();
   outroMock.mockClear();
   migrationsState.empty = false;
+  migrationsState.removesPullRequestTemplate = false;
   requireAuth.mockClear();
   findOpenPullRequest.mockReset();
   findOpenPullRequest.mockResolvedValue(null);
@@ -452,6 +475,36 @@ describe("runUpgrade", () => {
     expect(String(prOptions?.body)).toContain("TRUNCATED");
     expect(exitSpy).not.toHaveBeenCalled();
     expect(String(successMock.mock.calls[0]?.[0])).toContain(PR_URL);
+  });
+
+  it("deletes a managed file a migration declares as removed", async () => {
+    migrationsState.removesPullRequestTemplate = true;
+    const oldTemplate = "<!-- older template -->\n";
+    const templates = managedFiles("vite", SELECTION);
+    await createProjectFixture({
+      files: { ...templates, ".github/pull_request_template.md": oldTemplate },
+    });
+    const manifestPath = join(projectDir, MANIFEST_FILE);
+    const recorded = parseManifest(await readFile(manifestPath, "utf8"));
+    recorded.files[".github/pull_request_template.md"] =
+      hashContent(oldTemplate);
+    await writeFile(manifestPath, serializeManifest(recorded), "utf8");
+
+    await runUpgrade({ verbose: false, deps });
+
+    await expect(
+      readFile(join(projectDir, ".github/pull_request_template.md"), "utf8"),
+    ).rejects.toThrow();
+    expect(calledCommands()).toContain(
+      "git add -- .github/pull_request_template.md package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json",
+    );
+    // The manifest no longer records a hash for a file that is gone.
+    const rewritten = parseManifest(await readFile(manifestPath, "utf8"));
+    expect(rewritten.files[".github/pull_request_template.md"]).toBeUndefined();
+    expect(String(createPullRequest.mock.calls[0]?.[0]?.body ?? "")).toContain(
+      ".github/pull_request_template.md",
+    );
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 
   it("never uses destructive git args and never marks the pull request as draft", async () => {

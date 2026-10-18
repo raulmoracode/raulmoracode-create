@@ -36,6 +36,7 @@ import {
   readmeStructureOptions,
   replaceReadmeStructure,
 } from "../src/upgrade/migrations/readme.js";
+import { removePullRequestTemplate } from "../src/upgrade/migrations/remove-pull-request-template.js";
 import {
   mergeSiteConfigFields,
   migrateSiteConfig,
@@ -150,6 +151,7 @@ describe("migration registry", () => {
       ["site-config-missing-fields", "1.0.9"],
       ["readme-project-structure", "1.0.9"],
       ["vscode-settings-tracked", "1.1.0"],
+      ["remove-pull-request-template", "1.3.0"],
     ]);
     for (const migration of MIGRATIONS) {
       expect(migration.description.trim(), migration.id).not.toBe("");
@@ -191,13 +193,63 @@ describe("migration registry", () => {
     expect(selectMigrations("1.0.9", "1.0.9")).toEqual([]);
   });
 
-  it("declares no removal, so the upgrade never deletes a patched file", () => {
-    for (const migration of MIGRATIONS) {
+  it("declares removal only for the path it deletes", () => {
+    // Every migration patches a file the CLI keeps writing, so declaring a
+    // handled path there would make the upgrade delete a file it maintains.
+    const patching = MIGRATIONS.filter(
+      (migration) => migration.id !== "remove-pull-request-template",
+    );
+    for (const migration of patching) {
       expect(migration.handles, migration.id).toEqual([]);
     }
     expect([
       ...migrationHandledPaths(selectMigrations("1.0.8", "1.0.9")),
     ]).toEqual([]);
+    // The upgrade only deletes a path a selected migration declares.
+    expect([
+      ...migrationHandledPaths(selectMigrations("1.2.0", "1.3.0")),
+    ]).toEqual([".github/pull_request_template.md"]);
+  });
+
+  it("selects the pull request template removal only when crossing 1.3.0", () => {
+    // Below 1.3.0 only the 1.2.0 gitignore migration is crossed, never the
+    // removal.
+    expect(selectMigrations("1.1.0", "1.2.9").map((entry) => entry.id)).toEqual(
+      ["gitignore-required-entries"],
+    );
+    expect(selectMigrations("1.1.0", "1.3.0").map((entry) => entry.id)).toEqual(
+      ["gitignore-required-entries", "remove-pull-request-template"],
+    );
+  });
+});
+
+describe("pull request template removal", () => {
+  it("declares the path and deletes nothing itself", async () => {
+    const projectDir = join(workDir, "pr-template-removal");
+    await writeProject(
+      projectDir,
+      ".github/pull_request_template.md",
+      "<!-- local -->\n",
+    );
+
+    const result = await removePullRequestTemplate.run(context(projectDir));
+
+    // The managed-file writer performs the deletion through `handles`; the
+    // migration itself must not touch the disk.
+    expect(result).toEqual({ touched: [], removed: [] });
+    expect(
+      await projectFileExists(projectDir, ".github/pull_request_template.md"),
+    ).toBe(true);
+  });
+
+  it("is registered at the version that drops the template", () => {
+    expect(removePullRequestTemplate.id).toBe("remove-pull-request-template");
+    expect(removePullRequestTemplate.version).toBe("1.3.0");
+    expect(removePullRequestTemplate.handles).toEqual([
+      ".github/pull_request_template.md",
+    ]);
+    expect(removePullRequestTemplate.description.trim()).not.toBe("");
+    expect(removePullRequestTemplate.why.trim()).not.toBe("");
   });
 });
 

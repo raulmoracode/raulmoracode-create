@@ -1,7 +1,6 @@
 import type { Framework } from "../utils/validation.js";
 import { RAULMORACODE_REGISTRY_ADD_EXAMPLE } from "./components.js";
 import { structureBlock, type TreeNode } from "./project-structure.js";
-import { pullRequestTemplate } from "./pull-request.js";
 import { FULL_TECH_SELECTION, type TechSelection } from "./tech.js";
 
 function libChildren(selection: TechSelection): TreeNode[] {
@@ -92,16 +91,20 @@ export function agentsStructure(
   if (frameworkId === "vite") {
     root.push({
       name: "index.html",
-      comment: "tab title + favicon (raulmoracode branding)",
+      comment: "HTML entry (head tags injected at build time)",
     });
   }
   root.push({
     name: ".github/workflows/",
-    comment: "CI (install, check, typecheck, test, build)",
+    comment: "GitHub Actions workflows",
   });
   root.push({
     name: ".github/dependabot.yml",
     comment: "Dependabot (weekly, exact versions, 7-day cooldown)",
+  });
+  root.push({
+    name: ".opencode/opencode.json",
+    comment: "OpenCode skills catalog",
   });
   root.push({ name: "src/", children: srcChildren(frameworkId, selection) });
   if (selection.shadcn) {
@@ -209,6 +212,7 @@ function validationCommands(selection: TechSelection): string[] {
   if (selection.biome) {
     commands.push("pnpm check");
   }
+  commands.push("pnpm typecheck");
   if (selection.testing) {
     commands.push("pnpm test");
   }
@@ -246,24 +250,39 @@ export function agentsMd(
     "",
     "Before making changes, inspect the existing codebase and its configuration.",
     "",
-    "## General principles",
+    "## Skills",
     "",
-    "- Follow existing project conventions and patterns.",
-    "- Prefer simple, focused solutions over unnecessary abstractions.",
-    "- Reuse existing components, utilities, hooks, and patterns when appropriate.",
-    "- Avoid duplicating functionality that already exists.",
-    "- Keep changes scoped to the requested task.",
-    "- Do not modify unrelated files.",
-    "- Preserve existing user changes.",
-    "- Do not introduce a new library when the existing project can reasonably solve the problem.",
-    "- Do not remove or replace existing dependencies without a clear reason.",
-    "- Do not reintroduce dependencies that have been intentionally removed.",
+    "How to work on this repository — inspect the codebase, choose the smallest change, validate it and report the result — lives in the shared @raulmoracode skills catalog:",
+    "",
+    "https://raulmoracode.github.io/raulmoracode-skills/",
+    "",
+    "`.opencode/opencode.json` loads that catalog for this project.",
+    "",
+    "Start non-trivial work with the `raulmoracode-mode` skill and follow the specialists it points to:",
+    "",
+    "- `git-pr` — branch, commit and pull request workflow.",
+    "- `git-branch` / `safe-git` — create branches and run Git without destructive commands.",
+    "- `test-before-finishing` / `verify-before-claiming` / `no-made-up-results` — validate with real commands before claiming anything.",
+    "- `security-first` — secrets, credentials and dependency safety.",
+    "- `release-engineering` — versions, changelogs and tags.",
+    "- `clear-final-report` — what changed, which files, which validation ran, what is still open.",
+    "",
+    "If the catalog is unavailable, these rules still hold:",
+    "",
+    "- Use pnpm only, never npm or yarn.",
+    "- Pin exact dependency versions: no `^`, no `~`, no `latest`.",
+    "- Never run `git push --force`, `git push -f`, `git reset --hard` or `git clean -fd`.",
+    "- Follow Conventional Commits.",
+    "- Never claim a command was run, or that something works, when it was not verified.",
+    "- Never delete or overwrite the user's content.",
     "",
     "## Dependencies and configuration",
     "",
     "Always inspect the current `package.json` before using or adding a dependency.",
     "",
     "Do not assume that a dependency is installed because it may have been included in the original scaffold.",
+    "",
+    "Use pnpm exclusively and pin exact versions: no `^`, no `~`, no `latest`.",
     "",
     "Treat the following files as sources of truth for the current project configuration:",
     "",
@@ -284,10 +303,6 @@ export function agentsMd(
     "",
     "`raulmoracode.json` is the CLI manifest (framework, tech selection and managed-file hashes); treat it as the source of truth for upgrades.",
     "",
-    "Use the package manager already configured by the project.",
-    "",
-    "Do not change package managers unless explicitly requested.",
-    "",
     "## Project structure",
     "",
     ...structure(frameworkId, selection, existingPaths),
@@ -305,6 +320,8 @@ export function agentsMd(
   );
   if (selection.shadcn) {
     lines.push(
+      "## Components and UI",
+      "",
       "UI components come from shadcn. Add new components with:",
       "",
       "```bash",
@@ -313,113 +330,32 @@ export function agentsMd(
       "",
       "Browse the catalogue at https://registry.raulmoracode.com.",
       "",
-      "Do not hand-write component files under the shadcn UI directory. Follow `components.json`, including the `@raulmoracode` registry.",
+      "Do not hand-write component files under the shadcn UI directory. Registry items write to `@components/*`, `@lib/*` and `@hooks/*`, declared in `components.json` and in the `tsconfig.json` paths.",
       "",
     );
   }
   lines.push(
-    "## Code style",
-    "",
-    "Follow the existing code style and project structure.",
-    "",
-    "Use the project's configured formatter and linter.",
-    "",
-    "Do not introduce ESLint, Prettier, or another formatting/linting system when an existing project tool already provides that functionality, unless explicitly requested.",
-    "",
-    "Prefer readable and maintainable code over clever implementations.",
-    "",
-    "Avoid unnecessary comments. Add comments when they explain a non-obvious decision or constraint.",
-    "",
-    "## Components and UI",
-    "",
-    "Before creating a new component, check whether an existing component already provides the required functionality.",
-    "",
-    "Prefer composition and reuse over duplicated UI implementations.",
-    "",
-  );
-  if (selection.shadcn) {
-    lines.push(
-      "If the project uses shadcn, follow the existing shadcn configuration and component conventions.",
-      "",
-      "Do not manually recreate a component when an appropriate existing project component can be reused.",
-      "",
-    );
-  } else {
-    lines.push(
-      "Do not manually recreate a component when an appropriate existing project component can be reused.",
-      "",
-    );
-  }
-  lines.push(
-    "## Architecture",
-    "",
-    "Follow the architecture already present in the repository.",
-    "",
-    "Do not introduce a new architectural pattern solely because it is personally preferred.",
-    "",
-    "When adding functionality:",
-    "",
-    "1. Identify the existing pattern used for similar functionality.",
-    "2. Follow that pattern when appropriate.",
-    "3. Keep the implementation close to the relevant feature.",
-    "4. Avoid creating generic abstractions before they are actually needed.",
-    "",
-    "For framework-specific behavior, follow the conventions of the framework version currently installed in the project.",
-    "",
     "## Validation",
-    "",
-    "Inspect `package.json` to determine the available scripts before running commands.",
-    "",
-    "After making changes, run the most relevant validation commands for the affected code.",
-    "",
-    "For substantial changes, prefer running:",
     "",
     "```bash",
     ...validationCommands(selection),
     "```",
     "",
-    "Do not claim that a change is complete if the relevant validation has not been performed.",
-    "",
-    "If a validation command fails because of an unrelated pre-existing problem, distinguish that from problems introduced by the current change.",
-    "",
-    "## Git",
-    "",
-    "Never use destructive Git commands unless explicitly requested.",
-    "",
-    "Do not use:",
-    "",
-    "```bash",
-    "git push --force",
-    "git push -f",
-    "git reset --hard",
-    "git clean -fd",
-    "```",
-    "",
-    "Do not rewrite existing history unnecessarily.",
-    "",
-    "Do not discard or overwrite uncommitted user changes.",
-    "",
-    "Before modifying files, be aware of the current Git state when relevant.",
-    "",
-    "Do not commit changes unless explicitly requested.",
-    "",
     "## Git hooks and commits",
     "",
   );
   if (selection.husky) {
+    lines.push("Husky manages the Git hooks.", "");
     const preCommit = preCommitLines(selection);
-    lines.push(
-      "Husky manages the Git hooks.",
-      "",
-      "`pre-commit` runs:",
-      "",
-      "```bash",
-      ...preCommit,
-      "```",
-      "",
-      "`commit-msg` runs Commitlint.",
-      "",
-    );
+    if (preCommit.length > 0) {
+      lines.push("`pre-commit` runs:", "", "```bash", ...preCommit, "```", "");
+    } else {
+      lines.push(
+        "`.husky/pre-commit` is installed but runs no commands in this project.",
+        "",
+      );
+    }
+    lines.push("`commit-msg` runs Commitlint.", "");
   } else {
     lines.push("This project does not configure Husky Git hooks.", "");
   }
@@ -452,55 +388,6 @@ export function agentsMd(
     "- Keep the subject line under 72 characters.",
     "- Use a body (separated by a blank line) for longer explanations.",
     "",
-  );
-  if (selection.husky) {
-    lines.push(
-      "Do not bypass hooks with `--no-verify` unless explicitly requested.",
-      "",
-      "Keep the project passing:",
-      "",
-      "```bash",
-      ...validationCommands(selection),
-      "```",
-      "",
-    );
-  }
-  lines.push(
-    "## Pull requests",
-    "",
-    "Create branches from an up-to-date `main`:",
-    "",
-    "```bash",
-    "git fetch origin",
-    "git switch -c <type>/<short-name> origin/main",
-    "```",
-    "",
-    "Use `<type>/<short-name>` branch names (for example `feat/user-profile`, `fix/invalid-input`).",
-    "",
-    "Titles follow Conventional Commits: `<type>: <description>` (same types as commits).",
-    "",
-    "Keep the branch focused and open the pull request against `main`.",
-    "",
-    "Write the pull request title and body in English.",
-    "",
-    "Use this body template:",
-    "",
-    "```markdown",
-    pullRequestTemplate(selection).trim(),
-    "```",
-    "",
-    "## Changelog",
-    "",
-    "Keep `CHANGELOG.md` updated with every notable change to the project.",
-    "",
-    "When completing a task that adds, changes, or fixes functionality, update the",
-    "`[Unreleased]` section of `CHANGELOG.md` under the appropriate heading",
-    "(`Added`, `Changed`, or `Fixed`).",
-    "",
-    "Use clear, concise descriptions that explain what changed and why.",
-    "",
-    "Do not remove or rewrite existing entries unless they are factually incorrect.",
-    "",
     "## Site identity",
     "",
     "`src/config/site.ts` is the single source of truth for the site title, description, favicon and social preview.",
@@ -508,94 +395,6 @@ export function agentsMd(
     "Edit that file instead of `index.html` or `src/app/layout.tsx` when changing them.",
     "",
     "On Vite the `siteHead()` plugin in `vite.config.ts` injects those values into `index.html`; on Next.js the `metadata` export in `src/app/layout.tsx` does. Both are always wired, whichever techs were selected.",
-    "",
-    "## Security",
-    "",
-    "Do not expose, commit, or hard-code secrets, API keys, access tokens, passwords, or credentials.",
-    "",
-    "Never replace environment variables with hard-coded credentials.",
-    "",
-    "Treat `.env` and other environment-specific files as sensitive.",
-    "",
-    "Do not weaken existing security mechanisms merely to make a task easier.",
-    "",
-    "## Adding dependencies",
-    "",
-    "Always use exact versions (no `^` or `~`):",
-    "",
-    "```bash",
-    "pnpm add package-name@1.2.3",
-    "pnpm add -D dev-package@4.5.6",
-    "```",
-    "",
-    "Before adding a dependency:",
-    "",
-    "1. Check whether the functionality already exists in the project.",
-    "2. Check whether an existing dependency can provide it.",
-    "3. Consider whether the dependency is actually necessary.",
-    "4. Use the package manager configured by the project.",
-    "5. Keep dependency versions consistent with the project's existing conventions.",
-    "",
-    "Avoid adding dependencies for trivial functionality that can be implemented safely with the existing stack.",
-    "",
-    "## Environment variables",
-    "",
-    "If the project uses environment variables:",
-    "",
-    "1. Copy `.env.example` to `.env` and fill in the values.",
-    "2. Never commit `.env` files — they are in `.gitignore`.",
-    "3. Use `import.meta.env.VITE_*` (Vite) or `process.env.*` (Next.js) to access them.",
-    "4. For client-side variables in Vite, prefix with `VITE_`.",
-    "5. For Next.js, use `NEXT_PUBLIC_` for client-side variables.",
-    "",
-    "Do not hard-code secrets or credentials in source files.",
-    "",
-    "## Deployment",
-    "",
-    "The CI workflow (`.github/workflows/ci.yml`) validates the project on every push and PR:",
-    "",
-    "- `pnpm install` — dependencies resolve correctly",
-    "- `pnpm check` — code is formatted and linted",
-    "- `pnpm typecheck` — the TypeScript checker passes",
-    "- `pnpm test` — tests pass",
-    "- `pnpm build` — production build succeeds",
-    ...(selection.playwright ? ["- `pnpm e2e` — browser E2E tests pass"] : []),
-    "",
-    "Deployment is manual. Once CI passes, deploy to your preferred hosting provider.",
-    "",
-  );
-  if (frameworkId === "next") {
-    lines.push(
-      "For Next.js projects: deploy to a Node.js-capable platform or use `next start`.",
-      "",
-    );
-  } else {
-    lines.push(
-      "For Vite projects: deploy the `dist/` folder to any static hosting.",
-      "",
-    );
-  }
-  lines.push(
-    "## Working with existing code",
-    "",
-    "Do not rewrite working code unnecessarily.",
-    "",
-    "Prefer the smallest change that correctly solves the requested problem.",
-    "",
-    "When modifying existing functionality, preserve its current behavior unless the task explicitly requires changing it.",
-    "",
-    "If the requested change conflicts with an existing architectural decision, inspect the relevant code and configuration before deciding how to proceed.",
-    "",
-    "## Final response",
-    "",
-    "When completing a task, briefly report:",
-    "",
-    "- What was changed.",
-    "- Which files were modified.",
-    "- What validation was performed.",
-    "- Any relevant issues or limitations that remain.",
-    "",
-    "Do not claim tests, builds, or other commands were executed if they were not actually run.",
     "",
   );
   return lines.join("\n");
