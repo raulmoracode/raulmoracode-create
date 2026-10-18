@@ -5,6 +5,30 @@ All notable changes to `@raulmoracode/create` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-10-18
+
+### Changed
+
+- **The generated `AGENTS.md` now delegates behavioural guidance to the skills
+  catalog**: it keeps only project facts — intro, dependency and configuration
+  sources of truth, project tree (which now lists `.opencode/opencode.json`),
+  tooling and scripts (now including `pnpm typecheck`), shadcn section,
+  validation commands, hooks and site identity — plus a new `## Skills`
+  section that loads the @raulmoracode catalog
+  (`https://raulmoracode.github.io/raulmoracode-skills/`), names
+  `raulmoracode-mode` as the entry point for non-trivial work, lists the
+  specialists and states the non-negotiables as fallback. The duplicated
+  principles, code style, git etiquette, pull-request bodies, changelog,
+  security and deployment sections are gone, so behavioural fixes ship in the
+  catalog instead of a new CLI release.
+
+### Removed
+
+- **`.github/pull_request_template.md` is no longer generated**: pull request
+  bodies are written from the real diff by the `git-pr` skill. The 1.3.0
+  upgrade migration deletes the template from existing projects, and the
+  upgrade note explains how to recover local customizations before merging.
+
 ## [1.2.0] - 2026-10-18
 
 ### Added
@@ -394,7 +418,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.9...v1.1.0
