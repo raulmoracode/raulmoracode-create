@@ -98,6 +98,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 });
 
 import { run } from "../src/cli/run.js";
+import { opencodeConfigJson } from "../src/config/opencode.js";
 
 function makeExecImplementation() {
   return async (command: string, args: string[], options: { cwd?: string }) => {
@@ -249,6 +250,7 @@ e2e("end-to-end project creation", () => {
       ".nvmrc",
       ".editorconfig",
       ".env.example",
+      ".opencode/opencode.json",
       "biome.json",
       "components.json",
       "vitest.config.ts",
@@ -472,6 +474,25 @@ e2e("end-to-end project creation", () => {
     await runCommand("git", ["check-ignore", ".env"], projectDir);
     await expect(
       runCommand("git", ["check-ignore", ".env.example"], projectDir),
+    ).rejects.toThrow();
+
+    // The OpenCode config travels with the repo: the `.opencode/` negations
+    // keep it committed and never hidden by an ignore rule.
+    const trackedOpencode = await runCommand(
+      "git",
+      ["ls-files", ".opencode/opencode.json"],
+      projectDir,
+    );
+    expect(trackedOpencode.stdout.trim()).toBe(".opencode/opencode.json");
+    expect(
+      await readFile(join(projectDir, ".opencode", "opencode.json"), "utf8"),
+    ).toBe(opencodeConfigJson());
+    await expect(
+      runCommand(
+        "git",
+        ["check-ignore", ".opencode/opencode.json"],
+        projectDir,
+      ),
     ).rejects.toThrow();
 
     const hooksPath = await runCommand(

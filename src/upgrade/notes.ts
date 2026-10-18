@@ -8,6 +8,18 @@ import { compareVersions, isVersionInRange } from "./version.js";
  */
 export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
+    version: "1.2.0",
+    summary:
+      "Ships an `.opencode/opencode.json` configuration that wires the @raulmoracode skills catalog into OpenCode, and guarantees through `.gitignore` negations that the `.opencode/` folder always travels with the repository.",
+    changes: [
+      {
+        files: [".opencode/opencode.json"],
+        what: "Every generated project now ships `.opencode/opencode.json`, pointing OpenCode at the @raulmoracode skills catalog (`https://raulmoracode.github.io/raulmoracode-skills/`), and `.gitignore` keeps the folder trackable with `!.opencode/` and `!.opencode/opencode.json`; the 1.2.0 migration merges both negations into existing projects.",
+        why: "Coding sessions started in a generated project had to be told where the skills catalog lives, and dotfolder exclusions (a machine's global git excludes file or user patterns) could hide `.opencode/`, so the configuration must be committed for the whole team and for CI to see it. The negations are structural: they win over any ignore rule, and the merge keeps them idempotent.",
+      },
+    ],
+  },
+  {
     version: "1.1.0",
     summary:
       "Adds a `typecheck` script and restores TypeScript checking in the Vite build and in CI so type errors always fail the pipeline, ships a Dependabot configuration (.github/dependabot.yml) that keeps dependency updates automatic with exact-version PRs aligned with the pnpm minimumReleaseAge maturity gate, lets the project author and license be chosen at creation time (with the AGENTS.md tree labelling LICENSE as the project license instead of assuming MIT), and ships a `.env.example` per framework so the environment-variable workflow AGENTS.md documents is actually possible.",

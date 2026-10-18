@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dependabotYaml } from "../src/config/dependabot.js";
+import { opencodeConfigJson } from "../src/config/opencode.js";
 import {
   FULL_TECH_SELECTION,
   TECH_IDS,
@@ -207,6 +208,30 @@ describe("dependabot is unconditional", () => {
           managedFiles(framework.id, without(id))[".github/dependabot.yml"],
           `${framework.id}/${id}`,
         ).toBe(dependabotYaml());
+      }
+    }
+  });
+});
+
+describe("opencode is unconditional", () => {
+  it("ships .opencode/opencode.json for every framework and selection", () => {
+    for (const framework of Object.values(frameworks)) {
+      for (const selection of [NONE, FULL_TECH_SELECTION]) {
+        const files = managedFiles(framework.id, selection);
+        expect(files[".opencode/opencode.json"], `${framework.id}`).toBe(
+          opencodeConfigJson(),
+        );
+      }
+    }
+  });
+
+  it("keeps the opencode template independent of the tech selection", () => {
+    for (const framework of Object.values(frameworks)) {
+      for (const id of TECH_IDS) {
+        expect(
+          managedFiles(framework.id, without(id))[".opencode/opencode.json"],
+          `${framework.id}/${id}`,
+        ).toBe(opencodeConfigJson());
       }
     }
   });

@@ -167,4 +167,12 @@ describe("UPGRADE_NOTES", () => {
     expect(v109?.summary.trim()).not.toBe("");
     expect(v109?.changes.length).toBeGreaterThan(0);
   });
+
+  it("includes the 1.2.0 notes for the OpenCode config", () => {
+    const v120 = UPGRADE_NOTES.find((note) => note.version === "1.2.0");
+    expect(v120).toBeDefined();
+    expect(v120?.changes.map((change) => change.files)).toContainEqual([
+      ".opencode/opencode.json",
+    ]);
+  });
 });

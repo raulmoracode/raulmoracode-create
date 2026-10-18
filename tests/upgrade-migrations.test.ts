@@ -146,7 +146,7 @@ describe("migration registry", () => {
     expect(
       MIGRATIONS.map((migration) => [migration.id, migration.version]),
     ).toEqual([
-      ["gitignore-required-entries", "1.1.0"],
+      ["gitignore-required-entries", "1.2.0"],
       ["site-config-missing-fields", "1.0.9"],
       ["readme-project-structure", "1.0.9"],
       ["vscode-settings-tracked", "1.1.0"],
@@ -158,27 +158,30 @@ describe("migration registry", () => {
   });
 
   it("selects the migrations when the project crosses their version", () => {
-    // The gitignore and vscode-settings migrations ship in 1.1.0; a project
-    // crossing 1.0.9 only fires the two 1.0.9 migrations.
+    // The site config and README migrations ship in 1.0.9; a project crossing
+    // 1.0.8 only fires those.
     expect(selectMigrations("1.0.8", "1.0.9").map((entry) => entry.id)).toEqual(
       ["site-config-missing-fields", "readme-project-structure"],
     );
   });
 
-  it("selects every registered migration when the project crosses 1.1.0", () => {
-    expect(selectMigrations("1.0.6", "1.1.0").map((entry) => entry.id)).toEqual(
+  it("selects every registered migration when the project crosses 1.2.0", () => {
+    expect(selectMigrations("1.0.6", "1.2.0").map((entry) => entry.id)).toEqual(
       [
         "site-config-missing-fields",
         "readme-project-structure",
-        "gitignore-required-entries",
         "vscode-settings-tracked",
+        "gitignore-required-entries",
       ],
     );
-    // The gitignore migration was bumped to 1.1.0 (for the `.env.example`
-    // negation), so a project crossing 1.0.9→1.1.0 fires it together with
-    // the vscode-settings one; the 1.0.9 CLI still re-touches nothing.
+    // The gitignore migration was bumped to 1.2.0 (for the `.opencode/`
+    // negations), so crossing 1.0.9→1.1.0 fires only the vscode-settings one
+    // and an older project keeps its `.gitignore` until the next bump.
     expect(selectMigrations("1.0.9", "1.1.0").map((entry) => entry.id)).toEqual(
-      ["gitignore-required-entries", "vscode-settings-tracked"],
+      ["vscode-settings-tracked"],
+    );
+    expect(selectMigrations("1.1.0", "1.2.0").map((entry) => entry.id)).toEqual(
+      ["gitignore-required-entries"],
     );
   });
 
@@ -212,8 +215,28 @@ describe(".gitignore migration", () => {
     expect(result).toEqual({ touched: [GITIGNORE_PATH], removed: [] });
     const content = await readProject(projectDir, GITIGNORE_PATH);
     expect(content).toBe(
-      "# mis reglas\nmi-cache\nnode_modules\ndist\n.env\n.env.*\n# Keep .env.example trackable (negates .env.*)\n!.env.example\n.next\ncoverage\n",
+      "# mis reglas\nmi-cache\nnode_modules\ndist\n.env\n.env.*\n# Keep .env.example trackable (negates .env.*)\n!.env.example\n.next\ncoverage\n# Keep .opencode/ trackable (dotfolders must travel with the repo)\n!.opencode/\n!.opencode/opencode.json\n",
     );
+  });
+
+  it("adds the .opencode negations after every exclusion", async () => {
+    const projectDir = join(workDir, "gitignore-opencode");
+    await writeProject(projectDir, GITIGNORE_PATH, "node_modules\n");
+
+    const result = await migrateGitignore.run(context(projectDir));
+
+    expect(result).toEqual({ touched: [GITIGNORE_PATH], removed: [] });
+    const content = await readProject(projectDir, GITIGNORE_PATH);
+    expect(content.split("\n").slice(-4)).toEqual([
+      "# Keep .opencode/ trackable (dotfolders must travel with the repo)",
+      "!.opencode/",
+      "!.opencode/opencode.json",
+      "",
+    ]);
+    // The migration is write-once per project: the second run is a no-op.
+    const second = await migrateGitignore.run(context(projectDir));
+    expect(second).toEqual({ touched: [], removed: [] });
+    expect(await readProject(projectDir, GITIGNORE_PATH)).toBe(content);
   });
 
   it("keeps `.env` ignored while making `.env.example` trackable", () => {
@@ -761,7 +784,7 @@ describe("all migrations over one project", () => {
     await writeProject(projectDir, ".nvmrc", "24\n");
 
     const touched: string[] = [];
-    for (const migration of selectMigrations("1.0.8", "1.1.0")) {
+    for (const migration of selectMigrations("1.0.8", "1.2.0")) {
       const result = await migration.run(
         context(projectDir, { selection: REDUCED_SELECTION }),
       );
@@ -774,7 +797,7 @@ describe("all migrations over one project", () => {
       '{"name":"my-app"}\n',
     );
     expect(await readProject(projectDir, GITIGNORE_PATH)).toBe(
-      "node_modules\ncustom\ndist\n.env\n.env.*\n# Keep .env.example trackable (negates .env.*)\n!.env.example\n.next\ncoverage\n",
+      "node_modules\ncustom\ndist\n.env\n.env.*\n# Keep .env.example trackable (negates .env.*)\n!.env.example\n.next\ncoverage\n# Keep .opencode/ trackable (dotfolders must travel with the repo)\n!.opencode/\n!.opencode/opencode.json\n",
     );
     expect(await readProject(projectDir, SITE_CONFIG_PATH)).toContain(
       'themeColor: "",',

@@ -16,6 +16,7 @@ import {
   configureEditorconfig,
   configureNode,
 } from "../generators/configure-node.js";
+import { configureOpencode } from "../generators/configure-opencode.js";
 import { configurePlaywright } from "../generators/configure-playwright.js";
 import { configurePrTemplate } from "../generators/configure-pr-template.js";
 import {
@@ -295,6 +296,8 @@ export async function run(options: RunOptions = {}): Promise<void> {
           message("Writing CHANGELOG");
           await configureChangelog(projectDir);
           await augmentGitignore(projectDir);
+          message("Configuring OpenCode");
+          await configureOpencode(projectDir);
           message("Configuring CI");
           await configureCi(projectDir, selection);
           message("Configuring Dependabot");
