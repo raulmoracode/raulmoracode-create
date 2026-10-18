@@ -18,7 +18,6 @@ import {
 } from "../generators/configure-node.js";
 import { configureOpencode } from "../generators/configure-opencode.js";
 import { configurePlaywright } from "../generators/configure-playwright.js";
-import { configurePrTemplate } from "../generators/configure-pr-template.js";
 import {
   installDependencies,
   normalizePackageJson,
@@ -302,8 +301,6 @@ export async function run(options: RunOptions = {}): Promise<void> {
           await configureCi(projectDir, selection);
           message("Configuring Dependabot");
           await configureDependabot(projectDir);
-          message("Configuring pull request template");
-          await configurePrTemplate(projectDir, selection);
           return "Project created";
         },
       },

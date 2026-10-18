@@ -150,7 +150,7 @@ pnpm exec biome check --write .
 
 Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`). Both frameworks also map the `@raulmoracode` registry aliases (`@components/*`, `@lib/*`, `@hooks/*` to `src/...`) so registry file targets resolve when running `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>`.
 
-Every generated project ships an `AGENTS.md` file with guidelines for AI coding agents (source of truth, conventions, validation, Git safety and security rules), plus a project tooling section (pnpm exclusively, script map and the shadcn workflow).
+Every generated project ships an `AGENTS.md` file with the project facts a coding agent needs: the configuration files that are the source of truth, the project structure tree, the script map, the shadcn workflow, the validation commands, the Git hook commands and the site identity. Behavioral guidance is delegated to the [@raulmoracode skills catalog](https://raulmoracode.github.io/raulmoracode-skills/): the `## Skills` section points at the `.opencode/opencode.json` project config that loads it, starts non-trivial work with `raulmoracode-mode` and lists the specialists (`git-pr`, `git-branch`/`safe-git`, `test-before-finishing`/`verify-before-claiming`/`no-made-up-results`, `security-first`, `release-engineering`, `clear-final-report`) with a short fallback list of non-negotiables (pnpm only, exact versions, no destructive Git commands, Conventional Commits, never claim unverified results, never delete user content). No `.github/pull_request_template.md` is generated: the `git-pr` skill owns pull request bodies.
 
 ## GitHub authentication
 

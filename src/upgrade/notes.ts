@@ -8,6 +8,25 @@ import { compareVersions, isVersionInRange } from "./version.js";
  */
 export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
+    version: "1.3.0",
+    summary:
+      "The generated AGENTS.md stops carrying behavioural guidance and points at the shared @raulmoracode skills catalog instead (loaded through `.opencode/opencode.json`), and the CLI no longer writes `.github/pull_request_template.md`: pull request bodies are now produced by the `git-pr` skill, so the template is deleted on upgrade.",
+    changes: [
+      {
+        files: ["AGENTS.md"],
+        what: "AGENTS.md is now project facts only plus a new `## Skills` section. It keeps the intro, the dependency and configuration source-of-truth list (with a single line stating pnpm + exact versions), the project structure tree (which now lists `.opencode/opencode.json`), the tooling and scripts list, the shadcn/registry section, the validation command block (now including `pnpm typecheck`) and the site identity section. The `## Skills` section loads the catalog published at https://raulmoracode.github.io/raulmoracode-skills/, tells agents to start non-trivial work with `raulmoracode-mode` and lists the specialists (git-pr, git-branch/safe-git, test-before-finishing/verify-before-claiming/no-made-up-results, security-first, release-engineering, clear-final-report) with the non-negotiables as fallback. The general principles, code style, architecture, validation prose, Git etiquette, pull requests (with the embedded PR body template), changelog, security, adding-dependencies, environment-variables, deployment, working-with-existing-code and final-response sections are gone.",
+        why: "Behavioural guidance duplicated into every generated project can only be corrected by shipping a new CLI version and drifts from the shared catalog the project already loads. Keeping only facts about this project — its files, scripts, hooks and site identity — makes the document cheap to keep accurate, while the catalog owns how to work.",
+      },
+      {
+        files: [".github/pull_request_template.md"],
+        what: "`.github/pull_request_template.md` is no longer generated and the upgrade deletes it (the `remove-pull-request-template` migration declares the path as removed, so the deletion is part of the plan and the commits). Pull request bodies are written from the real diff by the `git-pr` skill instead of a static checklist.",
+        why: "The template duplicated what the skills catalog now owns and its checklist could only be fixed by shipping a new CLI version, going stale as soon as a project changed its scripts. Removing the file leaves the repository without a document nothing maintains.",
+        action:
+          "If you customised `.github/pull_request_template.md`, recover your version from the upgrade pull request diff (the upgrade commit deletes the file) before you merge it.",
+      },
+    ],
+  },
+  {
     version: "1.2.0",
     summary:
       "Ships an `.opencode/opencode.json` configuration that wires the @raulmoracode skills catalog into OpenCode, and guarantees through `.gitignore` negations that the `.opencode/` folder always travels with the repository.",

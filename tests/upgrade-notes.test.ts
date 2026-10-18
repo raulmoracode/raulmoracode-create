@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { VERSION } from "../src/cli/args.js";
+import { MIGRATIONS } from "../src/upgrade/migrations/index.js";
 import { UPGRADE_NOTES } from "../src/upgrade/notes.js";
 import {
   diffTemplateSnapshots,
@@ -135,7 +136,10 @@ describe("managed template snapshot", () => {
 
 describe("UPGRADE_NOTES", () => {
   it("only mentions managed files the snapshot knows", () => {
-    const managedPaths = snapshotManagedPaths();
+    const managedPaths = new Set([
+      ...snapshotManagedPaths(),
+      ...MIGRATIONS.flatMap((migration) => migration.handles),
+    ]);
     for (const note of UPGRADE_NOTES) {
       for (const change of note.changes) {
         for (const path of change.files) {
@@ -145,6 +149,18 @@ describe("UPGRADE_NOTES", () => {
           ).toBe(true);
         }
       }
+    }
+  });
+
+  it("accepts a path declared only by a migration", () => {
+    const snapshotPaths = snapshotManagedPaths();
+    const handledOnly = MIGRATIONS.flatMap(
+      (migration) => migration.handles,
+    ).filter((path) => !snapshotPaths.has(path));
+    expect(handledOnly).toContain(".github/pull_request_template.md");
+    const managedPaths = new Set([...snapshotPaths, ...handledOnly]);
+    for (const path of handledOnly) {
+      expect(managedPaths.has(path), path).toBe(true);
     }
   });
 

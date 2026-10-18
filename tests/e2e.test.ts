@@ -267,6 +267,18 @@ e2e("end-to-end project creation", () => {
     ]) {
       expect(existsSync(join(projectDir, file)), file).toBe(true);
     }
+    // Pull request bodies come from the `git-pr` skill of the @raulmoracode
+    // skills catalog; the CLI no longer writes a repository-level template.
+    expect(
+      existsSync(join(projectDir, ".github", "pull_request_template.md")),
+      ".github/pull_request_template.md",
+    ).toBe(false);
+    const manifestRaw = JSON.parse(
+      await readFile(join(projectDir, "raulmoracode.json"), "utf8"),
+    ) as { files: Record<string, string> };
+    expect(
+      manifestRaw.files[".github/pull_request_template.md"],
+    ).toBeUndefined();
 
     const generatedComponentsJson = await readFile(
       join(projectDir, "components.json"),
@@ -324,6 +336,11 @@ e2e("end-to-end project creation", () => {
     }
     const agentsGuide = await readFile(join(projectDir, "AGENTS.md"), "utf8");
     expect(agentsGuide).toContain("## Git hooks and commits");
+    expect(agentsGuide).toContain("## Skills");
+    expect(agentsGuide).toContain(
+      "https://raulmoracode.github.io/raulmoracode-skills/",
+    );
+    expect(agentsGuide).not.toContain("## Pull requests");
     const readme = await readFile(join(projectDir, "README.md"), "utf8");
     expect(readme).toContain("# my-project");
     expect(readme).toContain("project generated with");

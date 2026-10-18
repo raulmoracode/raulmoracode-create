@@ -10,7 +10,6 @@ import { huskyCommitMsg, huskyPreCommit } from "../config/husky.js";
 import { nvmrcContent } from "../config/nvmrc.js";
 import { opencodeConfigJson } from "../config/opencode.js";
 import { playwrightConfig } from "../config/playwright.js";
-import { pullRequestTemplate } from "../config/pull-request.js";
 import { nextPostcssConfig, viteTailwindConfig } from "../config/tailwind.js";
 import type { TechSelection } from "../config/tech.js";
 import { vitestConfig } from "../config/testing.js";
@@ -57,7 +56,6 @@ export function managedFiles(
     ".env.example": envExample(frameworkId),
     ".github/workflows/ci.yml": ciWorkflowYaml(selection),
     ".github/dependabot.yml": dependabotYaml(),
-    ".github/pull_request_template.md": pullRequestTemplate(selection),
     "AGENTS.md": agentsMd(frameworkId, selection, existingPaths),
   };
   if (selection.biome) {
