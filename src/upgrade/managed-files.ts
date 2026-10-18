@@ -8,6 +8,7 @@ import { editorconfigContent } from "../config/editorconfig.js";
 import { envExample } from "../config/env-example.js";
 import { huskyCommitMsg, huskyPreCommit } from "../config/husky.js";
 import { nvmrcContent } from "../config/nvmrc.js";
+import { opencodeConfigJson } from "../config/opencode.js";
 import { playwrightConfig } from "../config/playwright.js";
 import { pullRequestTemplate } from "../config/pull-request.js";
 import { nextPostcssConfig, viteTailwindConfig } from "../config/tailwind.js";
@@ -52,6 +53,7 @@ export function managedFiles(
   const files: Record<string, string> = {
     ".editorconfig": editorconfigContent(),
     ".nvmrc": nvmrcContent(),
+    ".opencode/opencode.json": opencodeConfigJson(),
     ".env.example": envExample(frameworkId),
     ".github/workflows/ci.yml": ciWorkflowYaml(selection),
     ".github/dependabot.yml": dependabotYaml(),

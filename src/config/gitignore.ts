@@ -15,6 +15,12 @@ export const REQUIRED_GITIGNORE_ENTRIES = [
   "!.env.example",
   ".next",
   "coverage",
+  // Structural negations: they must win over any ignore rule a machine's
+  // global git excludes file could apply to dotfolders, and the merge function
+  // keeps them idempotent, so `.opencode/` always travels with the repository.
+  "# Keep .opencode/ trackable (dotfolders must travel with the repo)",
+  "!.opencode/",
+  "!.opencode/opencode.json",
 ] as const;
 
 /**

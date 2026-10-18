@@ -22,6 +22,7 @@ import { dependabotYaml } from "../src/config/dependabot.js";
 import { editorconfigContent } from "../src/config/editorconfig.js";
 import { envExample } from "../src/config/env-example.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
+import { mergeGitignoreEntries } from "../src/config/gitignore.js";
 import { huskyCommitMsg, huskyPreCommit } from "../src/config/husky.js";
 import {
   isLicenseChoice,
@@ -32,6 +33,7 @@ import {
   licenseText,
 } from "../src/config/license.js";
 import { NODE_VERSION, nvmrcContent } from "../src/config/nvmrc.js";
+import { opencodeConfigJson } from "../src/config/opencode.js";
 import {
   playwrightConfig,
   playwrightPort,
@@ -162,6 +164,60 @@ describe(".editorconfig", () => {
     expect(content).toContain("indent_size = 2");
     expect(content).toContain("insert_final_newline = true");
     expect(content).toContain("trim_trailing_whitespace = true");
+  });
+});
+
+describe(".gitignore entries", () => {
+  it("appends the .opencode negations at the end and is idempotent", () => {
+    const merged = mergeGitignoreEntries("node_modules\n");
+    expect(merged).not.toBeNull();
+    const content = merged ?? "";
+    // Appended last, so git applies them after every exclusion above.
+    expect(content.split("\n").slice(-4)).toEqual([
+      "# Keep .opencode/ trackable (dotfolders must travel with the repo)",
+      "!.opencode/",
+      "!.opencode/opencode.json",
+      "",
+    ]);
+    // The merge only appends what is missing, so a second pass is a no-op.
+    expect(mergeGitignoreEntries(content)).toBeNull();
+  });
+});
+
+describe(".opencode/opencode.json", () => {
+  it("pins the exact bytes with a single trailing newline", () => {
+    expect(opencodeConfigJson()).toBe(
+      [
+        "{",
+        '  "$schema": "https://opencode.ai/config.json",',
+        '  "skills": ["https://raulmoracode.github.io/raulmoracode-skills/"]',
+        "}",
+        "",
+      ].join("\n"),
+    );
+    expect(opencodeConfigJson().endsWith("\n")).toBe(true);
+    expect(opencodeConfigJson()).not.toContain("\r");
+  });
+
+  it("wires the skills catalog through the documented schema", () => {
+    const parsed = JSON.parse(opencodeConfigJson()) as {
+      $schema: string;
+      skills: string[];
+    };
+    expect(parsed.$schema).toBe("https://opencode.ai/config.json");
+    expect(parsed.skills).toEqual([
+      "https://raulmoracode.github.io/raulmoracode-skills/",
+    ]);
+  });
+
+  it("contains no tokens, credentials or machine-specific paths", () => {
+    const content = opencodeConfigJson();
+    expect(content).not.toMatch(/ghp_/);
+    expect(content).not.toMatch(/github_pat_/);
+    expect(content).not.toMatch(/_authToken/);
+    expect(content).not.toMatch(/\/Users\//);
+    expect(content).not.toMatch(/\/home\//);
+    expect(content).not.toMatch(/[A-Z]:\\/);
   });
 });
 

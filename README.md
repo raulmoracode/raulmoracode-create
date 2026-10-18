@@ -79,6 +79,7 @@ Requirements: Node 24, pnpm 12, a clean working tree, a GitHub remote and the Gi
 - Configures **Vitest 5.0.2**, **@testing-library/react 16.3.3** and **@testing-library/dom 10.4.2** (plus `jsdom`, required by Testing Library, and `clsx` + `tailwind-merge`, required by the shadcn `cn()` helper).
 - Configures **VS Code** (`.vscode/settings.json` and `.vscode/extensions.json`).
 - Pins **Node.js 24** via `.nvmrc` and writes `.editorconfig`.
+- Configures **OpenCode**: ships `.opencode/opencode.json`, which points it at the [@raulmoracode skills catalog](https://raulmoracode.github.io/raulmoracode-skills/), and `.gitignore` negations keep the `.opencode/` folder trackable so the configuration always travels with the repository.
 - Writes the **MIT `LICENSE`** with the project author and the current year, and sets `license: "MIT"` in `package.json`, so the project is publishable as it comes out.
 - Applies **branding**: removes the template's own `<title>` and favicon link and injects nothing in their place, so the tab title, favicon and social tags come from `src/config/site.ts` (see below) instead of being hardcoded in `index.html` for Vite or in the root layout metadata for Next.js.
 - Ships a minimal **starter** for React + Vite: `public/` and `src/assets/` are emptied, `App.tsx` renders a simple hello and `App.css` starts empty.
@@ -108,6 +109,7 @@ Every generated project includes:
 - Biome (format, lint, organize imports)
 - Vitest + Testing Library
 - VS Code settings
+- OpenCode configuration (`.opencode/opencode.json`) with the @raulmoracode skills catalog
 - Husky + Commitlint (`.husky/pre-commit` and `.husky/commit-msg`, both executable, plus `commitlint.config.ts`)
 - Continuous integration (`.github/workflows/ci.yml`)
 - Branding driven by `src/config/site.ts` (tab title, favicon and social preview)

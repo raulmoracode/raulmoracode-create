@@ -897,7 +897,13 @@ describe("runUpgrade", () => {
     // (`.gitignore`, `README.md` and `src/config/site.ts` are not managed —
     // which is exactly why the previous rollback test never noticed them): give
     // the migrations something to actually write so their paths reach revert.
-    await writeFileAt(join(projectDir, ".gitignore"), "node_modules\n");
+    // The `.vscode/*` exclusion makes the vscode-settings migration (1.1.0)
+    // add its exception to `.gitignore`; the required-entries migration now
+    // ships in 1.2.0, above the CLI version under test.
+    await writeFileAt(
+      join(projectDir, ".gitignore"),
+      "node_modules\n.vscode/*\n!.vscode/extensions.json\n",
+    );
     await writeFileAt(
       join(projectDir, "README.md"),
       "# my-app\n\n## Project structure\n\n- stale tree\n\n## Links\n",

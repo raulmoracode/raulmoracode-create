@@ -95,6 +95,7 @@ import { VERSION } from "../src/cli/args.js";
 import { run } from "../src/cli/run.js";
 import type { UpgradeDeps } from "../src/cli/upgrade.js";
 import { runUpgrade } from "../src/cli/upgrade.js";
+import { opencodeConfigJson } from "../src/config/opencode.js";
 import type { ProjectManifest } from "../src/upgrade/types.js";
 
 const OLD_CLI_VERSION = "1.0.0";
@@ -195,6 +196,11 @@ describe("end-to-end upgrade of a generated project", () => {
       hash(await readFile(join(projectDir, "biome.json"), "utf8")),
     );
     expect(manifest.dependencies.husky).toBe("9.1.7");
+    expect(manifest.files[".opencode/opencode.json"]).toBe(
+      hash(
+        await readFile(join(projectDir, ".opencode", "opencode.json"), "utf8"),
+      ),
+    );
 
     const tracked = await runCommand(
       "git",
@@ -270,6 +276,15 @@ describe("end-to-end upgrade of a generated project", () => {
     expect(prBody).toContain("## ⚠️ Overwritten files with local changes");
     expect(prBody).toContain("AGENTS.md");
     expect(prBody).not.toContain("--draft");
+
+    // The OpenCode config survives the upgrade, `.gitignore` keeps its
+    // negations and the branch manifest still tracks the file.
+    expect(
+      await readFile(join(projectDir, ".opencode", "opencode.json"), "utf8"),
+    ).toBe(opencodeConfigJson());
+    const gitignore = await readFile(join(projectDir, ".gitignore"), "utf8");
+    expect(gitignore).toContain("!.opencode/");
+    expect(gitignore).toContain("!.opencode/opencode.json");
   }, 900_000);
 
   it("pushed the upgrade branch with two isolated commits", async () => {
@@ -296,9 +311,13 @@ describe("end-to-end upgrade of a generated project", () => {
       ["show", `${upgradeBranch}:raulmoracode.json`],
       projectDir,
     );
-    expect(
-      (JSON.parse(branchManifest.stdout) as ProjectManifest).cliVersion,
-    ).toBe(VERSION);
+    const parsedBranchManifest = JSON.parse(
+      branchManifest.stdout,
+    ) as ProjectManifest;
+    expect(parsedBranchManifest.cliVersion).toBe(VERSION);
+    expect(parsedBranchManifest.files[".opencode/opencode.json"]).toBe(
+      hash(opencodeConfigJson()),
+    );
 
     const onBranch = await runCommand(
       "git",

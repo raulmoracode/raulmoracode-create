@@ -13,6 +13,7 @@ vi.mock("../src/utils/exec.js", async (importOriginal) => {
 import { SHADCN_VERSION } from "../src/config/components.js";
 import { dependabotYaml } from "../src/config/dependabot.js";
 import { nextErrorPage, nextNotFoundPage } from "../src/config/error-pages.js";
+import { opencodeConfigJson } from "../src/config/opencode.js";
 import { pullRequestTemplate } from "../src/config/pull-request.js";
 import { SITE_HEAD_COMMENT } from "../src/config/site.js";
 import { viteTailwindConfig } from "../src/config/tailwind.js";
@@ -35,6 +36,7 @@ import {
   configureNode,
   requiredGitignoreEntries,
 } from "../src/generators/configure-node.js";
+import { configureOpencode } from "../src/generators/configure-opencode.js";
 import { configurePlaywright } from "../src/generators/configure-playwright.js";
 import { configurePrTemplate } from "../src/generators/configure-pr-template.js";
 import {
@@ -110,6 +112,24 @@ describe("configureNode", () => {
     expect(second).toBe(first);
   });
 
+  it("adds the .opencode negations and does not duplicate them", async () => {
+    const dir = await makeTempDir();
+    await augmentGitignore(dir);
+    const first = await readFromFile(dir, ".gitignore");
+    expect(first).toContain("!.opencode/");
+    expect(first).toContain("!.opencode/opencode.json");
+    // The negations close the file, after every exclusion above them.
+    expect(first.split("\n").slice(-4)).toEqual([
+      "# Keep .opencode/ trackable (dotfolders must travel with the repo)",
+      "!.opencode/",
+      "!.opencode/opencode.json",
+      "",
+    ]);
+
+    await augmentGitignore(dir);
+    expect(await readFromFile(dir, ".gitignore")).toBe(first);
+  });
+
   it("adds the settings.json exception under the create-vite .vscode/* exclusion", async () => {
     const dir = await makeTempDir();
     const { writeFile } = await import("node:fs/promises");
@@ -147,9 +167,21 @@ describe("configureNode", () => {
       ".env",
       ".env.*",
       "!.env.example",
+      "!.opencode/",
+      "!.opencode/opencode.json",
     ]) {
       expect(entries).toContain(required);
     }
+  });
+});
+
+describe("configureOpencode", () => {
+  it("writes .opencode/opencode.json with the skills catalog", async () => {
+    const dir = await makeTempDir();
+    await configureOpencode(dir);
+    expect(await readFromFile(dir, ".opencode", "opencode.json")).toBe(
+      opencodeConfigJson(),
+    );
   });
 });
 
