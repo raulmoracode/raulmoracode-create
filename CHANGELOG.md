@@ -5,6 +5,22 @@ All notable changes to `@raulmoracode/create` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-18
+
+### Added
+
+- **OpenCode skills catalog config** (`.opencode/opencode.json`) in every
+  generated project: the project-level OpenCode configuration loads the shared
+  @raulmoracode skills catalog
+  (`https://raulmoracode.github.io/raulmoracode-skills/`), so a coding session
+  started in the repository discovers the skills with no manual setup. The file
+  is registered as a managed file, and `.gitignore` keeps the folder trackable
+  with the structural negations `!.opencode/` and `!.opencode/opencode.json`
+  (appended last, so they win over any ignore rule and a machine's global git
+  excludes can no longer hide the configuration). The gitignore upgrade
+  migration (bumped to 1.2.0) merges both negations into existing projects,
+  idempotently.
+
 ## [1.1.1] - 2026-10-12
 
 ### Fixed
@@ -378,7 +394,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.0.8...v1.0.9
