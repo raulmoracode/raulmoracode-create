@@ -335,7 +335,7 @@ e2e("end-to-end project creation", () => {
       }
     }
     const agentsGuide = await readFile(join(projectDir, "AGENTS.md"), "utf8");
-    expect(agentsGuide).toContain("## Git hooks and commits");
+    expect(agentsGuide).not.toContain("## Git hooks and commits");
     expect(agentsGuide).toContain("## Skills");
     expect(agentsGuide).toContain(
       "https://raulmoracode.github.io/raulmoracode-skills/",

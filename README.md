@@ -74,6 +74,16 @@ pnpm dlx @raulmoracode/create@latest upgrade --adopt   # adopt a project created
 
 Requirements: Node 24, pnpm 12, a clean working tree, a GitHub remote and the GitHub CLI (`gh auth login`).
 
+### Diagnosing an existing project
+
+Run `doctor` inside a project when the CLI cannot work with it and you want to know why. It is read-only: no writes, no prompts, no network.
+
+```bash
+pnpm dlx @raulmoracode/create@latest doctor
+```
+
+It checks Node, pnpm and git; that `raulmoracode.json` exists and parses (and points at `upgrade --adopt` when the project predates 1.0.8); version drift against the installed CLI; managed files that are missing or edited since the CLI wrote them; managed pins that are missing or drifted; and managed scripts that disappeared. Exit code 1 when any check reports an error; warnings do not fail.
+
 ## What the CLI does
 
 - Scaffolds with the **official generators** (never a hand-written template):
@@ -159,7 +169,7 @@ pnpm exec biome check --write .
 
 Vite projects resolve the `@/*` alias to `src/*` (`tsconfig.app.json`, root `tsconfig.json` and `vite.config.ts`). Both frameworks also map the `@raulmoracode` registry aliases (`@components/*`, `@lib/*`, `@hooks/*` to `src/...`) so registry file targets resolve when running `pnpm dlx shadcn@4.21.0 add @raulmoracode/<component>`.
 
-Every generated project ships an `AGENTS.md` file with the project facts a coding agent needs: the configuration files that are the source of truth, the project structure tree, the script map, the shadcn workflow, the validation commands, the Git hook commands and the site identity. Behavioral guidance is delegated to the [@raulmoracode skills catalog](https://raulmoracode.github.io/raulmoracode-skills/): the `## Skills` section points at the `.opencode/opencode.json` project config that loads it, starts non-trivial work with `raulmoracode-mode` and lists the specialists (`git-pr`, `git-branch`/`safe-git`, `test-before-finishing`/`verify-before-claiming`/`no-made-up-results`, `security-first`, `release-engineering`, `clear-final-report`) with a short fallback list of non-negotiables (pnpm only, exact versions, no destructive Git commands, Conventional Commits, never claim unverified results, never delete user content). No `.github/pull_request_template.md` is generated: the `git-pr` skill owns pull request bodies.
+Every generated project ships an `AGENTS.md` file with the project facts a coding agent needs: the configuration files that are the source of truth, the project structure tree, the script map, the shadcn workflow, the validation commands and the site identity. Behavioral guidance is delegated to the [@raulmoracode skills catalog](https://raulmoracode.github.io/raulmoracode-skills/): the `## Skills` section points at the `.opencode/opencode.json` project config that loads it, starts non-trivial work with `raulmoracode-mode` and lists the specialists (`test-before-finishing`/`verify-before-claiming`/`no-made-up-results`, `security-first`, `clear-final-report`) with a short fallback list of non-negotiables (pnpm only, exact versions, never claim unverified results, never delete user content). No `.github/pull_request_template.md` is generated: the `git-pr` skill owns pull request bodies.
 
 ## GitHub authentication
 

@@ -1,6 +1,6 @@
 export const VERSION = "1.5.0";
 
-export type CliCommand = "create" | "upgrade";
+export type CliCommand = "create" | "upgrade" | "doctor";
 
 export interface CliArgs {
   command: CliCommand;
@@ -13,8 +13,9 @@ export interface CliArgs {
 
 export function parseArgs(argv: string[]): CliArgs {
   const positional = argv.filter((arg) => !arg.startsWith("-"));
+  const command = positional[0];
   return {
-    command: positional[0] === "upgrade" ? "upgrade" : "create",
+    command: command === "upgrade" || command === "doctor" ? command : "create",
     help: argv.includes("--help") || argv.includes("-h"),
     version: argv.includes("--version") || argv.includes("-V"),
     verbose: argv.includes("--verbose"),
@@ -30,6 +31,7 @@ export function helpText(): string {
     "Usage:",
     "  raulmoracode-create [options]           Create a new project",
     "  raulmoracode-create upgrade [options]   Upgrade the current project to this CLI version (opens a pull request)",
+    "  raulmoracode-create doctor              Diagnose the current project without touching it",
     "",
     "Options:",
     "  --verbose        Print the output of every external command.",
@@ -46,6 +48,7 @@ export function helpText(): string {
     "  raulmoracode-create --verbose",
     "  raulmoracode-create upgrade",
     "  raulmoracode-create upgrade --check",
+    "  raulmoracode-create doctor",
     "",
   ].join("\n");
 }

@@ -57,6 +57,7 @@ src/
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
 ├── github/             # `gh` CLI wrappers ONLY (arg builders + thin wrappers)
+├── doctor/             # PURE diagnostics: facts in, diagnostics out (`checks.ts`)
 ├── upgrade/            # pure contract modules (types, manifest, managed-files, notes, package-json,
 │                       # plan, pr-body, report, version, template-snapshot, migrations/index)
 │                       # + orchestration (state, preflight, apply, migrations/*) via utils/* only
@@ -330,6 +331,19 @@ builders + thin wrappers through `utils/exec.ts`), `git/upgrade.ts` wraps git.
 dependencies so the E2E can run against a local bare remote. PR bodies are English; CLI messages
 are Spanish.
 
+### 5.3 `doctor`: diagnosing an existing project
+
+`raulmoracode-create doctor` (`src/cli/doctor.ts`) is read-only: it gathers facts from the current
+project (Node/pnpm/git versions, whether it is a repository, `package.json`, `raulmoracode.json`, the
+content of every path recorded in the manifest) and prints one diagnostic per check, exiting 1 when any
+of them is an `error` (warnings do not fail). The pure side is `src/doctor/checks.ts`
+(`diagnoseProject(facts)`), so every rule is testable without a disk; the CLI collects the facts only
+through `utils/filesystem.ts` and `utils/exec.ts` and prints with Clack (`intro`/`log`/`outro`). It
+covers the preflight checks plus the manifest-specific ones the CLI never surfaced: missing or
+unreadable `raulmoracode.json` (with the `--adopt` hint), version drift in both directions, managed
+files missing or edited since the CLI wrote them, managed pins missing or drifted, and managed scripts
+missing. It never writes, never prompts and never needs the network.
+
 ## 6. Subtle verified details (do not "simplify" them)
 
 - `create-vite@8.3.1` **does not exist**: scaffold with `create-vite@9.2.1` (the line that generates Vite 8)
@@ -350,9 +364,9 @@ are Spanish.
   With shadcn it also excludes the `@raulmoracode/*` scope (pure `registryScopeExcludes()`,
   pnpm pattern syntax) so `shadcn add @raulmoracode/<component>` can install freshly
   published scope packages despite the maturity gate.
-- Biome 2.5.14: `organizeImports` lives in `assist.actions.source` (not top-level); `dist`/`.next`
-  are ignored; `noSvgWithoutTitle`/`noAmbiguousAnchorText` are `off` (templates ship demo assets
-  that trigger them).
+- Biome 2.5.14: `organizeImports` lives in `assist.actions.source` (not top-level); `dist`, `.next`,
+  `playwright-report` and `test-results` are ignored; `noSvgWithoutTitle`/`noAmbiguousAnchorText` are
+  `off` (templates ship demo assets that trigger them).
 - `components.json` must be the **full** shadcn 4.x configuration (`$schema`, `style
   new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode":
   "https://registry.raulmoracode.com/r/{name}.json"}`); the minimum with only `registries` is
@@ -381,7 +395,7 @@ are Spanish.
 | `validation.test.ts` | names, GitHub URLs, `isFramework`, `satisfiesNodeVersion`, `satisfiesPnpmVersion` |
 | `preflight.test.ts` | `run()` with mocked Clack/`exec`: pnpm major mismatch / unparsable output → actionable `PreflightError` + exit 1; pnpm 12.x proceeds (single `pnpm --version`) |
 | `config.test.ts` | each pure template (exact content + trailing `\n` + no tokens/machine paths), the `.gitignore` merge (appends the `.opencode/` negations last and stays idempotent) |
-| `agents-md-matrix.test.ts` | the generated `AGENTS.md` (`agentsMd()`): pinned exact content (single trailing `\n`, LF-only, no tokens/credentials/machine paths; documents scripts/hooks/conventions; delegates the behavioral guidance to the skills catalog and never renders an empty hook command fence) + byte-identical in the managed tree for every snapshot selection × framework, with framework-specific guides (Vite vs Next), plus the tree pruning against the paths that exist on disk |
+| `agents-md-matrix.test.ts` | the generated `AGENTS.md` (`agentsMd()`): pinned exact content (single trailing `\n`, LF-only, no tokens/credentials/machine paths; documents scripts and conventions; delegates the behavioral guidance to the skills catalog, without a Git section or an empty command fence) + byte-identical in the managed tree for every snapshot selection × framework, with framework-specific guides (Vite vs Next), plus the tree pruning against the paths that exist on disk |
 | `readme-matrix.test.ts` | README for every snapshot selection × framework (`readmeMd()`): titles/credits the generator, Node/pnpm pinned, scripts table matches the real `projectScripts` in canonical order, tech-stack rows mirror the selection, shadcn/Husky sections only when those techs are selected, project-structure tree lists the tooling of the selection, site identity per framework, no machine paths |
 | `site-config.test.ts` | `src/config/site.ts` contract + its two consumers: `describeStack()`/`siteValues()`/`siteConfigTs()` (exact rendering, JSON escaping, trailing `\n`), the Vite `siteHead()` plugin (plugin name/order, `absolute()` resolution of local images against `site.url`, optional values spread away, wired into `vite.config.ts`) and Next `metadata` (conditional `metadataBase`, empty fields spread away, OG/Twitter cards), no machine paths |
 | `frameworks.test.ts` | registration, exact pins, scripts, removal patterns, `patch/normalize` against temp `package.json` |
@@ -396,6 +410,7 @@ are Spanish.
 | `exec.test.ts` | real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
 | `error-handling.test.ts` | mocked `exec` (`importOriginal` + override): missing pnpm/git, non-zero exits, `remoteHasDivergentCommits` (diverge / ancestor / no branch / same), `PreflightError`, invalid URLs, `REMOTE_CONFLICT_MESSAGE` |
 | `layer-invariants.test.ts` | static import scan over all of `src/` enforcing §3: Clack only in `cli/`/`prompts/`, file I/O only through `utils/filesystem.ts` (sole `node:fs` importer), processes only through `utils/exec.ts` (sole `child_process` importer), `config/` performs no I/O, `git/`/`github/` never import each other, no Husky/Commitlint in `git/`, `upgrade/` split into pure contract vs effectful orchestration (no Clack, no `cli/`/`prompts/` imports) |
+| `doctor.test.ts` | `diagnoseProject()` for every level (Node, pnpm, git, `package.json`, manifest absent/unreadable, version drift in both directions, missing and modified managed files, missing/drifted pins, missing scripts) + `runDoctor()` with mocked `exec`/Clack in a temp project (healthy → exit 0; missing manifest → exit 1 with the `--adopt` hint) |
 | `upgrade-pr-body.test.ts` | `upgradePrBody` (empty plan, all statuses, notes with/without `action`, unmatched overwritten file, CRLF, pipe escaping), `unifiedDiff`/`diffLineCounts`/`diffCounts` on small inputs and caps, `truncateForGithub` (summary/⚠️/tables/action items survive, diffs trimmed, under the limit, idempotent) |
 | `github.test.ts` | `gh` arg builders (never `--draft`), `requireGhAuth` (`GhAuthError`, `gh auth login`), `findOpenPullRequest` with mocked `exec` (JSON, empty, garbage, no url, non-zero exit → `null`), `createPullRequest` (`--body-file`, temp file written and removed, URL extraction), `repoDefaultBranch` |
 | `upgrade-contract.test.ts` | manifest contract (hash/serialize/parse), `managedFiles()`, `managedPackageJson()`, `managedDependencyPins()`, `notesBetween()` |
@@ -421,15 +436,8 @@ the suite pass; if you change behavior, update the corresponding test.
 3. External commands always as an args array (`["add", "pkg@1.2.3"]`), never interpolated.
 4. Exact versions in a single constant; verify Node 24 + pnpm 12.6 compatibility
    (`npm view <pkg> version/engines`) before pinning.
-5. Do not use `git push --force/-f`, `reset --hard`, `clean -fd`; do not rewrite history; do not
-   commit unless explicitly requested; do not delete user content.
-6. After changing code: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build` (plus the affected
+5. After changing code: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build` (plus the affected
    framework's E2E via `E2E_FRAMEWORK=vite|next` if it touches scaffolding, since plain
    `pnpm test` skips it). Do not claim something passes if you did not run it.
-7. When done, report: what changed, files, validation performed, and remaining limitations.
-8. Releasing `X.Y.Z`: bump `version` in `package.json` AND `VERSION` in `src/cli/args.ts` (a test
-   pins them together) plus the version references in `docs/PROJECT_SPEC.md`; move
-   `CHANGELOG.md` `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` and update the compare
-   links; merge the `chore/release-X.Y.Z` PR, then push tag `vX.Y.Z` on the merge commit:
-   `publish.yml` validates tag/version, builds, tests and publishes to npm.
+6. When done, report: what changed, files, validation performed, and remaining limitations.
 
