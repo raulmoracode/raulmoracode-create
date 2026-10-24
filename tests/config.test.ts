@@ -119,7 +119,15 @@ describe("biome.json", () => {
     expect(parsed.$schema).toBe(
       "./node_modules/@biomejs/biome/configuration_schema.json",
     );
-    expect(parsed.files).toEqual({ includes: ["**", "!dist", "!.next"] });
+    expect(parsed.files).toEqual({
+      includes: [
+        "**",
+        "!dist",
+        "!.next",
+        "!playwright-report",
+        "!test-results",
+      ],
+    });
     expect(parsed.formatter).toEqual({
       enabled: true,
       indentStyle: "space",

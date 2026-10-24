@@ -23,6 +23,12 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The generated `biome.json` excludes Playwright's output**: `files.includes`
+  now also lists `playwright-report` and `test-results`, so `pnpm check` (and
+  the Husky `pre-commit` hook) keeps passing after `pnpm e2e`. Biome does not
+  read `.gitignore`, so the artifacts were linted and formatted as project
+  files and the first e2e run broke the next check.
+
 - **The generated Tailwind entry maps the shadcn tokens into the theme**: the
   `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
   the `@theme inline` block (`--color-background`, `--color-card`,
