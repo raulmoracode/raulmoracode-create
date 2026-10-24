@@ -7,6 +7,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+Nothing pending yet.
+
+## [1.5.0] - 2026-10-24
+
+### Added
+
+- **`doctor` command**: `raulmoracode-create doctor` inspects the project in
+  the current directory and prints one diagnostic per check without writing
+  anything — Node, pnpm and git, `package.json`, `raulmoracode.json` (a missing
+  manifest points at `upgrade --adopt`), version drift in both directions,
+  managed files missing or edited since the CLI wrote them, managed pins
+  missing or drifted, and managed scripts that disappeared. Exits 1 when a check
+  reports an error; warnings do not fail.
+
 ### Changed
 
 - **The generated `AGENTS.md` no longer carries Git guidance**: the
@@ -17,9 +31,7 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact
   versions, real verification, never delete the user's content) stay, and the
   project tree still lists `.husky/` and `commitlint.config.ts` because they
-  exist in the project. Behavioural guidance now lives only in the catalog, so
-  a commit-convention change no longer needs a CLI release; existing projects
-  receive the trimmed guide through the `1.5.0` upgrade note.
+  exist in the project. Behavioural guidance now lives only in the catalog.
 
 ### Fixed
 
@@ -28,7 +40,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the Husky `pre-commit` hook) keeps passing after `pnpm e2e`. Biome does not
   read `.gitignore`, so the artifacts were linted and formatted as project
   files and the first e2e run broke the next check.
-
 - **The generated Tailwind entry maps the shadcn tokens into the theme**: the
   `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
   the `@theme inline` block (`--color-background`, `--color-card`,
@@ -37,17 +48,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   a Tailwind utility. Without it `bg-background`, `border-input`, `ring-ring`
   and the `rounded-*` scale generated no CSS, so a component added with the
   documented `shadcn add` command rendered unstyled.
-
-### Added
-
-- **`doctor` command**: `raulmoracode-create doctor` inspects the project in
-  the current directory and prints one diagnostic per check without writing
-  anything — Node, pnpm and git, `package.json`, `raulmoracode.json` (a missing
-  manifest points at `upgrade --adopt`), version drift in both directions,
-  managed files missing or edited since the CLI wrote them, managed pins
-  missing or drifted, and managed scripts that disappeared. Exits 1 when a check
-  reports an error; warnings do not fail. The pure rules live in
-  `src/doctor/checks.ts` and the command in `src/cli/doctor.ts`.
 
 ## [1.4.0] - 2026-10-24
 
@@ -484,7 +484,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...v1.2.0

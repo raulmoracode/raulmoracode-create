@@ -10,12 +10,17 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
     version: "1.5.0",
     summary:
-      "The generated AGENTS.md drops the Git guidance the skills catalog owns: no `## Git hooks and commits` section, no Git specialists in `## Skills` and no Git fallback rules.",
+      "The generated AGENTS.md drops the Git guidance the skills catalog owns (no `## Git hooks and commits` section, no Git specialists in `## Skills` and no Git fallback rules), and the generated biome.json excludes Playwright's output (`playwright-report/` and `test-results`), so `pnpm check` and the pre-commit hook keep passing after an e2e run.",
     changes: [
       {
         files: ["AGENTS.md"],
         what: "The `## Git hooks and commits` section is gone (the `pre-commit`/`commit-msg` commands, the Conventional Commits type list, the commit examples and the subject-line rules), together with the `git-pr`, `git-branch`/`safe-git` and `release-engineering` bullets and the two Git fallback rules in `## Skills`. The catalog URL, the `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact versions, verification, never delete the user's content) stay. The project tree still lists `.husky/` and `commitlint.config.ts` because they exist in the project.",
         why: "Commit conventions and Git etiquette are behavioural guidance, so they only change with a CLI release and drift from the catalog the project already loads. The 1.3.0 release moved that guidance to the catalog; the Git section was the remaining exception.",
+      },
+      {
+        files: ["biome.json"],
+        what: "`files.includes` now also excludes `playwright-report` and `test-results`. The upgrade re-renders `biome.json` with the extended list, keeping every other field.",
+        why: "Biome does not read `.gitignore`, so the artifacts Playwright writes are linted and formatted as project files: the first `pnpm e2e` makes the next `pnpm check` fail with thousands of errors and the pre-commit hook aborts the commit.",
       },
     ],
   },
@@ -35,18 +40,6 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
         why: "The template duplicated what the skills catalog now owns and its checklist could only be fixed by shipping a new CLI version, going stale as soon as a project changed its scripts. Removing the file leaves the repository without a document nothing maintains.",
         action:
           "If you customised `.github/pull_request_template.md`, recover your version from the upgrade pull request diff (the upgrade commit deletes the file) before you merge it.",
-      },
-    ],
-  },
-  {
-    version: "1.5.0",
-    summary:
-      "The generated biome.json excludes Playwright's output (`playwright-report/` and `test-results/`), so `pnpm check` and the pre-commit hook keep passing after an e2e run.",
-    changes: [
-      {
-        files: ["biome.json"],
-        what: "`files.includes` now also excludes `playwright-report` and `test-results`. The upgrade re-renders `biome.json` with the extended list, keeping every other field.",
-        why: "Biome does not read `.gitignore`, so the artifacts Playwright writes are linted and formatted as project files: the first `pnpm e2e` makes the next `pnpm check` fail with thousands of errors and the pre-commit hook aborts the commit.",
       },
     ],
   },
