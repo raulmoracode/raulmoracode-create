@@ -5,6 +5,48 @@ All notable changes to `@raulmoracode/create` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The generated `AGENTS.md` no longer carries Git guidance**: the
+  `## Git hooks and commits` section (hook commands, Conventional Commits
+  types, examples and subject-line rules), the `git-pr`,
+  `git-branch`/`safe-git` and `release-engineering` bullets in `## Skills`, and
+  the two Git fallback rules are gone. The catalog URL, the
+  `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact
+  versions, real verification, never delete the user's content) stay, and the
+  project tree still lists `.husky/` and `commitlint.config.ts` because they
+  exist in the project. Behavioural guidance now lives only in the catalog, so
+  a commit-convention change no longer needs a CLI release; existing projects
+  receive the trimmed guide through the `1.5.0` upgrade note.
+
+## [1.4.0] - 2026-10-24
+
+### Added
+
+- **`upgrade --adopt`**: projects created before **1.0.8** ship no
+  `raulmoracode.json`, so `upgrade` refused to run and they were a dead end.
+  With the flag the CLI infers the framework and the tech selection from the
+  files and dependencies on disk (an ambiguous project fails instead of
+  guessing), synthesizes the manifest in memory with `cliVersion: "1.0.7"` —
+  the sentinel for the last pre-manifest release, which guarantees the full
+  migration chain — and then runs the normal upgrade: summary, confirmation,
+  branch, commits and a ready-for-review pull request. `--adopt` with an
+  existing manifest is ignored with a warning (the manifest is never
+  overwritten), `--check --adopt` plans without writing anything, and `create`
+  ignores the flag like `--check`. On the first adoption local edits cannot be
+  told apart from the CLI's content, so overwrite warnings do not fire: the
+  summary warns, the pull request body carries an "Adopted project" section,
+  and the diff is the review surface. Rollback is adoption-aware: the synthetic
+  manifest is untracked on the original branch, so `revertAppliedFiles`
+  restores the tracked paths and removes the manifest separately instead of
+  letting `git restore` abort on an unmatched pathspec. Limitations:
+  non-managed creation artifacts such as `src/config/site.ts` are not
+  recreated, and the registry theme is not re-applied to `globals.css` (only
+  the `tw-animate-css` pin is aligned when detected). No managed template or
+  pin changed, so there is no `UPGRADE_NOTES` entry.
+
 ## [1.3.0] - 2026-10-18
 
 ### Changed
@@ -145,46 +187,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `README.md`, `src/config/site.ts`), matching the documented guarantee.
 - `github/default-branch.ts` no longer imports from `git/` (the §3 layer rule);
   the `origin/HEAD` fallback moved to the orchestrator.
-
-## [Unreleased]
-
-### Added
-
-- **`upgrade --adopt`**: projects created before **1.0.8** ship no
-  `raulmoracode.json`, so `upgrade` refused to run and they were a dead end.
-  With the flag the CLI infers the framework and the tech selection from the
-  files and dependencies on disk (an ambiguous project fails instead of
-  guessing), synthesizes the manifest in memory with `cliVersion: "1.0.7"` —
-  the sentinel for the last pre-manifest release, which guarantees the full
-  migration chain — and then runs the normal upgrade: summary, confirmation,
-  branch, commits and a ready-for-review pull request. `--adopt` with an
-  existing manifest is ignored with a warning (the manifest is never
-  overwritten), `--check --adopt` plans without writing anything, and `create`
-  ignores the flag like `--check`. On the first adoption local edits cannot be
-  told apart from the CLI's content, so overwrite warnings do not fire: the
-  summary warns, the pull request body carries an "Adopted project" section,
-  and the diff is the review surface. Rollback is adoption-aware: the synthetic
-  manifest is untracked on the original branch, so `revertAppliedFiles`
-  restores the tracked paths and removes the manifest separately instead of
-  letting `git restore` abort on an unmatched pathspec. Limitations:
-  non-managed creation artifacts such as `src/config/site.ts` are not
-  recreated, and the registry theme is not re-applied to `globals.css` (only
-  the `tw-animate-css` pin is aligned when detected). No managed template or
-  pin changed, so there is no `UPGRADE_NOTES` entry.
-
-### Changed
-
-- **The generated `AGENTS.md` no longer carries Git guidance**: the
-  `## Git hooks and commits` section (hook commands, Conventional Commits
-  types, examples and subject-line rules), the `git-pr`,
-  `git-branch`/`safe-git` and `release-engineering` bullets in `## Skills`, and
-  the two Git fallback rules are gone. The catalog URL, the
-  `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact
-  versions, real verification, never delete the user's content) stay, and the
-  project tree still lists `.husky/` and `commitlint.config.ts` because they
-  exist in the project. Behavioural guidance now lives only in the catalog, so
-  a commit-convention change no longer needs a CLI release; existing projects
-  receive the trimmed guide through the `1.5.0` upgrade note.
 
 ## [1.0.9] - 2026-10-10
 
@@ -454,7 +456,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...v1.1.1
