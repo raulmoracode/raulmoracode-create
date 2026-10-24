@@ -157,7 +157,10 @@ run({ verbose: parseArgs(process.argv.slice(2)).verbose }).catch(...);
 - Flags: `--verbose` (prints stdout/stderr of every external command in real time),
   `-h`/`--help` (help, exit 0 without entering the flow), `-V`/`--version` (prints `VERSION`, exit 0),
   `--check` / `--dry-run` (upgrade only: shows the planned upgrade without writing anything;
-  exits 1 when changes are pending, 0 when the project is up to date).
+  exits 1 when changes are pending, 0 when the project is up to date),
+  `--adopt` (upgrade only: adopts a project created before 1.0.8, which has no `raulmoracode.json`,
+  by synthesizing the manifest from disk evidence — see §19; ignored with a warning when the manifest
+  already exists).
 - `VERSION` lives in `src/cli/args.ts` and a test pins it to `package.json` (never read the JSON at runtime).
 - Works from any working directory.
 
@@ -201,7 +204,7 @@ Internal functions:
 ### 5.2 `src/cli/args.ts` — flags
 
 - `VERSION = "1.3.0"` — single source of truth for `--version`; pinned to `package.json` by a test.
-- `parseArgs(argv): CliArgs` — `{ help, version, verbose, check }` (`-h`/`--help`, `-V`/`--version`, `--verbose`, `--check`/`--dry-run`; unknown flags are ignored).
+- `parseArgs(argv): CliArgs` — `{ help, version, verbose, check, adopt }` (`-h`/`--help`, `-V`/`--version`, `--verbose`, `--check`/`--dry-run`, `--adopt`; unknown flags are ignored).
 - `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
 ### 5.3 `src/cli/output.ts` — Clack output
@@ -551,3 +554,21 @@ Helpers:
 - `truncateForGithub(body)` — GitHub rejects bodies over ~65 000 characters (`GITHUB_PR_BODY_LIMIT`). Bodies under the limit are returned untouched; longer ones get their `<details>` diff blocks collapsed, then dropped if still too long, and a visible note pointing at the **Files changed** tab. The Summary, the ⚠️ section, every table, the action items and the footer are never removed. The function is **idempotent**: running it on its own output returns the same string (the replacements are fixed points and the trim note is inserted at most once).
 
 Table cells are escaped (`|` → `\|`, newlines → `<br>`) and CRLF is normalised before diffing, so generated content can never break the markdown layout.
+
+---
+
+## 19. Adopting a pre-manifest project (`upgrade --adopt`)
+
+Projects created before **1.0.8** ship no `raulmoracode.json`, so plain `upgrade` refuses to run (the preflight error points at `--adopt`). With the flag and no manifest, `upgradePreflightChecks` returns `adopted` and the CLI builds the manifest **in memory** with the pure `buildAdoptionManifest()` (`upgrade/adopt.ts`) — it is never written during the preflight — then runs the normal flow: summary, confirmation, branch, two commits and pull request.
+
+| Field | Inferred value |
+|---|---|
+| `manifestVersion` | `1` (`MANIFEST_VERSION`) |
+| `cliVersion` | `1.0.7` (`PRE_MANIFEST_CLI_VERSION`, the last release before the manifest), so every migration from 1.1.0 onwards is replayed |
+| `framework` | `next`/`vite` from the `next`/`vite` dependencies or `next.config.*`/`vite.config.*`; a project that matches both or neither throws `AdoptionError` instead of guessing |
+| `selection` | disk evidence only, with the cascade enforced: `components.json` + `tailwindcss` (shadcn), `tw-animate-css` (theme), `@tanstack/react-query`, `zustand`, `react-hook-form` + `zod`, `biome.json` + `@biomejs/biome`, `vitest.config.ts` + `vitest`, `playwright.config.ts` + `@playwright/test`, both Husky hooks + `husky`, both `.vscode` files |
+| `files` | sha256 of the current on-disk content of the managed paths that exist, plus the retired `.github/pull_request_template.md` when present |
+| `dependencies` | each managed pin at its installed version; absent ones are omitted |
+| `projectName`, `githubUrl` | `package.json` name (fallback: the repository slug) and the normalized `origin` URL |
+
+`--adopt` with an existing manifest is ignored with a warning and the manifest is never overwritten. `--check --adopt` runs the same preflights and plan, writes nothing, and exits 1 when changes are pending / 0 when there is nothing to do. `create` ignores the flag, like `--check`. A first adoption cannot distinguish local edits from CLI content, so overwrite warnings do not fire on that run: the summary warns, the PR body carries an "Adopted project" section, and the diff is the review surface. Known limitations: non-managed creation artifacts such as `src/config/site.ts` are not recreated, and the registry theme is not re-applied to `globals.css` (only the `tw-animate-css` pin is aligned when detected). Rollback is adoption-aware: the synthetic manifest is untracked on the original branch, so `revertAppliedFiles` restores the tracked paths and removes the manifest separately instead of letting `git restore` abort on an unmatched pathspec. No managed template or pin changed, so there is no `UPGRADE_NOTES` entry.

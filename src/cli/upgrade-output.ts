@@ -1,4 +1,5 @@
 import { log } from "@clack/prompts";
+import { TECH_IDS, type TechSelection } from "../config/tech.js";
 import type { UpgradePlan } from "../upgrade/plan.js";
 import type { FileChangeStatus } from "../upgrade/types.js";
 
@@ -17,7 +18,16 @@ export function overwriteWarning(overwrittenFiles: string[]): string {
   ].join("\n");
 }
 
-export function showUpgradeSummary(plan: UpgradePlan): void {
+export function showUpgradeSummary(plan: UpgradePlan, adopted = false): void {
+  if (adopted) {
+    log.warn(
+      [
+        "Este proyecto no tenía raulmoracode.json (se creó antes de 1.0.8): se adopta usando el estado actual como base.",
+        `Framework detectado: ${plan.framework} · Tecnologías detectadas: ${enabledTechs(plan.selection)}.`,
+        "La primera pasada no puede distinguir tus ediciones locales del contenido del CLI: revisa el diff del pull request antes de fusionarlo.",
+      ].join("\n"),
+    );
+  }
   log.info(`Proyecto: ${plan.manifest.projectName}`);
   log.info(`Framework: ${plan.framework}`);
   log.info(
@@ -111,4 +121,9 @@ export function showNothingToDo(plan: UpgradePlan): void {
   log.info(
     `No hay cambios de plantilla, dependencias ni migraciones entre ${plan.fromVersion} y ${plan.toVersion}.`,
   );
+}
+
+function enabledTechs(selection: TechSelection): string {
+  const enabled = TECH_IDS.filter((id) => selection[id]);
+  return enabled.length > 0 ? enabled.join(", ") : "ninguna";
 }

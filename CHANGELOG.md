@@ -148,7 +148,29 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Added
+
+- **`upgrade --adopt`**: projects created before **1.0.8** ship no
+  `raulmoracode.json`, so `upgrade` refused to run and they were a dead end.
+  With the flag the CLI infers the framework and the tech selection from the
+  files and dependencies on disk (an ambiguous project fails instead of
+  guessing), synthesizes the manifest in memory with `cliVersion: "1.0.7"` —
+  the sentinel for the last pre-manifest release, which guarantees the full
+  migration chain — and then runs the normal upgrade: summary, confirmation,
+  branch, commits and a ready-for-review pull request. `--adopt` with an
+  existing manifest is ignored with a warning (the manifest is never
+  overwritten), `--check --adopt` plans without writing anything, and `create`
+  ignores the flag like `--check`. On the first adoption local edits cannot be
+  told apart from the CLI's content, so overwrite warnings do not fire: the
+  summary warns, the pull request body carries an "Adopted project" section,
+  and the diff is the review surface. Rollback is adoption-aware: the synthetic
+  manifest is untracked on the original branch, so `revertAppliedFiles`
+  restores the tracked paths and removes the manifest separately instead of
+  letting `git restore` abort on an unmatched pathspec. Limitations:
+  non-managed creation artifacts such as `src/config/site.ts` are not
+  recreated, and the registry theme is not re-applied to `globals.css` (only
+  the `tw-animate-css` pin is aligned when detected). No managed template or
+  pin changed, so there is no `UPGRADE_NOTES` entry.
 
 ## [1.0.9] - 2026-10-10
 

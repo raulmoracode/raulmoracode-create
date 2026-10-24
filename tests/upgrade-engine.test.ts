@@ -667,7 +667,95 @@ describe("runUpgrade", () => {
       `No se encontró ${MANIFEST_FILE}`,
     );
     expect(String(errorMock.mock.calls[0]?.[0])).toContain("1.0.8");
+    expect(String(errorMock.mock.calls[0]?.[0])).toContain("--adopt");
     expect(await listProjectFiles()).toEqual(before);
+    expect(confirmMock).not.toHaveBeenCalled();
+  });
+
+  it("adopts a pre-manifest project with --adopt and opens the pull request", async () => {
+    await createProjectFixture({ skipManifest: true });
+
+    await runUpgrade({ verbose: false, adopt: true, deps });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(createPullRequest).toHaveBeenCalledTimes(1);
+    // The synthetic manifest seeds the plan, the real one is rewritten at the end.
+    const body = String(truncateForGithubMock.mock.calls[0]?.[0]);
+    expect(body).toContain('"fromVersion":"1.0.7"');
+    expect(body).toContain('"adopted":true');
+    const manifest = parseManifest(
+      await readFile(join(projectDir, MANIFEST_FILE), "utf8"),
+    );
+    expect(manifest.cliVersion).toBe(VERSION);
+    expect(manifest.framework).toBe("vite");
+    expect(manifest.selection).toEqual(SELECTION);
+    expect(manifest.files.biome).toBeUndefined();
+    expect(manifest.files["biome.json"]).toBe(
+      hashContent(managedFiles("vite", SELECTION)["biome.json"] ?? ""),
+    );
+    expect(manifest.dependencies["@biomejs/biome"]).toBe(
+      managedDependencyPins("vite", SELECTION)["@biomejs/biome"],
+    );
+    expect(calledCommands()).toContain(
+      `git switch -c chore/raulmoracode-update-${VERSION} origin/main`,
+    );
+    expect(calledCommands().some((line) => line.startsWith("git add"))).toBe(
+      true,
+    );
+    expect(String(warnMock.mock.calls[0]?.[0])).toContain(
+      "no tenía raulmoracode.json",
+    );
+    expect(String(warnMock.mock.calls[0]?.[0])).toContain(
+      "Tecnologías detectadas: biome, husky",
+    );
+  });
+
+  it("ignores --adopt when the project already has a manifest", async () => {
+    await createProjectFixture();
+
+    await runUpgrade({ verbose: false, adopt: true, deps });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(createPullRequest).toHaveBeenCalledTimes(1);
+    expect(
+      warnMock.mock.calls.some((call) =>
+        String(call[0]).includes("--adopt se ignora"),
+      ),
+    ).toBe(true);
+    const body = String(truncateForGithubMock.mock.calls[0]?.[0]);
+    expect(body).toContain('"adopted":false');
+  });
+
+  it("--check --adopt shows the plan and writes nothing", async () => {
+    await createProjectFixture({ skipManifest: true });
+    const before = await listProjectFiles();
+
+    await runUpgrade({ verbose: false, check: true, adopt: true, deps });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(createPullRequest).not.toHaveBeenCalled();
+    expect(confirmMock).not.toHaveBeenCalled();
+    expect(await listProjectFiles()).toEqual(before);
+    expect(
+      calledCommands().some((line) => line.startsWith("git switch -c")),
+    ).toBe(false);
+    expect(String(warnMock.mock.calls[0]?.[0])).toContain(
+      "no tenía raulmoracode.json",
+    );
+  });
+
+  it("fails with an actionable error when an adopted project has no recognizable framework", async () => {
+    await createProjectFixture({
+      skipManifest: true,
+      packageJson: { name: "my-app", private: true },
+    });
+
+    await runUpgrade({ verbose: false, adopt: true, deps });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(String(errorMock.mock.calls[0]?.[0])).toContain(
+      "No se pudo determinar el framework",
+    );
     expect(confirmMock).not.toHaveBeenCalled();
   });
 
@@ -906,6 +994,30 @@ describe("runUpgrade", () => {
       "rama incompleta",
     );
     expect(createPullRequest).not.toHaveBeenCalled();
+  });
+
+  it("removes the adopted manifest and restores the tracked files when a step fails", async () => {
+    await createProjectFixture({ skipManifest: true });
+    const before = await listProjectFiles();
+    mockExec({
+      failOn: (command, args) => command === "pnpm" && args[0] === "install",
+    });
+
+    await runUpgrade({ verbose: false, adopt: true, deps });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    // The untracked manifest never existed on the original branch: restoring it
+    // would make `git restore` fail as a whole, so it is deleted separately.
+    const restores = calledCommands().filter((line) =>
+      line.startsWith("git restore"),
+    );
+    expect(restores).toHaveLength(1);
+    expect(restores[0]).not.toContain("raulmoracode.json");
+    expect(restores[0]).toContain("package.json");
+    expect(await listProjectFiles()).toEqual(before);
+    expect(calledCommands()).toContain(
+      `git branch -D chore/raulmoracode-update-${VERSION}`,
+    );
   });
 
   it("reverts the files it wrote and drops the branch when a step fails", async () => {

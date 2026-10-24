@@ -28,6 +28,7 @@ export function upgradePrBody(report: UpgradeReport): string {
   return [
     titleSection(report),
     summarySection(report),
+    adoptedSection(report),
     overwrittenSection(report),
     changesByVersionSection(report),
     dependenciesSection(report),
@@ -75,6 +76,19 @@ function summarySection(report: UpgradeReport): string {
     );
   }
   return lines.join("\n");
+}
+
+function adoptedSection(report: UpgradeReport): string {
+  if (!report.adopted) {
+    return "";
+  }
+  return [
+    "## Adopted project",
+    "",
+    "This project predates `raulmoracode.json` (introduced in `1.0.8`), so there was no recorded baseline for the CLI to compare against. `upgrade --adopt` used the current on-disk state as that baseline: the managed files are re-rendered with the current templates, the pinned versions are aligned and the migrations below are applied.",
+    "",
+    `Because the original baseline is unknown, local edits to managed files could not be detected on this first run, and the project version is reported as \`${report.fromVersion}\` (the last release that shipped without a manifest) instead of the exact version it was created with. Review the diff before merging: from this pull request onwards the project is tracked by \`raulmoracode.json\` like any other.`,
+  ].join("\n");
 }
 
 function overwrittenSection(report: UpgradeReport): string {
