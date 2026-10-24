@@ -255,9 +255,12 @@ manifest, so projects created before it have no upgrade history to replay.
 generated project and always ends in a **ready-for-review** PR (`createPullRequest`, never
 `--draft`). Flow:
 
-1. `upgradePreflightChecks` (`upgrade/preflight.ts`): Node 24 → pnpm 12 (`REQUIRED_PNPM_MAJOR`) →
-   git → inside a repo → **clean working tree** → `gh` auth → `origin` is a GitHub remote →
-   `raulmoracode.json` exists and parses. Any failure: Spanish message, `exit 1`, nothing written.
+1. `upgradePreflightChecks` (`upgrade/preflight.ts`, takes the `adopt` flag): Node 24 → pnpm 12
+   (`REQUIRED_PNPM_MAJOR`) → git → inside a repo → **clean working tree** → `gh` auth → `origin` is a
+   GitHub remote → `raulmoracode.json` exists and parses (without `--adopt` the error explains how to
+   adopt a pre-manifest project). Any failure: Spanish message, `exit 1`, nothing written. With
+   `--adopt` and no manifest the check returns `adopted` and the synthetic manifest is built in
+   memory — never written during the preflight.
 2. `readProjectState` (reads the project from disk, `upgrade/state.ts`) +
    `buildUpgradePlan` (pure, `upgrade/plan.ts`): compares three hashes per
    managed file — the template the CLI would render today, the hash in the manifest and the hash on
@@ -282,6 +285,39 @@ nothing resets or cleans, and any failure while writing or committing reverts ex
 run wrote (`revertAppliedFiles`, safe only because the preflight proved the tree was clean) and
 deletes the half-created branch. A failure at push/PR time **keeps** the branch and the commits and
 prints the exact retry commands.
+
+#### Adoption (`--adopt`) — projects without a manifest
+
+`--adopt` serves projects created before `1.0.8`, which have no `raulmoracode.json` and used to be a
+dead end. With the flag and no manifest, `upgrade` synthesizes the manifest in memory
+(`upgrade/adopt.ts`, pure `buildAdoptionManifest()`; never written during the preflight) and runs the
+normal flow against it — summary, confirmation, branch, commits, PR:
+
+- `manifestVersion: 1`, `cliVersion` `1.0.7` (`PRE_MANIFEST_CLI_VERSION`, the last release before the
+  manifest; the oldest migration is `1.1.0`, so adoption always replays the full chain).
+- `framework` from the `next`/`vite` dependencies or `next.config.*`/`vite.config.*`; a project that
+  matches both or neither throws `AdoptionError` instead of guessing.
+- `selection` from disk evidence only: `components.json` + `tailwindcss` (shadcn), `tw-animate-css`
+  (theme), `@tanstack/react-query`, `zustand`, `react-hook-form` + `zod`, `biome.json` +
+  `@biomejs/biome`, `vitest.config.ts` + `vitest`, `playwright.config.ts` + `@playwright/test`, both
+  Husky hooks + `husky`, both `.vscode` files. The cascade is enforced, so the inferred selection
+  never claims a managed file the project lacks.
+- `files` hashes the current on-disk content of the managed paths that exist plus the retired
+  `.github/pull_request_template.md`; `dependencies` records each managed pin at its installed
+  version and omits absent ones; `projectName` comes from `package.json` (fallback: repository
+  slug); `githubUrl` is normalized from `origin`.
+
+`--adopt` with an existing manifest is ignored with a warning and the manifest is never overwritten.
+`--check --adopt` runs the same preflights and plan, writes nothing, and exits 1 when changes are
+pending / 0 when there is nothing to do. `create` ignores the flag, like `--check`. Because a first
+adoption cannot distinguish local edits from CLI content, overwrite warnings do not fire on that run:
+the summary warns, the PR body carries an "Adopted project" section, and the diff is the review
+surface. Known limitations: non-managed creation artifacts such as `src/config/site.ts` are not
+recreated, and the registry theme is not re-applied to `globals.css` (only the `tw-animate-css` pin is
+aligned when detected). Rollback is adoption-aware: the synthetic manifest is untracked on the
+original branch, so `revertAppliedFiles` restores the tracked paths and removes the manifest
+separately instead of letting `git restore` abort on an unmatched pathspec. No managed template or
+pin changes, so adoption needs no `UPGRADE_NOTES` entry.
 
 `upgrade/` never imports Clack, and its I/O and processes go exclusively through
 `utils/filesystem.ts` and `utils/exec.ts`: the contract modules (manifest, managed-files, notes,

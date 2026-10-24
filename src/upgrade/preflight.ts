@@ -14,7 +14,9 @@ import {
   satisfiesNodeVersion,
   satisfiesPnpmVersion,
 } from "../utils/validation.js";
+import { normalizeGitHubUrl } from "./adopt.js";
 import { parseManifest } from "./manifest.js";
+import { readAdoptionManifest } from "./state.js";
 import { MANIFEST_FILE, type ProjectManifest } from "./types.js";
 
 const MINIMUM_NODE_MAJOR = 24;
@@ -44,12 +46,20 @@ export interface UpgradePreflightParams {
   cwd: string;
   verbose: boolean;
   requireGhAuth: () => Promise<void>;
+  /**
+   * Adopt a project that predates `raulmoracode.json` (1.0.8): when the file is
+   * missing, synthesize the manifest from the state on disk instead of failing.
+   * Opt-in: without it the missing manifest keeps being an error.
+   */
+  adopt?: boolean;
 }
 
 export interface UpgradePreflightResult {
   projectDir: string;
   manifest: ProjectManifest;
   currentBranch: string;
+  /** True only when the manifest was synthesized because the project had none. */
+  adopted: boolean;
 }
 
 async function requireCommand(
@@ -104,17 +114,36 @@ async function requireCleanWorkingTree(
   }
 }
 
-async function readManifest(projectDir: string): Promise<ProjectManifest> {
+async function readManifest(
+  projectDir: string,
+  options: { adopt: boolean; githubUrl: string },
+): Promise<{ manifest: ProjectManifest; adopted: boolean }> {
   const manifestPath = joinPath(projectDir, MANIFEST_FILE);
   if (!(await pathExists(manifestPath))) {
-    throw new UpgradePreflightError(
-      `No se encontró ${MANIFEST_FILE} en ${projectDir}.\n` +
-        `Este proyecto no fue generado con raulmoracode-create ${MINIMUM_MANIFEST_CLI_VERSION} o posterior, ` +
-        "así que no hay nada que actualizar de forma automática.",
-    );
+    if (!options.adopt) {
+      throw new UpgradePreflightError(
+        `No se encontró ${MANIFEST_FILE} en ${projectDir}.\n` +
+          `Este proyecto no fue generado con raulmoracode-create ${MINIMUM_MANIFEST_CLI_VERSION} o posterior, ` +
+          "así que no hay nada que actualizar de forma automática.\n" +
+          "Si se creó con una versión anterior, ejecuta 'raulmoracode-create upgrade --adopt' para incorporarlo al sistema de actualizaciones.",
+      );
+    }
+    try {
+      return {
+        manifest: await readAdoptionManifest(projectDir, options.githubUrl),
+        adopted: true,
+      };
+    } catch (error) {
+      throw new UpgradePreflightError(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   }
   try {
-    return parseManifest(await readTextFile(manifestPath));
+    return {
+      manifest: parseManifest(await readTextFile(manifestPath)),
+      adopted: false,
+    };
   } catch (error) {
     throw new UpgradePreflightError(
       `${MANIFEST_FILE} no se pudo leer: ${error instanceof Error ? error.message : String(error)}`,
@@ -125,7 +154,7 @@ async function readManifest(projectDir: string): Promise<ProjectManifest> {
 export async function upgradePreflightChecks(
   params: UpgradePreflightParams,
 ): Promise<UpgradePreflightResult> {
-  const { cwd, verbose, requireGhAuth } = params;
+  const { cwd, verbose, requireGhAuth, adopt = false } = params;
 
   const nodeCheck = satisfiesNodeVersion(process.version, MINIMUM_NODE_MAJOR);
   if (!nodeCheck.valid) {
@@ -183,7 +212,10 @@ export async function upgradePreflightChecks(
     );
   }
 
-  const manifest = await readManifest(projectDir);
+  const manifest = await readManifest(projectDir, {
+    adopt,
+    githubUrl: normalizeGitHubUrl(originUrl),
+  });
 
   const branch = await currentBranch(projectDir, verbose);
   if (branch.length === 0 || branch === "HEAD") {
@@ -193,5 +225,10 @@ export async function upgradePreflightChecks(
     );
   }
 
-  return { projectDir, manifest, currentBranch: branch };
+  return {
+    projectDir,
+    manifest: manifest.manifest,
+    currentBranch: branch,
+    adopted: manifest.adopted,
+  };
 }

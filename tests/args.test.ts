@@ -18,6 +18,7 @@ describe("parseArgs", () => {
       version: false,
       verbose: false,
       check: false,
+      adopt: false,
     });
   });
 
@@ -50,6 +51,7 @@ describe("parseArgs", () => {
       version: false,
       verbose: true,
       check: false,
+      adopt: false,
     });
     expect(parseArgs(["upgrade", "--check", "--verbose"])).toEqual({
       command: "upgrade",
@@ -57,6 +59,7 @@ describe("parseArgs", () => {
       version: false,
       verbose: true,
       check: true,
+      adopt: false,
     });
   });
 
@@ -68,6 +71,7 @@ describe("parseArgs", () => {
       version: false,
       verbose: true,
       check: false,
+      adopt: false,
     });
     expect(parseArgs(["something"]).command).toBe("create");
   });
@@ -79,7 +83,21 @@ describe("parseArgs", () => {
       version: false,
       verbose: false,
       check: false,
+      adopt: false,
     });
+  });
+
+  it("detects --adopt", () => {
+    expect(parseArgs(["upgrade", "--adopt"]).adopt).toBe(true);
+    expect(parseArgs(["upgrade", "--adopt", "--check"])).toEqual({
+      command: "upgrade",
+      help: false,
+      version: false,
+      verbose: false,
+      check: true,
+      adopt: true,
+    });
+    expect(parseArgs([]).adopt).toBe(false);
   });
 });
 
@@ -98,6 +116,7 @@ describe("help and version output", () => {
     expect(text).toContain("--verbose");
     expect(text).toContain("--check");
     expect(text).toContain("--dry-run");
+    expect(text).toContain("--adopt");
     expect(text).toContain("--help");
     expect(text).toContain("--version");
     expect(text).toContain("raulmoracode-create upgrade");

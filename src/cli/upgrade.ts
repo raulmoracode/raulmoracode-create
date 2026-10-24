@@ -67,6 +67,8 @@ export interface UpgradeDeps {
 export interface UpgradeOptions {
   verbose?: boolean;
   check?: boolean;
+  /** Adopt a project created before `raulmoracode.json` (no manifest). */
+  adopt?: boolean;
   deps?: Partial<UpgradeDeps>;
 }
 
@@ -92,6 +94,7 @@ const DEFAULT_DEPS: UpgradeDeps = {
 export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
   const verbose = options.verbose ?? false;
   const check = options.check ?? false;
+  const adopt = options.adopt ?? false;
   const gh: GhClient = { ...DEFAULT_DEPS.gh, ...options.deps?.gh };
   const detectDefaultBranch =
     options.deps?.detectDefaultBranch ?? DEFAULT_DEPS.detectDefaultBranch;
@@ -109,6 +112,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
   let pullRequestUrl: string | null = null;
   let appliedMigrations: AppliedMigration[] = [];
   let appliedMigrationPaths: string[] = [];
+  let adopted = false;
   // Filled by `applyUpgradeFiles` as soon as the migrations finish writing —
   // before `pnpm install` and the other fallible steps — so the rollback below
   // can undo the migration edits even when that call throws mid-run.
@@ -124,9 +128,17 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
       cwd: process.cwd(),
       verbose,
       requireGhAuth: () => gh.requireAuth(verbose),
+      adopt,
     });
     projectDir = preflight.projectDir;
     originalBranch = preflight.currentBranch;
+    adopted = preflight.adopted;
+
+    if (adopt && !adopted) {
+      log.warn(
+        "El proyecto ya tiene raulmoracode.json: --adopt se ignora y se ejecuta el upgrade normal.",
+      );
+    }
 
     const outcome = upgradeOutcome(preflight.manifest.cliVersion, toVersion);
     if (outcome === "up-to-date") {
@@ -170,7 +182,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
     // upgrade would change something (drift), exit 0 when there is nothing to
     // do (already published or empty plan).
     if (check) {
-      await runUpgradeCheck(plan, toVersion);
+      await runUpgradeCheck(plan, toVersion, adopted);
       return;
     }
 
@@ -187,7 +199,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
       return;
     }
 
-    showUpgradeSummary(plan);
+    showUpgradeSummary(plan, adopted);
     if (!planHasWork(plan)) {
       showNothingToDo(plan);
       outro("El proyecto ya está al día: no hay nada que actualizar.");
@@ -268,6 +280,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
             plan,
             appliedMigrations,
             commits,
+            adopted,
           });
           prTitle = upgradePrTitle(report);
           message("Abriendo el pull request");
@@ -319,6 +332,7 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
             appliedPlan,
             verbose,
             appliedProgress.migrationPaths,
+            { adopted },
           );
         }
         try {
@@ -354,11 +368,12 @@ export async function runUpgrade(options: UpgradeOptions = {}): Promise<void> {
 async function runUpgradeCheck(
   plan: UpgradePlan,
   toVersion: string,
+  adopted = false,
 ): Promise<void> {
   log.info(
     "Modo comprobación (--check): no se escribirá nada en el proyecto ni se abrirá ningún pull request.",
   );
-  showUpgradeSummary(plan);
+  showUpgradeSummary(plan, adopted);
 
   if (!planHasWork(plan)) {
     log.success(

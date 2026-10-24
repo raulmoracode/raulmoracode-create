@@ -89,6 +89,8 @@ export interface AppliedMigration {
 export interface UpgradeReport {
   fromVersion: string;
   toVersion: string;
+  /** True when the project had no manifest and `--adopt` synthesized it. */
+  adopted: boolean;
   framework: Framework;
   notes: UpgradeNotes[];
   files: FileChange[];

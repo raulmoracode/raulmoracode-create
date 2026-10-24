@@ -63,6 +63,15 @@ pnpm dlx @raulmoracode/create@latest upgrade
 
 It re-applies the managed configuration (tooling, hooks, CI, workspace, pinned dependencies), runs any migration published in between, and opens a **ready-for-review pull request** describing every change, which you merge yourself. It never touches your application code, `README.md`, `CHANGELOG.md` or `LICENSE`, and it never rewrites history.
 
+Options:
+
+```bash
+pnpm dlx @raulmoracode/create@latest upgrade --check   # show the plan, write nothing (exit 1 when changes are pending)
+pnpm dlx @raulmoracode/create@latest upgrade --adopt   # adopt a project created before 1.0.8 (no raulmoracode.json)
+```
+
+`--adopt` is for projects created **before 1.0.8**, which have no `raulmoracode.json`: the CLI reads the framework and the selected technologies from the files and dependencies already on disk (an ambiguous project stops instead of guessing), synthesizes the manifest in memory with `cliVersion: "1.0.7"` — recorded as the last pre-manifest release, so the full migration chain runs — and then performs the normal upgrade: summary, confirmation, branch, commits and pull request. With an existing manifest the flag is ignored with a warning and the manifest is never overwritten; `--check --adopt` only shows the plan, and `create` ignores the flag. A first adoption cannot tell your edits from the CLI's content, so no overwrite warning is shown on that run: the summary warns, the pull request body carries an "Adopted project" section, and the diff is the review surface. Files the CLI never managed (for example `src/config/site.ts`) are not recreated, and the registry theme is not re-applied to `globals.css` (only the `tw-animate-css` pin is aligned when detected).
+
 Requirements: Node 24, pnpm 12, a clean working tree, a GitHub remote and the GitHub CLI (`gh auth login`).
 
 ## What the CLI does

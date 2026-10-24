@@ -28,6 +28,7 @@ const EXEC_MODULE = "utils/exec";
  * Clack. A new module lands here by default.
  */
 const PURE_UPGRADE_MODULES = [
+  "upgrade/adopt",
   "upgrade/managed-files",
   "upgrade/manifest",
   "upgrade/migrations/index",

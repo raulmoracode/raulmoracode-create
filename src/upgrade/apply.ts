@@ -360,6 +360,17 @@ const REVERT_EXTRA_FILES = [
   MANIFEST_FILE,
 ];
 
+export interface RevertAppliedFilesOptions {
+  /**
+   * True when the run adopted a project that had no manifest: the synthesized
+   * `raulmoracode.json` is untracked on the original branch, so it must not be
+   * part of the `git restore` pathspec (an unmatched path makes Git abort the
+   * whole command and leaves every other file unrestored) and is deleted
+   * explicitly instead.
+   */
+  adopted?: boolean;
+}
+
 /**
  * Undoes, on the original branch, exactly the files this run wrote: files that
  * did not exist before are deleted, the rest are restored from the index.
@@ -378,6 +389,7 @@ export async function revertAppliedFiles(
   plan: UpgradePlan,
   verbose: boolean,
   migrationPaths: string[] = [],
+  options: RevertAppliedFilesOptions = {},
 ): Promise<void> {
   const created: string[] = [];
   const restored: string[] = [];
@@ -393,16 +405,21 @@ export async function revertAppliedFiles(
       await removeIfExists(joinPath(projectDir, path));
     }
   }
-  const tracked = [
-    ...new Set([...restored, ...REVERT_EXTRA_FILES, ...migrationPaths]),
-  ];
-  if (tracked.length === 0) {
-    return;
+  const flowFiles = options.adopted
+    ? REVERT_EXTRA_FILES.filter((path) => path !== MANIFEST_FILE)
+    : REVERT_EXTRA_FILES;
+  const tracked = [...new Set([...restored, ...flowFiles, ...migrationPaths])];
+  if (tracked.length > 0) {
+    try {
+      await restorePaths(projectDir, tracked, verbose);
+    } catch {
+      // Best effort: a file that was never tracked cannot be restored, and the
+      // real error has already been reported to the user.
+    }
   }
-  try {
-    await restorePaths(projectDir, tracked, verbose);
-  } catch {
-    // Best effort: a file that was never tracked cannot be restored, and the
-    // real error has already been reported to the user.
+  if (options.adopted) {
+    // The manifest never existed before this run: restoring it is impossible,
+    // so delete the one the run wrote instead of leaving an untracked file.
+    await removeIfExists(joinPath(projectDir, MANIFEST_FILE));
   }
 }

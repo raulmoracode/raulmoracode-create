@@ -8,6 +8,7 @@ export interface CliArgs {
   version: boolean;
   verbose: boolean;
   check: boolean;
+  adopt: boolean;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -18,6 +19,7 @@ export function parseArgs(argv: string[]): CliArgs {
     version: argv.includes("--version") || argv.includes("-V"),
     verbose: argv.includes("--verbose"),
     check: argv.includes("--check") || argv.includes("--dry-run"),
+    adopt: argv.includes("--adopt"),
   };
 }
 
@@ -34,6 +36,8 @@ export function helpText(): string {
     "  --check, --dry-run",
     "                   (upgrade only) Show the planned upgrade without touching the project.",
     "                   Exits 1 when changes are pending, 0 when the project is up to date.",
+    "  --adopt          (upgrade only) Adopt a project created before raulmoracode.json (1.0.8),",
+    "                   which has no manifest: the CLI builds one from the current state.",
     "  -h, --help       Show this help message.",
     "  -V, --version    Show the installed version.",
     "",

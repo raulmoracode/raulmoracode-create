@@ -13,11 +13,14 @@ export function buildUpgradeReport(params: {
   appliedMigrations: AppliedMigration[];
   commits: string[];
   changelog?: string;
+  /** True when the project had no manifest and `--adopt` synthesized one. */
+  adopted?: boolean;
 }): UpgradeReport {
   const { plan, appliedMigrations, commits } = params;
   return {
     fromVersion: plan.fromVersion,
     toVersion: plan.toVersion,
+    adopted: params.adopted ?? false,
     framework: plan.framework,
     notes: plan.notes,
     files: plan.files,
