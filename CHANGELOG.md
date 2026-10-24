@@ -172,6 +172,20 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the `tw-animate-css` pin is aligned when detected). No managed template or
   pin changed, so there is no `UPGRADE_NOTES` entry.
 
+### Changed
+
+- **The generated `AGENTS.md` no longer carries Git guidance**: the
+  `## Git hooks and commits` section (hook commands, Conventional Commits
+  types, examples and subject-line rules), the `git-pr`,
+  `git-branch`/`safe-git` and `release-engineering` bullets in `## Skills`, and
+  the two Git fallback rules are gone. The catalog URL, the
+  `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact
+  versions, real verification, never delete the user's content) stay, and the
+  project tree still lists `.husky/` and `commitlint.config.ts` because they
+  exist in the project. Behavioural guidance now lives only in the catalog, so
+  a commit-convention change no longer needs a CLI release; existing projects
+  receive the trimmed guide through the `1.5.0` upgrade note.
+
 ## [1.0.9] - 2026-10-10
 
 ### Added
