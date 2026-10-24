@@ -421,15 +421,8 @@ the suite pass; if you change behavior, update the corresponding test.
 3. External commands always as an args array (`["add", "pkg@1.2.3"]`), never interpolated.
 4. Exact versions in a single constant; verify Node 24 + pnpm 12.6 compatibility
    (`npm view <pkg> version/engines`) before pinning.
-5. Do not use `git push --force/-f`, `reset --hard`, `clean -fd`; do not rewrite history; do not
-   commit unless explicitly requested; do not delete user content.
-6. After changing code: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build` (plus the affected
+5. After changing code: `pnpm check`, `pnpm lint`, `pnpm test`, `pnpm build` (plus the affected
    framework's E2E via `E2E_FRAMEWORK=vite|next` if it touches scaffolding, since plain
    `pnpm test` skips it). Do not claim something passes if you did not run it.
-7. When done, report: what changed, files, validation performed, and remaining limitations.
-8. Releasing `X.Y.Z`: bump `version` in `package.json` AND `VERSION` in `src/cli/args.ts` (a test
-   pins them together) plus the version references in `docs/PROJECT_SPEC.md`; move
-   `CHANGELOG.md` `[Unreleased]` entries under `## [X.Y.Z] - YYYY-MM-DD` and update the compare
-   links; merge the `chore/release-X.Y.Z` PR, then push tag `vX.Y.Z` on the merge commit:
-   `publish.yml` validates tag/version, builds, tests and publishes to npm.
+6. When done, report: what changed, files, validation performed, and remaining limitations.
 
