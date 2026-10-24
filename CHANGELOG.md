@@ -5,6 +5,45 @@ All notable changes to `@raulmoracode/create` are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **The generated Tailwind entry maps the shadcn tokens into the theme**: the
+  `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
+  the `@theme inline` block (`--color-background`, `--color-card`,
+  `--color-primary`, `--color-destructive-foreground`, the chart and sidebar
+  colors, and the `--radius-*` scale) that maps every shadcn custom property to
+  a Tailwind utility. Without it `bg-background`, `border-input`, `ring-ring`
+  and the `rounded-*` scale generated no CSS, so a component added with the
+  documented `shadcn add` command rendered unstyled.
+
+## [1.4.0] - 2026-10-24
+
+### Added
+
+- **`upgrade --adopt`**: projects created before **1.0.8** ship no
+  `raulmoracode.json`, so `upgrade` refused to run and they were a dead end.
+  With the flag the CLI infers the framework and the tech selection from the
+  files and dependencies on disk (an ambiguous project fails instead of
+  guessing), synthesizes the manifest in memory with `cliVersion: "1.0.7"` —
+  the sentinel for the last pre-manifest release, which guarantees the full
+  migration chain — and then runs the normal upgrade: summary, confirmation,
+  branch, commits and a ready-for-review pull request. `--adopt` with an
+  existing manifest is ignored with a warning (the manifest is never
+  overwritten), `--check --adopt` plans without writing anything, and `create`
+  ignores the flag like `--check`. On the first adoption local edits cannot be
+  told apart from the CLI's content, so overwrite warnings do not fire: the
+  summary warns, the pull request body carries an "Adopted project" section,
+  and the diff is the review surface. Rollback is adoption-aware: the synthetic
+  manifest is untracked on the original branch, so `revertAppliedFiles`
+  restores the tracked paths and removes the manifest separately instead of
+  letting `git restore` abort on an unmatched pathspec. Limitations:
+  non-managed creation artifacts such as `src/config/site.ts` are not
+  recreated, and the registry theme is not re-applied to `globals.css` (only
+  the `tw-animate-css` pin is aligned when detected). No managed template or
+  pin changed, so there is no `UPGRADE_NOTES` entry.
+
 ## [1.3.0] - 2026-10-18
 
 ### Changed
@@ -145,43 +184,6 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `README.md`, `src/config/site.ts`), matching the documented guarantee.
 - `github/default-branch.ts` no longer imports from `git/` (the §3 layer rule);
   the `origin/HEAD` fallback moved to the orchestrator.
-
-## [Unreleased]
-
-### Added
-
-- **`upgrade --adopt`**: projects created before **1.0.8** ship no
-  `raulmoracode.json`, so `upgrade` refused to run and they were a dead end.
-  With the flag the CLI infers the framework and the tech selection from the
-  files and dependencies on disk (an ambiguous project fails instead of
-  guessing), synthesizes the manifest in memory with `cliVersion: "1.0.7"` —
-  the sentinel for the last pre-manifest release, which guarantees the full
-  migration chain — and then runs the normal upgrade: summary, confirmation,
-  branch, commits and a ready-for-review pull request. `--adopt` with an
-  existing manifest is ignored with a warning (the manifest is never
-  overwritten), `--check --adopt` plans without writing anything, and `create`
-  ignores the flag like `--check`. On the first adoption local edits cannot be
-  told apart from the CLI's content, so overwrite warnings do not fire: the
-  summary warns, the pull request body carries an "Adopted project" section,
-  and the diff is the review surface. Rollback is adoption-aware: the synthetic
-  manifest is untracked on the original branch, so `revertAppliedFiles`
-  restores the tracked paths and removes the manifest separately instead of
-  letting `git restore` abort on an unmatched pathspec. Limitations:
-  non-managed creation artifacts such as `src/config/site.ts` are not
-  recreated, and the registry theme is not re-applied to `globals.css` (only
-  the `tw-animate-css` pin is aligned when detected). No managed template or
-  pin changed, so there is no `UPGRADE_NOTES` entry.
-
-### Fixed
-
-- **The generated Tailwind entry maps the shadcn tokens into the theme**: the
-  `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
-  the `@theme inline` block (`--color-background`, `--color-card`,
-  `--color-primary`, `--color-destructive-foreground`, the chart and sidebar
-  colors, and the `--radius-*` scale) that maps every shadcn custom property to
-  a Tailwind utility. Without it `bg-background`, `border-input`, `ring-ring`
-  and the `rounded-*` scale generated no CSS, so a component added with the
-  documented `shadcn add` command rendered unstyled.
 
 ## [1.0.9] - 2026-10-10
 
@@ -451,7 +453,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.0...v1.1.1
