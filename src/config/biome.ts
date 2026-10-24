@@ -3,7 +3,13 @@ export function biomeConfig(): string {
     {
       $schema: "./node_modules/@biomejs/biome/configuration_schema.json",
       files: {
-        includes: ["**", "!dist", "!.next"],
+        includes: [
+          "**",
+          "!dist",
+          "!.next",
+          "!playwright-report",
+          "!test-results",
+        ],
       },
       formatter: {
         enabled: true,

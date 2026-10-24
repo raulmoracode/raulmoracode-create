@@ -172,6 +172,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the `tw-animate-css` pin is aligned when detected). No managed template or
   pin changed, so there is no `UPGRADE_NOTES` entry.
 
+### Fixed
+
+- **The generated `biome.json` excludes Playwright's output**: `files.includes`
+  now also lists `playwright-report` and `test-results`, so `pnpm check` (and
+  the Husky `pre-commit` hook) keeps passing after `pnpm e2e`. Biome does not
+  read `.gitignore`, so the artifacts were linted and formatted as project
+  files and the first e2e run broke the next check.
+
 ## [1.0.9] - 2026-10-10
 
 ### Added
