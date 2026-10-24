@@ -223,17 +223,6 @@ function validationCommands(selection: TechSelection): string[] {
   return commands;
 }
 
-function preCommitLines(selection: TechSelection): string[] {
-  const lines: string[] = [];
-  if (selection.biome) {
-    lines.push("pnpm check");
-  }
-  if (selection.testing) {
-    lines.push("pnpm test");
-  }
-  return lines;
-}
-
 export function agentsMd(
   frameworkId: Framework = "vite",
   selection: TechSelection = FULL_TECH_SELECTION,
@@ -260,19 +249,14 @@ export function agentsMd(
     "",
     "Start non-trivial work with the `raulmoracode-mode` skill and follow the specialists it points to:",
     "",
-    "- `git-pr` — branch, commit and pull request workflow.",
-    "- `git-branch` / `safe-git` — create branches and run Git without destructive commands.",
     "- `test-before-finishing` / `verify-before-claiming` / `no-made-up-results` — validate with real commands before claiming anything.",
     "- `security-first` — secrets, credentials and dependency safety.",
-    "- `release-engineering` — versions, changelogs and tags.",
     "- `clear-final-report` — what changed, which files, which validation ran, what is still open.",
     "",
     "If the catalog is unavailable, these rules still hold:",
     "",
     "- Use pnpm only, never npm or yarn.",
     "- Pin exact dependency versions: no `^`, no `~`, no `latest`.",
-    "- Never run `git push --force`, `git push -f`, `git reset --hard` or `git clean -fd`.",
-    "- Follow Conventional Commits.",
     "- Never claim a command was run, or that something works, when it was not verified.",
     "- Never delete or overwrite the user's content.",
     "",
@@ -340,53 +324,6 @@ export function agentsMd(
     "```bash",
     ...validationCommands(selection),
     "```",
-    "",
-    "## Git hooks and commits",
-    "",
-  );
-  if (selection.husky) {
-    lines.push("Husky manages the Git hooks.", "");
-    const preCommit = preCommitLines(selection);
-    if (preCommit.length > 0) {
-      lines.push("`pre-commit` runs:", "", "```bash", ...preCommit, "```", "");
-    } else {
-      lines.push(
-        "`.husky/pre-commit` is installed but runs no commands in this project.",
-        "",
-      );
-    }
-    lines.push("`commit-msg` runs Commitlint.", "");
-  } else {
-    lines.push("This project does not configure Husky Git hooks.", "");
-  }
-  lines.push(
-    "Commits must follow Conventional Commits.",
-    "",
-    "Format: `<type>: <description>`",
-    "",
-    "Valid types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `ci`.",
-    "",
-    "Valid commit examples:",
-    "",
-    "```text",
-    "feat: add user profile",
-    "fix: handle invalid input",
-    "refactor: extract API client",
-    "test: add query client tests",
-    "docs: update project guide",
-    "chore: update dependencies",
-    "style: fix indentation in layout component",
-    "perf: optimize image loading in gallery",
-    "ci: add GitHub Actions workflow",
-    "```",
-    "",
-    "Rules:",
-    "",
-    '- Use the imperative mood ("add" not "added").',
-    "- Do not capitalize the first letter.",
-    "- Do not end with a period.",
-    "- Keep the subject line under 72 characters.",
-    "- Use a body (separated by a blank line) for longer explanations.",
     "",
     "## Site identity",
     "",

@@ -552,14 +552,10 @@ describe("agents guide", () => {
     expect(content).toContain("`.opencode/opencode.json` loads that catalog");
     expect(content).toContain("`raulmoracode-mode`");
     for (const skill of [
-      "`git-pr`",
-      "`git-branch`",
-      "`safe-git`",
       "`test-before-finishing`",
       "`verify-before-claiming`",
       "`no-made-up-results`",
       "`security-first`",
-      "`release-engineering`",
       "`clear-final-report`",
     ]) {
       expect(content, skill).toContain(skill);
@@ -567,10 +563,6 @@ describe("agents guide", () => {
     // Fallback non-negotiables when the catalog is unavailable.
     expect(content).toContain("Use pnpm only, never npm or yarn.");
     expect(content).toContain("no `^`, no `~`, no `latest`");
-    expect(content).toContain("git push --force");
-    expect(content).toContain("git reset --hard");
-    expect(content).toContain("git clean -fd");
-    expect(content).toContain("Follow Conventional Commits.");
     expect(content).toContain(
       "Never claim a command was run, or that something works, when it was not verified.",
     );
@@ -617,25 +609,7 @@ describe("agents guide", () => {
     expect(content).toContain("pnpm build\n```");
   });
 
-  it("documents Git hooks and Conventional Commits", () => {
-    const content = agentsMd();
-    expect(content).toContain("## Git hooks and commits");
-    expect(content).toContain("Husky");
-    expect(content).toContain("`pre-commit` runs:");
-    expect(content).toContain("pnpm check");
-    expect(content).toContain("pnpm test");
-    expect(content).toContain("Commitlint");
-    expect(content).toContain("Conventional Commits");
-    expect(content).toContain("feat: add user profile");
-    expect(content).toContain("fix: handle invalid input");
-    expect(content).toContain("refactor: extract API client");
-    expect(content).toContain("test: add query client tests");
-    expect(content).toContain("docs: update project guide");
-    expect(content).toContain("chore: update dependencies");
-    expect(content).toContain("pnpm build");
-  });
-
-  it("documents structure, dependencies, scripts and env vars without leaving an empty hook fence", () => {
+  it("documents structure, dependencies, scripts and site identity without leaving an empty command fence", () => {
     const content = agentsMd();
     expect(content).toContain("## Project structure");
     expect(content).toContain("components/");
@@ -644,22 +618,16 @@ describe("agents guide", () => {
     expect(content).toContain("Use pnpm exclusively and pin exact versions");
     expect(content).toContain("CI=true pnpm test");
     expect(content).toContain("## Site identity");
+    expect(content).not.toContain("## Git hooks and commits");
     expect(content).not.toContain("```bash\n```");
 
-    // Husky without Biome and without testing installs a `pre-commit` hook
-    // that runs nothing: the guide must say so instead of rendering an empty
-    // command fence.
     const bare = agentsMd("vite", {
       ...FULL_TECH_SELECTION,
       biome: false,
       testing: false,
     });
-    expect(bare).toContain("## Git hooks and commits");
+    expect(bare).not.toContain("## Git hooks and commits");
     expect(bare).not.toContain("```bash\n```");
-    expect(bare).toContain(
-      "`.husky/pre-commit` is installed but runs no commands in this project.",
-    );
-    expect(bare).toContain("`commit-msg` runs Commitlint.");
     expect(bare).toContain("pnpm typecheck");
   });
 });
