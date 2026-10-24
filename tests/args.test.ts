@@ -76,6 +76,12 @@ describe("parseArgs", () => {
     expect(parseArgs(["something"]).command).toBe("create");
   });
 
+  it("detects the doctor subcommand", () => {
+    expect(parseArgs(["doctor"]).command).toBe("doctor");
+    expect(parseArgs(["doctor", "--verbose"]).command).toBe("doctor");
+    expect(parseArgs(["doctor", "--verbose"]).verbose).toBe(true);
+  });
+
   it("ignores unknown flags", () => {
     expect(parseArgs(["--whatever"])).toEqual({
       command: "create",
@@ -120,6 +126,7 @@ describe("help and version output", () => {
     expect(text).toContain("--help");
     expect(text).toContain("--version");
     expect(text).toContain("raulmoracode-create upgrade");
+    expect(text).toContain("raulmoracode-create doctor");
     expect(text).toContain(VERSION);
   });
 

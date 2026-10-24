@@ -38,6 +38,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and the `rounded-*` scale generated no CSS, so a component added with the
   documented `shadcn add` command rendered unstyled.
 
+### Added
+
+- **`doctor` command**: `raulmoracode-create doctor` inspects the project in
+  the current directory and prints one diagnostic per check without writing
+  anything — Node, pnpm and git, `package.json`, `raulmoracode.json` (a missing
+  manifest points at `upgrade --adopt`), version drift in both directions,
+  managed files missing or edited since the CLI wrote them, managed pins
+  missing or drifted, and managed scripts that disappeared. Exits 1 when a check
+  reports an error; warnings do not fail. The pure rules live in
+  `src/doctor/checks.ts` and the command in `src/cli/doctor.ts`.
+
 ## [1.4.0] - 2026-10-24
 
 ### Added
