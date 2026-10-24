@@ -9,6 +9,46 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Nothing pending yet.
 
+## [1.5.0] - 2026-10-24
+
+### Added
+
+- **`doctor` command**: `raulmoracode-create doctor` inspects the project in
+  the current directory and prints one diagnostic per check without writing
+  anything — Node, pnpm and git, `package.json`, `raulmoracode.json` (a missing
+  manifest points at `upgrade --adopt`), version drift in both directions,
+  managed files missing or edited since the CLI wrote them, managed pins
+  missing or drifted, and managed scripts that disappeared. Exits 1 when a check
+  reports an error; warnings do not fail.
+
+### Changed
+
+- **The generated `AGENTS.md` no longer carries Git guidance**: the
+  `## Git hooks and commits` section (hook commands, Conventional Commits
+  types, examples and subject-line rules), the `git-pr`,
+  `git-branch`/`safe-git` and `release-engineering` bullets in `## Skills`, and
+  the two Git fallback rules are gone. The catalog URL, the
+  `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact
+  versions, real verification, never delete the user's content) stay, and the
+  project tree still lists `.husky/` and `commitlint.config.ts` because they
+  exist in the project. Behavioural guidance now lives only in the catalog.
+
+### Fixed
+
+- **The generated `biome.json` excludes Playwright's output**: `files.includes`
+  now also lists `playwright-report` and `test-results`, so `pnpm check` (and
+  the Husky `pre-commit` hook) keeps passing after `pnpm e2e`. Biome does not
+  read `.gitignore`, so the artifacts were linted and formatted as project
+  files and the first e2e run broke the next check.
+- **The generated Tailwind entry maps the shadcn tokens into the theme**: the
+  `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
+  the `@theme inline` block (`--color-background`, `--color-card`,
+  `--color-primary`, `--color-destructive-foreground`, the chart and sidebar
+  colors, and the `--radius-*` scale) that maps every shadcn custom property to
+  a Tailwind utility. Without it `bg-background`, `border-input`, `ring-ring`
+  and the `rounded-*` scale generated no CSS, so a component added with the
+  documented `shadcn add` command rendered unstyled.
+
 ## [1.4.0] - 2026-10-24
 
 ### Added
@@ -444,7 +484,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.1.1...v1.2.0
