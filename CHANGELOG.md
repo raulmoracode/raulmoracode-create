@@ -21,6 +21,14 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   a commit-convention change no longer needs a CLI release; existing projects
   receive the trimmed guide through the `1.5.0` upgrade note.
 
+### Fixed
+
+- **The generated `biome.json` excludes Playwright's output**: `files.includes`
+  now also lists `playwright-report` and `test-results`, so `pnpm check` (and
+  the Husky `pre-commit` hook) keeps passing after `pnpm e2e`. Biome does not
+  read `.gitignore`, so the artifacts were linted and formatted as project
+  files and the first e2e run broke the next check.
+
 ## [1.4.0] - 2026-10-24
 
 ### Added
