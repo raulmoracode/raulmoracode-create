@@ -8,6 +8,18 @@ import { compareVersions, isVersionInRange } from "./version.js";
  */
 export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
+    version: "1.5.0",
+    summary:
+      "The generated AGENTS.md drops the Git guidance the skills catalog owns: no `## Git hooks and commits` section, no Git specialists in `## Skills` and no Git fallback rules.",
+    changes: [
+      {
+        files: ["AGENTS.md"],
+        what: "The `## Git hooks and commits` section is gone (the `pre-commit`/`commit-msg` commands, the Conventional Commits type list, the commit examples and the subject-line rules), together with the `git-pr`, `git-branch`/`safe-git` and `release-engineering` bullets and the two Git fallback rules in `## Skills`. The catalog URL, the `raulmoracode-mode` entry point and the remaining fallbacks (pnpm, exact versions, verification, never delete the user's content) stay. The project tree still lists `.husky/` and `commitlint.config.ts` because they exist in the project.",
+        why: "Commit conventions and Git etiquette are behavioural guidance, so they only change with a CLI release and drift from the catalog the project already loads. The 1.3.0 release moved that guidance to the catalog; the Git section was the remaining exception.",
+      },
+    ],
+  },
+  {
     version: "1.3.0",
     summary:
       "The generated AGENTS.md stops carrying behavioural guidance and points at the shared @raulmoracode skills catalog instead (loaded through `.opencode/opencode.json`), and the CLI no longer writes `.github/pull_request_template.md`: pull request bodies are now produced by the `git-pr` skill, so the template is deleted on upgrade.",
