@@ -175,7 +175,7 @@ describe("buildAdoptionManifest", () => {
     ".github/pull_request_template.md": "# PR\n",
   };
   const packageJson: PackageJson = {
-    name: "alex-folio",
+    name: "sample-site",
     dependencies: { react: "19.3.0", lodash: "4.17.21" },
     devDependencies: { "@biomejs/biome": "2.5.0", husky: "9.1.7" },
   };
@@ -195,7 +195,7 @@ describe("buildAdoptionManifest", () => {
       cliVersion: "1.0.7",
       framework: "vite",
       selection,
-      projectName: "alex-folio",
+      projectName: "sample-site",
       githubUrl: "https://github.com/o/r",
     });
   });
@@ -204,7 +204,7 @@ describe("buildAdoptionManifest", () => {
     const manifest = buildAdoptionManifest({
       framework: "vite",
       selection,
-      projectName: "alex-folio",
+      projectName: "sample-site",
       githubUrl: "https://github.com/o/r",
       contents,
       packageJson,
@@ -232,7 +232,7 @@ describe("buildAdoptionManifest", () => {
     const manifest = buildAdoptionManifest({
       framework: "vite",
       selection,
-      projectName: "alex-folio",
+      projectName: "sample-site",
       githubUrl: "https://github.com/o/r",
       contents,
       packageJson,
@@ -283,13 +283,13 @@ describe("normalizeGitHubUrl", () => {
 describe("projectNameFrom", () => {
   it("prefers package.json and falls back to the repository slug", () => {
     expect(
-      projectNameFrom({ name: "alex-folio" }, "https://github.com/o/r"),
-    ).toBe("alex-folio");
+      projectNameFrom({ name: "sample-site" }, "https://github.com/o/r"),
+    ).toBe("sample-site");
     expect(
-      projectNameFrom({ name: "  " }, "https://github.com/o/alex-folio"),
-    ).toBe("alex-folio");
-    expect(projectNameFrom({}, "https://github.com/o/alex-folio")).toBe(
-      "alex-folio",
+      projectNameFrom({ name: "  " }, "https://github.com/o/sample-site"),
+    ).toBe("sample-site");
+    expect(projectNameFrom({}, "https://github.com/o/sample-site")).toBe(
+      "sample-site",
     );
     expect(projectNameFrom({}, "")).toBe("project");
   });
