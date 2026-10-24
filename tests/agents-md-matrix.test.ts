@@ -35,19 +35,14 @@ const EXPECTED_AGENTS_MD = [
   "",
   "Start non-trivial work with the `raulmoracode-mode` skill and follow the specialists it points to:",
   "",
-  "- `git-pr` — branch, commit and pull request workflow.",
-  "- `git-branch` / `safe-git` — create branches and run Git without destructive commands.",
   "- `test-before-finishing` / `verify-before-claiming` / `no-made-up-results` — validate with real commands before claiming anything.",
   "- `security-first` — secrets, credentials and dependency safety.",
-  "- `release-engineering` — versions, changelogs and tags.",
   "- `clear-final-report` — what changed, which files, which validation ran, what is still open.",
   "",
   "If the catalog is unavailable, these rules still hold:",
   "",
   "- Use pnpm only, never npm or yarn.",
   "- Pin exact dependency versions: no `^`, no `~`, no `latest`.",
-  "- Never run `git push --force`, `git push -f`, `git reset --hard` or `git clean -fd`.",
-  "- Follow Conventional Commits.",
   "- Never claim a command was run, or that something works, when it was not verified.",
   "- Never delete or overwrite the user's content.",
   "",
@@ -149,47 +144,6 @@ const EXPECTED_AGENTS_MD = [
   "pnpm build",
   "```",
   "",
-  "## Git hooks and commits",
-  "",
-  "Husky manages the Git hooks.",
-  "",
-  "`pre-commit` runs:",
-  "",
-  "```bash",
-  "pnpm check",
-  "pnpm test",
-  "```",
-  "",
-  "`commit-msg` runs Commitlint.",
-  "",
-  "Commits must follow Conventional Commits.",
-  "",
-  "Format: `<type>: <description>`",
-  "",
-  "Valid types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `ci`.",
-  "",
-  "Valid commit examples:",
-  "",
-  "```text",
-  "feat: add user profile",
-  "fix: handle invalid input",
-  "refactor: extract API client",
-  "test: add query client tests",
-  "docs: update project guide",
-  "chore: update dependencies",
-  "style: fix indentation in layout component",
-  "perf: optimize image loading in gallery",
-  "ci: add GitHub Actions workflow",
-  "```",
-  "",
-  "Rules:",
-  "",
-  '- Use the imperative mood ("add" not "added").',
-  "- Do not capitalize the first letter.",
-  "- Do not end with a period.",
-  "- Keep the subject line under 72 characters.",
-  "- Use a body (separated by a blank line) for longer explanations.",
-  "",
   "## Site identity",
   "",
   "`src/config/site.ts` is the single source of truth for the site title, description, favicon and social preview.",
@@ -234,12 +188,10 @@ describe("AGENTS.md template", () => {
     }
   });
 
-  it("documents the scripts, hooks and conventions agents must follow", () => {
+  it("documents the scripts and conventions agents must follow", () => {
     const content = agentsMd();
     expect(content).toContain("# AGENTS.md");
     expect(content).toContain("This project uses pnpm exclusively.");
-    expect(content).toContain("Commitlint");
-    expect(content).toContain("Conventional Commits");
     expect(content).toContain("single source of truth for the site title");
   });
 
@@ -255,6 +207,7 @@ describe("AGENTS.md template", () => {
       "## Code style",
       "## Architecture",
       "## Git\n",
+      "## Git hooks and commits",
       "## Pull requests",
       "## Changelog",
       "## Security",
@@ -266,19 +219,6 @@ describe("AGENTS.md template", () => {
     ]) {
       expect(content, heading).not.toContain(heading);
     }
-  });
-
-  it("never renders an empty hook command fence", () => {
-    const bare = agentsMd("vite", {
-      ...FULL_TECH_SELECTION,
-      biome: false,
-      testing: false,
-    });
-    expect(bare).not.toContain("```bash\n```");
-    expect(bare).toContain(
-      "`.husky/pre-commit` is installed but runs no commands in this project.",
-    );
-    expect(bare).toContain("`commit-msg` runs Commitlint.");
   });
 });
 
