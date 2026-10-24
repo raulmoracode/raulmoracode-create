@@ -364,9 +364,9 @@ missing. It never writes, never prompts and never needs the network.
   With shadcn it also excludes the `@raulmoracode/*` scope (pure `registryScopeExcludes()`,
   pnpm pattern syntax) so `shadcn add @raulmoracode/<component>` can install freshly
   published scope packages despite the maturity gate.
-- Biome 2.5.14: `organizeImports` lives in `assist.actions.source` (not top-level); `dist`/`.next`
-  are ignored; `noSvgWithoutTitle`/`noAmbiguousAnchorText` are `off` (templates ship demo assets
-  that trigger them).
+- Biome 2.5.14: `organizeImports` lives in `assist.actions.source` (not top-level); `dist`, `.next`,
+  `playwright-report` and `test-results` are ignored; `noSvgWithoutTitle`/`noAmbiguousAnchorText` are
+  `off` (templates ship demo assets that trigger them).
 - `components.json` must be the **full** shadcn 4.x configuration (`$schema`, `style
   new-york`, `rsc`, `tsx`, `tailwind`, `aliases`, `registries: {"@raulmoracode":
   "https://registry.raulmoracode.com/r/{name}.json"}`); the minimum with only `registries` is

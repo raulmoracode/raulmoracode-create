@@ -39,6 +39,18 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
     ],
   },
   {
+    version: "1.5.0",
+    summary:
+      "The generated biome.json excludes Playwright's output (`playwright-report/` and `test-results/`), so `pnpm check` and the pre-commit hook keep passing after an e2e run.",
+    changes: [
+      {
+        files: ["biome.json"],
+        what: "`files.includes` now also excludes `playwright-report` and `test-results`. The upgrade re-renders `biome.json` with the extended list, keeping every other field.",
+        why: "Biome does not read `.gitignore`, so the artifacts Playwright writes are linted and formatted as project files: the first `pnpm e2e` makes the next `pnpm check` fail with thousands of errors and the pre-commit hook aborts the commit.",
+      },
+    ],
+  },
+  {
     version: "1.2.0",
     summary:
       "Ships an `.opencode/opencode.json` configuration that wires the @raulmoracode skills catalog into OpenCode, and guarantees through `.gitignore` negations that the `.opencode/` folder always travels with the repository.",
