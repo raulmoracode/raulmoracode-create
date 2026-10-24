@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs, printHelp, VERSION } from "./cli/args.js";
+import { runDoctor } from "./cli/doctor.js";
 import { run } from "./cli/run.js";
 import { runUpgrade } from "./cli/upgrade.js";
 
@@ -22,7 +23,9 @@ const main =
         check: args.check,
         adopt: args.adopt,
       })
-    : run({ verbose: args.verbose });
+    : args.command === "doctor"
+      ? runDoctor({ verbose: args.verbose })
+      : run({ verbose: args.verbose });
 
 main.catch((error: unknown) => {
   console.error(error);

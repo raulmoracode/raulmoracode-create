@@ -128,7 +128,7 @@ The `bin` field in `package.json` exposes **exactly** `{ "raulmoracode-create": 
 │       ├── exec.ts               # safe process execution (spawn)
 │       ├── filesystem.ts         # file helpers and JSON/JSONC
 │       └── validation.ts         # name, URL and framework validation
-├── tests/                        # Vitest suite (30 files, incl. the opt-in E2E suites)
+├── tests/                        # Vitest suite (31 files, incl. the opt-in E2E suites)
 ├── docs/
 │   └── PROJECT_SPEC.md           # this document
 ├── .github/workflows/publish.yml # publish to npmjs on v* tags
@@ -162,6 +162,7 @@ run({ verbose: parseArgs(process.argv.slice(2)).verbose }).catch(...);
   by synthesizing the manifest from disk evidence — see §19; ignored with a warning when the manifest
   already exists).
 - `VERSION` lives in `src/cli/args.ts` and a test pins it to `package.json` (never read the JSON at runtime).
+- Subcommands: the first positional selects `upgrade` or `doctor`; anything else (or nothing) runs `create`.
 - Works from any working directory.
 
 ---
@@ -204,10 +205,16 @@ Internal functions:
 ### 5.2 `src/cli/args.ts` — flags
 
 - `VERSION = "1.3.0"` — single source of truth for `--version`; pinned to `package.json` by a test.
-- `parseArgs(argv): CliArgs` — `{ help, version, verbose, check, adopt }` (`-h`/`--help`, `-V`/`--version`, `--verbose`, `--check`/`--dry-run`, `--adopt`; unknown flags are ignored).
+- `parseArgs(argv): CliArgs` — `{ command, help, version, verbose, check, adopt }` (`command` is `create`, `upgrade` or `doctor` from the first positional; `-h`/`--help`, `-V`/`--version`, `--verbose`, `--check`/`--dry-run`, `--adopt`; unknown flags are ignored).
 - `helpText()` / `printHelp()` — usage, options, examples. Printed with `console.log`, exit 0, before entering the interactive flow.
 
-### 5.3 `src/cli/output.ts` — Clack output
+### 5.3 `src/cli/doctor.ts` — read-only diagnostics
+
+- `runDoctor({ verbose? })` — `intro("Raulmoracode Doctor")`, collects the facts (Node from `process.version`; `pnpm --version` and `git --version` through `exec`; `git rev-parse --show-toplevel`; `package.json` and `raulmoracode.json` through `utils/filesystem.ts`; the content of every path recorded in the manifest), calls `diagnoseProject()` and prints each diagnostic with `log.success`/`log.warn`/`log.error` (the hint on a second line), then `outro` with the counts.
+- Exits `1` when at least one diagnostic is an `error`; warnings do not fail. Never writes, never prompts, no network.
+- The pure rules live in `src/doctor/checks.ts`: `diagnoseProject(facts: DoctorFacts): Diagnostic[]` with `{ id, level: "ok" | "warning" | "error", message, hint? }`, covering Node, pnpm, git, `package.json`, the manifest (absent → `--adopt` hint; unreadable), version drift in both directions, managed files missing or modified against the manifest hashes, managed pins missing or drifted and managed scripts missing.
+
+### 5.4 `src/cli/output.ts` — Clack output
 
 - `showIntro(): void` — `intro("Raulmoracode Create")`.
 - `showError(message: string): void` — `log.error(message)`.
@@ -415,7 +422,8 @@ The file is sorted and two-space indented with a trailing newline (`serializeMan
 | `exec.test.ts` | Real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
 | `error-handling.test.ts` | Mocked `exec` (`importOriginal` + override): missing pnpm/git, non-zero exits, `remoteHasDivergentCommits` (diverge/ancestor/no-branch/same), `PreflightError`, invalid URLs, `REMOTE_CONFLICT_MESSAGE` |
 | `package-metadata.test.ts` | `name`, `bin` exactly `{raulmoracode-create: ./dist/index.js}` (and no `create` key), `files` with `dist`, npmjs registry, `engines`, `packageManager`, scripts, exact versions, repo/bugs/license/keywords, plus generated `prepare: husky`, Husky/Commitlint pins and `pinnedPackages`/`normalize` coverage |
-| `args.test.ts` | `parseArgs` (defaults, each flag, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
+| `args.test.ts` | `parseArgs` (defaults, each flag, `create`/`upgrade`/`doctor` commands, combined, unknown ignored, `-v` ≠ version), `VERSION` pinned to `package.json`, help text contents, `printHelp` stdout |
+| `doctor.test.ts` | `diagnoseProject()` for every level (Node, pnpm, git, `package.json`, manifest absent/unreadable, version drift in both directions, missing and modified managed files, missing/drifted pins, missing scripts) + `runDoctor()` with mocked `exec`/Clack in a temp project (healthy → exit 0; missing manifest → exit 1 with the `--adopt` hint) |
 | `recovery.test.ts` | `shouldRemoveProjectDir` decision table + full `run()` integration (mocked Clack/exec, temp dirs, Node 24 only): mid-task failure removes the dir + exit 1; pre-task failure restores a reused empty dir + exit 1 |
 | `preflight.test.ts` | Full `run()` preflight with mocked Clack/exec (Node 24 only): `REQUIRED_PNPM_MAJOR` derived from `PNPM_VERSION`; pnpm 13.x or unparsable output → exact actionable error + exit 1 before any prompt; pnpm 12.x proceeds with a single `pnpm --version` call in the order pnpm → git → identity |
 | `e2e-scheduled-workflow.test.ts` | `.github/workflows/e2e-scheduled.yml`: weekly `schedule` + `workflow_dispatch` (no push/PR), read-only permissions, `[vite, next]` matrix with `fail-fast: false`, Node 24 + pnpm cache, frozen-lockfile install, E2E command with `E2E_FRAMEWORK: ${{ matrix.framework }}` (`tests/e2e.test.ts` + `tests/upgrade-e2e.test.ts`), observe-only (no updates, pushes or secrets) |

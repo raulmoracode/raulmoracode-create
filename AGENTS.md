@@ -57,6 +57,7 @@ src/
 ├── frameworks/         # Vite vs Next differences (same ProjectFramework interface)
 ├── git/                # Git operations ONLY (arg builders + thin wrappers)
 ├── github/             # `gh` CLI wrappers ONLY (arg builders + thin wrappers)
+├── doctor/             # PURE diagnostics: facts in, diagnostics out (`checks.ts`)
 ├── upgrade/            # pure contract modules (types, manifest, managed-files, notes, package-json,
 │                       # plan, pr-body, report, version, template-snapshot, migrations/index)
 │                       # + orchestration (state, preflight, apply, migrations/*) via utils/* only
@@ -330,6 +331,19 @@ builders + thin wrappers through `utils/exec.ts`), `git/upgrade.ts` wraps git.
 dependencies so the E2E can run against a local bare remote. PR bodies are English; CLI messages
 are Spanish.
 
+### 5.3 `doctor`: diagnosing an existing project
+
+`raulmoracode-create doctor` (`src/cli/doctor.ts`) is read-only: it gathers facts from the current
+project (Node/pnpm/git versions, whether it is a repository, `package.json`, `raulmoracode.json`, the
+content of every path recorded in the manifest) and prints one diagnostic per check, exiting 1 when any
+of them is an `error` (warnings do not fail). The pure side is `src/doctor/checks.ts`
+(`diagnoseProject(facts)`), so every rule is testable without a disk; the CLI collects the facts only
+through `utils/filesystem.ts` and `utils/exec.ts` and prints with Clack (`intro`/`log`/`outro`). It
+covers the preflight checks plus the manifest-specific ones the CLI never surfaced: missing or
+unreadable `raulmoracode.json` (with the `--adopt` hint), version drift in both directions, managed
+files missing or edited since the CLI wrote them, managed pins missing or drifted, and managed scripts
+missing. It never writes, never prompts and never needs the network.
+
 ## 6. Subtle verified details (do not "simplify" them)
 
 - `create-vite@8.3.1` **does not exist**: scaffold with `create-vite@9.2.1` (the line that generates Vite 8)
@@ -396,6 +410,7 @@ are Spanish.
 | `exec.test.ts` | real `exec`: stdout, non-zero exit, stderr, missing binary (`spawnError`), `cwd`, args-as-array without interpolation; per-platform `resolveCommand`; `formatCommand` |
 | `error-handling.test.ts` | mocked `exec` (`importOriginal` + override): missing pnpm/git, non-zero exits, `remoteHasDivergentCommits` (diverge / ancestor / no branch / same), `PreflightError`, invalid URLs, `REMOTE_CONFLICT_MESSAGE` |
 | `layer-invariants.test.ts` | static import scan over all of `src/` enforcing §3: Clack only in `cli/`/`prompts/`, file I/O only through `utils/filesystem.ts` (sole `node:fs` importer), processes only through `utils/exec.ts` (sole `child_process` importer), `config/` performs no I/O, `git/`/`github/` never import each other, no Husky/Commitlint in `git/`, `upgrade/` split into pure contract vs effectful orchestration (no Clack, no `cli/`/`prompts/` imports) |
+| `doctor.test.ts` | `diagnoseProject()` for every level (Node, pnpm, git, `package.json`, manifest absent/unreadable, version drift in both directions, missing and modified managed files, missing/drifted pins, missing scripts) + `runDoctor()` with mocked `exec`/Clack in a temp project (healthy → exit 0; missing manifest → exit 1 with the `--adopt` hint) |
 | `upgrade-pr-body.test.ts` | `upgradePrBody` (empty plan, all statuses, notes with/without `action`, unmatched overwritten file, CRLF, pipe escaping), `unifiedDiff`/`diffLineCounts`/`diffCounts` on small inputs and caps, `truncateForGithub` (summary/⚠️/tables/action items survive, diffs trimmed, under the limit, idempotent) |
 | `github.test.ts` | `gh` arg builders (never `--draft`), `requireGhAuth` (`GhAuthError`, `gh auth login`), `findOpenPullRequest` with mocked `exec` (JSON, empty, garbage, no url, non-zero exit → `null`), `createPullRequest` (`--body-file`, temp file written and removed, URL extraction), `repoDefaultBranch` |
 | `upgrade-contract.test.ts` | manifest contract (hash/serialize/parse), `managedFiles()`, `managedPackageJson()`, `managedDependencyPins()`, `notesBetween()` |

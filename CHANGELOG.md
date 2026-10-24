@@ -172,6 +172,16 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the `tw-animate-css` pin is aligned when detected). No managed template or
   pin changed, so there is no `UPGRADE_NOTES` entry.
 
+- **`doctor` command**: `raulmoracode-create doctor` inspects the project in
+  the current directory and prints one diagnostic per check without writing
+  anything — Node, pnpm and git, `package.json`, `raulmoracode.json` (a missing
+  manifest now points at `upgrade --adopt` instead of leaving the user to
+  discover it), version drift in both directions, managed files missing or
+  edited since the CLI wrote them, managed pins missing or drifted, and managed
+  scripts that disappeared. Exits 1 when a check reports an error; warnings do
+  not fail. The pure rules live in `src/doctor/checks.ts` and the command in
+  `src/cli/doctor.ts`.
+
 ## [1.0.9] - 2026-10-10
 
 ### Added

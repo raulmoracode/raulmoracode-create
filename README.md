@@ -74,6 +74,16 @@ pnpm dlx @raulmoracode/create@latest upgrade --adopt   # adopt a project created
 
 Requirements: Node 24, pnpm 12, a clean working tree, a GitHub remote and the GitHub CLI (`gh auth login`).
 
+### Diagnosing an existing project
+
+Run `doctor` inside a project when the CLI cannot work with it and you want to know why. It is read-only: no writes, no prompts, no network.
+
+```bash
+pnpm dlx @raulmoracode/create@latest doctor
+```
+
+It checks Node, pnpm and git; that `raulmoracode.json` exists and parses (and points at `upgrade --adopt` when the project predates 1.0.8); version drift against the installed CLI; managed files that are missing or edited since the CLI wrote them; managed pins that are missing or drifted; and managed scripts that disappeared. Exit code 1 when any check reports an error; warnings do not fail.
+
 ## What the CLI does
 
 - Scaffolds with the **official generators** (never a hand-written template):
