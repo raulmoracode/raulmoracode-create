@@ -172,6 +172,17 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the `tw-animate-css` pin is aligned when detected). No managed template or
   pin changed, so there is no `UPGRADE_NOTES` entry.
 
+### Fixed
+
+- **The generated Tailwind entry maps the shadcn tokens into the theme**: the
+  `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
+  the `@theme inline` block (`--color-background`, `--color-card`,
+  `--color-primary`, `--color-destructive-foreground`, the chart and sidebar
+  colors, and the `--radius-*` scale) that maps every shadcn custom property to
+  a Tailwind utility. Without it `bg-background`, `border-input`, `ring-ring`
+  and the `rounded-*` scale generated no CSS, so a component added with the
+  documented `shadcn add` command rendered unstyled.
+
 ## [1.0.9] - 2026-10-10
 
 ### Added

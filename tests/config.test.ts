@@ -665,8 +665,27 @@ describe("agents guide", () => {
 });
 
 describe("Tailwind configuration", () => {
-  it("css entry point uses the Tailwind 4 import", () => {
-    expect(tailwindCss()).toBe('@import "tailwindcss";\n');
+  it("css entry point imports Tailwind 4 and maps the shadcn tokens", () => {
+    const content = tailwindCss();
+    expect(
+      content.startsWith('@import "tailwindcss";\n\n@theme inline {\n'),
+    ).toBe(true);
+    expect(content.endsWith("}\n")).toBe(true);
+    for (const line of [
+      "  --color-background: var(--background);",
+      "  --color-foreground: var(--foreground);",
+      "  --color-primary: var(--primary);",
+      "  --color-destructive-foreground: var(--destructive-foreground);",
+      "  --color-border: var(--border);",
+      "  --color-input: var(--input);",
+      "  --color-ring: var(--ring);",
+      "  --color-chart-1: var(--chart-1);",
+      "  --color-sidebar-ring: var(--sidebar-ring);",
+      "  --radius-sm: calc(var(--radius) - 4px);",
+      "  --radius-xl: calc(var(--radius) + 4px);",
+    ]) {
+      expect(content, line).toContain(line);
+    }
   });
 
   it("vite config wires the official Vite plugin", () => {
