@@ -29,6 +29,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   read `.gitignore`, so the artifacts were linted and formatted as project
   files and the first e2e run broke the next check.
 
+- **The generated Tailwind entry maps the shadcn tokens into the theme**: the
+  `src/index.css` (Vite) and `src/app/globals.css` (Next.js) templates now ship
+  the `@theme inline` block (`--color-background`, `--color-card`,
+  `--color-primary`, `--color-destructive-foreground`, the chart and sidebar
+  colors, and the `--radius-*` scale) that maps every shadcn custom property to
+  a Tailwind utility. Without it `bg-background`, `border-input`, `ring-ring`
+  and the `rounded-*` scale generated no CSS, so a component added with the
+  documented `shadcn add` command rendered unstyled.
+
 ## [1.4.0] - 2026-10-24
 
 ### Added
