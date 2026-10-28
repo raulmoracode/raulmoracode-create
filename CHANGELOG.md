@@ -7,6 +7,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+Nothing pending yet.
+
+## [1.5.1] - 2026-10-28
+
 ### Fixed
 
 - **The generated `vitest.config.ts` resolves the `@` alias**: the template now
@@ -501,7 +505,8 @@ no git tag, and the breaking change that removed the private registry, the
 It is deprecated in favour of 1.0.2. The install command is unchanged, so
 `npm install -g @raulmoracode/create@1.0.2` is all that is needed.
 
-[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/raulmoracode/raulmoracode-create/compare/v1.2.0...v1.3.0
