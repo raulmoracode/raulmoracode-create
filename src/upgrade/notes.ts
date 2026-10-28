@@ -10,12 +10,17 @@ export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
     version: "1.5.1",
     summary:
-      "The generated `vitest.config.ts` resolves the `@` alias to `src`, so tests that import application code keep running after an upgrade.",
+      "The generated `vitest.config.ts` resolves the `@` alias to `src`, and the Next.js `typecheck` script generates the route types before running `tsc`, so tests and CI keep working after an upgrade.",
     changes: [
       {
         files: ["vitest.config.ts"],
         what: '`vitest.config.ts` now declares `resolve.alias` mapping `@` to `src` with `fileURLToPath(new URL("./src", import.meta.url))`, for both Vite and Next.js projects.',
         why: "Vitest does not read the `@/*` path mapping from `tsconfig.json` and does not inherit `vite.config.ts`, so a test importing `@/components/...` fails to resolve. `upgrade --adopt` re-rendered the file from the 1.5.0 template and removed a user-added alias, breaking `pnpm test` and the pre-commit hook.",
+      },
+      {
+        files: [".github/workflows/ci.yml"],
+        what: "The Next.js `typecheck` script is now `next typegen && tsc --noEmit`, and `package.json` receives it through the managed script patch. The CI workflow itself does not change, but its `pnpm typecheck` step now runs on a clean checkout.",
+        why: "Next 16 generates the route types (`LayoutProps`, `PageProps`, ...) under `.next` only during `next dev`, `next build` or `next typegen`. The generated CI ran `tsc --noEmit` before `pnpm build`, so a clean clone failed with `TS2304: Cannot find name 'LayoutProps'`.",
       },
     ],
   },

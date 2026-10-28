@@ -20,6 +20,11 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   restores the worktree. Previously `git restore -- <paths>` restored from the
   index — which already held the upgrade content — leaving staged changes and
   added-but-deleted entries behind.
+- **The generated Next.js `typecheck` script generates the route types first**:
+  it is now `next typegen && tsc --noEmit`. Next 16 only writes `LayoutProps`,
+  `PageProps` and the rest of the route types under `.next` during `next dev`,
+  `next build` or `next typegen`, so `tsc --noEmit` alone failed on a clean
+  checkout — exactly what the generated CI does before `next build`.
 
 ## [1.5.0] - 2026-10-24
 

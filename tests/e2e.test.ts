@@ -204,7 +204,9 @@ e2e("end-to-end project creation", () => {
     expect(pkg.scripts.check).toBe("biome check .");
     expect(pkg.scripts.prepare).toBe("husky");
     expect(pkg.scripts.typecheck).toBe(
-      process.env.E2E_FRAMEWORK === "next" ? "tsc --noEmit" : "tsc -b",
+      process.env.E2E_FRAMEWORK === "next"
+        ? "next typegen && tsc --noEmit"
+        : "tsc -b",
     );
     expect(pkg.dependencies.react).toBe("19.3.0");
     expect(pkg.dependencies.zustand).toBe("5.0.15");
