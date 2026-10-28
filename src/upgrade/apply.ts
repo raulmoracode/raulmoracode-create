@@ -332,25 +332,39 @@ export async function commitUpgrade(
     .map((file) => file.path);
 
   const commitPaths = upgradeCommitPaths(plan, migrationPaths);
-  if (commitPaths.length > 0) {
-    await stagePaths(projectDir, commitPaths, verbose);
-  }
-  if (overwritten.length > 0) {
-    await unstagePaths(projectDir, overwritten, verbose);
-  }
-  const message = upgradeCommitMessage(plan.toVersion);
-  await commitWithMessage(projectDir, message, verbose);
-  onCommit?.(message);
-  const commits = [message];
+  let staged = false;
+  try {
+    if (commitPaths.length > 0) {
+      await stagePaths(projectDir, commitPaths, verbose);
+      staged = true;
+    }
+    if (overwritten.length > 0) {
+      await unstagePaths(projectDir, overwritten, verbose);
+    }
+    const message = upgradeCommitMessage(plan.toVersion);
+    await commitWithMessage(projectDir, message, verbose);
+    onCommit?.(message);
+    const commits = [message];
 
-  if (overwritten.length > 0) {
-    await stagePaths(projectDir, overwritten, verbose);
-    await commitWithMessage(projectDir, OVERWRITE_COMMIT_MESSAGE, verbose);
-    onCommit?.(OVERWRITE_COMMIT_MESSAGE);
-    commits.push(OVERWRITE_COMMIT_MESSAGE);
-  }
+    if (overwritten.length > 0) {
+      await stagePaths(projectDir, overwritten, verbose);
+      await commitWithMessage(projectDir, OVERWRITE_COMMIT_MESSAGE, verbose);
+      onCommit?.(OVERWRITE_COMMIT_MESSAGE);
+      commits.push(OVERWRITE_COMMIT_MESSAGE);
+    }
 
-  return commits;
+    return commits;
+  } catch (error) {
+    // A failed commit (a pre-commit hook, a missing identity, a full disk)
+    // leaves the index holding exactly what this run staged. Unstage it before
+    // the caller restores the worktree: `git restore -- <paths>` restores from
+    // the index, so without this the rollback would restore the upgrade
+    // content and leave the tree dirty.
+    if (staged) {
+      await unstagePaths(projectDir, commitPaths, verbose).catch(() => {});
+    }
+    throw error;
+  }
 }
 
 const REVERT_EXTRA_FILES = [

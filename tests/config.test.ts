@@ -708,6 +708,14 @@ describe("TanStack Query and testing configuration", () => {
     expect(content).toContain('environment: "jsdom"');
   });
 
+  it("vitest resolves the @ alias from src", () => {
+    const content = vitestConfig();
+    expect(content).toContain('import { fileURLToPath } from "node:url";');
+    expect(content).toContain(
+      '"@": fileURLToPath(new URL("./src", import.meta.url)),',
+    );
+  });
+
   it("smoke test uses Testing Library with jsdom", () => {
     const content = smokeTest();
     expect(content).toContain("@testing-library/react");

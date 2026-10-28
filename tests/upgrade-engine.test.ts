@@ -1052,6 +1052,32 @@ describe("runUpgrade", () => {
     );
   });
 
+  it("unstages the files it staged when the commit fails", async () => {
+    await createProjectFixture();
+    mockExec({
+      failOn: (command, args) => command === "git" && args[0] === "commit",
+    });
+
+    await runUpgrade({ verbose: false, deps });
+
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    const commands = calledCommands();
+    const staged =
+      "git restore --staged -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json";
+    const restored =
+      "git restore -- package.json pnpm-lock.yaml pnpm-workspace.yaml raulmoracode.json";
+    expect(commands).toContain(staged);
+    expect(commands).toContain(restored);
+    expect(commands.indexOf(staged)).toBeLessThan(commands.indexOf(restored));
+    expect(
+      commands.filter((line) => line.startsWith("git commit")),
+    ).toHaveLength(1);
+    expect(commands).toContain(
+      `git branch -D chore/raulmoracode-update-${VERSION}`,
+    );
+    expect(createPullRequest).not.toHaveBeenCalled();
+  });
+
   it("rolls back the migration files the run wrote when a later step fails", async () => {
     const templates = managedFiles("vite", SELECTION);
     await createProjectFixture({

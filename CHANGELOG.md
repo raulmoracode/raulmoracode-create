@@ -7,7 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing pending yet.
+### Fixed
+
+- **The generated `vitest.config.ts` resolves the `@` alias**: the template now
+  maps `@` to `src` with `resolve.alias`, for both Vite and Next.js projects.
+  Vitest does not read the `@/*` mapping from `tsconfig.json` and does not
+  inherit `vite.config.ts`, so a test importing `@/components/...` failed to
+  resolve after an upgrade re-rendered the file without the alias.
+- **A failed upgrade commit no longer leaves the tree dirty**: when `git commit`
+  fails after the upgrade staged its paths (for example, because a pre-commit
+  hook fails), the CLI now unstages exactly those paths before the rollback
+  restores the worktree. Previously `git restore -- <paths>` restored from the
+  index — which already held the upgrade content — leaving staged changes and
+  added-but-deleted entries behind.
 
 ## [1.5.0] - 2026-10-24
 

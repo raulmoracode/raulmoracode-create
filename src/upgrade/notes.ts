@@ -8,6 +8,18 @@ import { compareVersions, isVersionInRange } from "./version.js";
  */
 export const UPGRADE_NOTES: UpgradeNotes[] = [
   {
+    version: "1.5.1",
+    summary:
+      "The generated `vitest.config.ts` resolves the `@` alias to `src`, so tests that import application code keep running after an upgrade.",
+    changes: [
+      {
+        files: ["vitest.config.ts"],
+        what: '`vitest.config.ts` now declares `resolve.alias` mapping `@` to `src` with `fileURLToPath(new URL("./src", import.meta.url))`, for both Vite and Next.js projects.',
+        why: "Vitest does not read the `@/*` path mapping from `tsconfig.json` and does not inherit `vite.config.ts`, so a test importing `@/components/...` fails to resolve. `upgrade --adopt` re-rendered the file from the 1.5.0 template and removed a user-added alias, breaking `pnpm test` and the pre-commit hook.",
+      },
+    ],
+  },
+  {
     version: "1.5.0",
     summary:
       "The generated AGENTS.md drops the Git guidance the skills catalog owns (no `## Git hooks and commits` section, no Git specialists in `## Skills` and no Git fallback rules), and the generated biome.json excludes Playwright's output (`playwright-report/` and `test-results`), so `pnpm check` and the pre-commit hook keep passing after an e2e run.",
