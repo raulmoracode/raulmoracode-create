@@ -68,7 +68,7 @@ export const nextFramework: ProjectFramework = {
       dev: "next dev",
       build: "next build",
       start: "next start",
-      typecheck: "tsc --noEmit",
+      typecheck: "next typegen && tsc --noEmit",
       check: "biome check .",
       format: "biome format --write .",
       lint: "biome lint .",
